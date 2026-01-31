@@ -13,6 +13,17 @@
 
 set -e
 
+# Array to track temporary directories for cleanup
+SSH_SAFE_DIRS=()
+
+# Cleanup function
+cleanup() {
+    for dir in "${SSH_SAFE_DIRS[@]}"; do
+        [ -d "$dir" ] && rm -rf "$dir"
+    done
+}
+trap cleanup EXIT
+
 # Default to latest Claude Code version, or use specified version
 DCLAUDE_CLAUDE_VERSION="${DCLAUDE_CLAUDE_VERSION:-latest}"
 # Default to Node 20, or use specified version (can be "20", "lts", "current", etc.)
@@ -235,6 +246,35 @@ fi
 if [ "$DCLAUDE_GPG_FORWARD" = "true" ] && [ -d "$HOME/.gnupg" ]; then
     DOCKER_CMD+=(-v "$HOME/.gnupg:/home/$(whoami)/.gnupg")
     DOCKER_CMD+=(-e "GPG_TTY=/dev/console")
+fi
+
+# SSH forwarding (opt-in with configurable security levels)
+if [ "$DCLAUDE_SSH_FORWARD" = "agent" ] || [ "$DCLAUDE_SSH_FORWARD" = "true" ]; then
+    # Agent mode: Forward SSH agent socket (works well on Linux)
+    if [ -n "$SSH_AUTH_SOCK" ] && [ -S "$SSH_AUTH_SOCK" ]; then
+        # Check if socket is accessible (macOS launchd sockets won't work)
+        if [[ "$SSH_AUTH_SOCK" =~ /private/tmp/com.apple.launchd ]] || [[ "$SSH_AUTH_SOCK" =~ /var/folders/.*/T/com.apple.launchd ]]; then
+            echo "Warning: SSH agent forwarding not supported on macOS (use DCLAUDE_SSH_FORWARD=keys)"
+        else
+            DOCKER_CMD+=(-v "$SSH_AUTH_SOCK:/ssh-agent")
+            DOCKER_CMD+=(-e "SSH_AUTH_SOCK=/ssh-agent")
+
+            # Mount only public keys and config (not private keys)
+            if [ -d "$HOME/.ssh" ]; then
+                SSH_SAFE_DIR=$(mktemp -d)
+                [ -f "$HOME/.ssh/config" ] && cp "$HOME/.ssh/config" "$SSH_SAFE_DIR/"
+                [ -f "$HOME/.ssh/known_hosts" ] && cp "$HOME/.ssh/known_hosts" "$SSH_SAFE_DIR/"
+                cp "$HOME/.ssh"/*.pub "$SSH_SAFE_DIR/" 2>/dev/null || true
+                DOCKER_CMD+=(-v "$SSH_SAFE_DIR:/home/$(whoami)/.ssh:ro")
+                SSH_SAFE_DIRS+=("$SSH_SAFE_DIR")
+            fi
+        fi
+    fi
+elif [ "$DCLAUDE_SSH_FORWARD" = "keys" ]; then
+    # Keys mode: Mount entire .ssh directory
+    if [ -d "$HOME/.ssh" ]; then
+        DOCKER_CMD+=(-v "$HOME/.ssh:/home/$(whoami)/.ssh:ro")
+    fi
 fi
 
 # Mount Docker socket for Docker-in-Docker support (opt-in)

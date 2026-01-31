@@ -272,6 +272,10 @@ Benefits:
   - Set to `current` for the newest Node.js release
 - **DCLAUDE_GPG_FORWARD** (optional, default: `false`): Enable GPG commit signing
   - Set to `true` to mount `~/.gnupg` for commit signing
+- **DCLAUDE_SSH_FORWARD** (optional, default: `false`): Enable SSH forwarding
+  - Set to `agent` or `true` for SSH agent forwarding only (most secure - recommended)
+  - Set to `keys` to mount entire `~/.ssh` directory (less secure but simpler)
+  - Enables git operations over SSH, SSH to remote servers, etc.
 - **DCLAUDE_DOCKER_FORWARD** (optional, default: `false`): Enable Docker support
   - Set to `isolated` or `true` for isolated Docker environment (recommended)
   - Set to `host` to mount host Docker socket (see all host containers)
@@ -540,6 +544,95 @@ export DCLAUDE_GPG_FORWARD=true
 
 **Security Note:**
 - GPG keys are sensitive - only enable forwarding when needed
+
+### SSH Key Forwarding (Opt-In)
+
+SSH forwarding is **disabled by default** for security. Two modes available:
+
+#### Agent Mode (Recommended for Linux - Most Secure)
+
+**Forward SSH agent only - private keys stay on host:**
+```bash
+# Recommended for Linux: Use SSH agent forwarding
+export DCLAUDE_SSH_FORWARD=agent  # or just "true"
+./dclaude.sh
+
+# Or add to your .env file
+echo "DCLAUDE_SSH_FORWARD=agent" >> .env
+```
+
+**What gets forwarded:**
+- ✅ SSH agent socket (`SSH_AUTH_SOCK`) - use keys without exposing them
+- ✅ SSH config file (`~/.ssh/config`) - connection settings
+- ✅ Known hosts (`~/.ssh/known_hosts`) - verified servers
+- ✅ Public keys (`~/.ssh/*.pub`) - for displaying/sharing
+- ❌ Private keys - **stay on your host machine** (secure!)
+
+**How it works:**
+- Container can authenticate using your SSH agent
+- Private keys never enter the container
+- Keys can't be copied or stolen from container
+- Requires SSH agent running on host
+
+**macOS users:** SSH agent forwarding not supported on macOS (Docker VM limitation)
+- Use `keys` mode instead - works reliably and is still read-only protected
+```bash
+export DCLAUDE_SSH_FORWARD=keys
+./dclaude.sh
+```
+
+#### Keys Mode (Recommended for macOS)
+
+**Mount entire .ssh directory - simpler and reliable:**
+```bash
+# Recommended for macOS: Mount all SSH files
+export DCLAUDE_SSH_FORWARD=keys
+./dclaude.sh
+```
+
+**What gets forwarded:**
+- ✅ Entire `~/.ssh` directory (read-only)
+- ⚠️  Includes private keys (less secure but still read-only)
+
+**Use this when:**
+- Running on macOS (agent mode is complex)
+- SSH agent forwarding doesn't work on your system
+- You prioritize reliability over maximum security
+- Keys are still mounted read-only for protection
+
+**Use cases:**
+- Clone private repositories via SSH
+- Push to git remotes using SSH keys
+- SSH into remote servers
+- Use SSH for authentication with services
+
+**Test SSH forwarding:**
+```bash
+# Agent mode (recommended)
+export DCLAUDE_SSH_FORWARD=agent
+
+# Verify agent works
+./dclaude.sh shell -c "ssh-add -l"
+
+# Test GitHub authentication
+./dclaude.sh shell -c "ssh -T git@github.com"
+
+# Clone a private repo
+./dclaude.sh "Clone git@github.com:user/private-repo.git"
+```
+
+**Security comparison:**
+
+| Mode | Private Keys Exposed | Security | Best For | Works On |
+|------|---------------------|----------|----------|----------|
+| `agent` | ❌ No (stay on host) | 🟢 High | Linux | Linux ✅ macOS ⚠️ |
+| `keys` | ⚠️  Yes (read-only) | 🟡 Medium | macOS | All platforms ✅ |
+
+**Security Note:**
+- **Linux users:** Agent mode recommended - private keys never leave your host
+- **macOS users:** Keys mode recommended - reliable and still read-only protected
+- Both mount files read-only, preventing modification from container
+- Keys mode is practical compromise: less ideal security but excellent reliability
 
 ### Docker-in-Docker Support (Opt-In)
 
