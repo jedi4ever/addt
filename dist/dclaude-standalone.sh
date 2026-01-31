@@ -45,12 +45,17 @@ IMAGE_NAME="dclaude:latest"
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/dclaude.log"
+
+# Logging configuration (disabled by default, enable with DCLAUDE_LOG=true)
+DCLAUDE_LOG="${DCLAUDE_LOG:-false}"
+DCLAUDE_LOG_FILE="${DCLAUDE_LOG_FILE:-$SCRIPT_DIR/dclaude.log}"
 
 # Function to log commands
 log_command() {
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$timestamp] $*" >> "$LOG_FILE"
+    if [ "$DCLAUDE_LOG" = "true" ]; then
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] $*" >> "$DCLAUDE_LOG_FILE"
+    fi
 }
 
 # Check for special "shell" command

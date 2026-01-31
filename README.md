@@ -290,6 +290,15 @@ Benefits:
 - **DCLAUDE_GITHUB_DETECT** (optional, default: `false`): Auto-detect GitHub token from `gh` CLI
   - Set to `true` to enable automatic token detection from `gh auth login`
   - Convenient for automatically using your `gh` CLI authentication
+- **DCLAUDE_LOG** (optional, default: `false`): Enable command logging
+  - Set to `true` to log all commands to a log file
+  - Useful for debugging and auditing what commands are being executed
+  - Log entries include timestamps, working directory, container name, and command
+- **DCLAUDE_LOG_FILE** (optional, default: `dclaude.log`): Log file location
+  - Specify a custom path for the log file
+  - Only used when `DCLAUDE_LOG=true`
+  - Default is `dclaude.log` in the script directory
+  - Example: `DCLAUDE_LOG_FILE="/tmp/dclaude.log"` or `DCLAUDE_LOG_FILE="~/logs/dclaude.log"`
 
 ### Custom Environment Variables
 
