@@ -190,7 +190,8 @@ func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.gitconfig:ro", gitconfigPath, username))
 		}
 
-		// Mount .claude directory (if enabled)
+		// Mount Claude configuration (if enabled)
+		// This includes both ~/.claude directory and ~/.claude.json file
 		if p.config.MountClaudeConfig {
 			claudeDir := fmt.Sprintf("%s/.claude", homeDir)
 			if _, err := os.Stat(claudeDir); err == nil {
@@ -316,7 +317,8 @@ func (p *DockerProvider) Shell(spec *provider.RunSpec) error {
 			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.gitconfig:ro", gitconfigPath, username))
 		}
 
-		// Mount .claude directory (if enabled)
+		// Mount Claude configuration (if enabled)
+		// This includes both ~/.claude directory and ~/.claude.json file
 		if p.config.MountClaudeConfig {
 			claudeDir := fmt.Sprintf("%s/.claude", homeDir)
 			if _, err := os.Stat(claudeDir); err == nil {
