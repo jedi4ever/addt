@@ -33,6 +33,13 @@ jobs:
           sha256sum dclaude-* > checksums.txt
           cat checksums.txt
 
+      - name: Update latest tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -f latest
+          git push origin latest --force
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -51,25 +58,30 @@ jobs:
             Download the binary for your platform below and make it executable:
 
             ```bash
-            # macOS Apple Silicon (M1/M2/M3)
+            # macOS Apple Silicon (M1/M2/M3) - latest version
+            curl -L https://github.com/${{ github.repository }}/releases/latest/download/dclaude-darwin-arm64 -o dclaude
+            chmod +x dclaude
+            sudo mv dclaude /usr/local/bin/
+
+            # macOS Intel - latest version
+            curl -L https://github.com/${{ github.repository }}/releases/latest/download/dclaude-darwin-amd64 -o dclaude
+            chmod +x dclaude
+            sudo mv dclaude /usr/local/bin/
+
+            # Linux x86_64 - latest version
+            curl -L https://github.com/${{ github.repository }}/releases/latest/download/dclaude-linux-amd64 -o dclaude
+            chmod +x dclaude
+            sudo mv dclaude /usr/local/bin/
+
+            # Linux ARM64 - latest version
+            curl -L https://github.com/${{ github.repository }}/releases/latest/download/dclaude-linux-arm64 -o dclaude
+            chmod +x dclaude
+            sudo mv dclaude /usr/local/bin/
+            ```
+
+            For a specific version, use:
+            ```bash
             curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/dclaude-darwin-arm64 -o dclaude
-            chmod +x dclaude
-            sudo mv dclaude /usr/local/bin/
-
-            # macOS Intel
-            curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/dclaude-darwin-amd64 -o dclaude
-            chmod +x dclaude
-            sudo mv dclaude /usr/local/bin/
-
-            # Linux x86_64
-            curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/dclaude-linux-amd64 -o dclaude
-            chmod +x dclaude
-            sudo mv dclaude /usr/local/bin/
-
-            # Linux ARM64
-            curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/dclaude-linux-arm64 -o dclaude
-            chmod +x dclaude
-            sudo mv dclaude /usr/local/bin/
             ```
 
             ### What's Changed
