@@ -1,4 +1,4 @@
-.PHONY: all build clean test help install dist
+.PHONY: all build clean test help install dist fmt
 
 # Variables
 BINARY_NAME=dclaude

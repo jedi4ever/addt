@@ -15,8 +15,8 @@ import (
 
 // DockerProvider implements the Provider interface for Docker
 type DockerProvider struct {
-	config            *provider.Config
-	tempDirs          []string
+	config             *provider.Config
+	tempDirs           []string
 	embeddedDockerfile []byte
 	embeddedEntrypoint []byte
 }

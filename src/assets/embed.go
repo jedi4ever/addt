@@ -7,6 +7,7 @@ import (
 // Embedded assets organized by provider
 
 // Docker provider assets
+//
 //go:embed docker/Dockerfile
 var DockerDockerfile []byte
 
@@ -14,6 +15,7 @@ var DockerDockerfile []byte
 var DockerEntrypoint []byte
 
 // Daytona provider assets
+//
 //go:embed daytona/Dockerfile
 var DaytonaDockerfile []byte
 

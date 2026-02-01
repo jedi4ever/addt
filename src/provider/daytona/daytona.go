@@ -18,7 +18,7 @@ import (
 
 // DaytonaProvider implements the Provider interface for Daytona
 type DaytonaProvider struct {
-	config            *provider.Config
+	config             *provider.Config
 	embeddedDockerfile []byte
 	embeddedEntrypoint []byte
 }
@@ -26,7 +26,7 @@ type DaytonaProvider struct {
 // NewDaytonaProvider creates a new Daytona provider
 func NewDaytonaProvider(cfg *provider.Config, dockerfile, entrypoint []byte) (provider.Provider, error) {
 	return &DaytonaProvider{
-		config:            cfg,
+		config:             cfg,
 		embeddedDockerfile: dockerfile,
 		embeddedEntrypoint: entrypoint,
 	}, nil

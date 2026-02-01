@@ -204,4 +204,3 @@ func (o *Orchestrator) generatePersistentName() string {
 func (o *Orchestrator) generateEphemeralName() string {
 	return o.provider.GenerateEphemeralName()
 }
-
