@@ -6,11 +6,11 @@
 
 ```bash
 # Instead of:        Use:
-claude              ./dclaude.sh
-claude --help       ./dclaude.sh --help
-claude -p "prompt"  ./dclaude.sh -p "prompt"
-claude --continue   ./dclaude.sh --continue
-claude --model opus ./dclaude.sh --model opus
+claude              dclaude
+claude --help       dclaude --help
+claude -p "prompt"  dclaude -p "prompt"
+claude --continue   dclaude --continue
+claude --model opus dclaude --model opus
 ```
 
 ## Overview
@@ -67,7 +67,7 @@ claude --model opus ./dclaude.sh --model opus
   - No need to set ANTHROPIC_API_KEY
 - **Option 2:** Set `ANTHROPIC_API_KEY` environment variable
   - Get your API key from [console.anthropic.com](https://console.anthropic.com)
-  - Pass via environment variable or .env file
+  - Pass via environment variable
 
 ### Optional
 - **GH_TOKEN** - GitHub personal access token for private repos and write operations ([create one](https://github.com/settings/tokens))
@@ -101,7 +101,7 @@ If you've already run `claude login` on your machine:
 
 ```bash
 # Just run it - your ~/.claude config is automatically mounted!
-./dclaude.sh
+dclaude
 ```
 
 ### Option 2: Use API Key
@@ -109,19 +109,12 @@ If you've already run `claude login` on your machine:
 If you haven't configured Claude locally, set your API key:
 
 ```bash
-# Create or edit .env file
-echo "ANTHROPIC_API_KEY=your-anthropic-api-key" >> .env
-echo "GH_TOKEN=your-github-token" >> .env  # Optional, for GitHub operations
-
-# Run dclaude
-./dclaude.sh
-```
-
-Or export in your shell:
-```bash
+# Export in your shell
 export ANTHROPIC_API_KEY='your-anthropic-api-key'
 export GH_TOKEN='your-github-token'  # Optional
-./dclaude.sh
+
+# Run dclaude
+dclaude
 ```
 
 **Note:** The script automatically builds the Docker image on first run. No manual build step needed!
@@ -130,29 +123,29 @@ export GH_TOKEN='your-github-token'  # Optional
 
 ### Drop-in Replacement
 
-Use `./dclaude.sh` exactly like you would use `claude`:
+Use `dclaude` exactly like you would use `claude`:
 
 ```bash
 # Interactive mode (default)
-./dclaude.sh                                    # Same as: claude
+dclaude                                    # Same as: claude
 
 # One-off command
-./dclaude.sh "Fix the bug in app.js"            # Same as: claude "Fix the bug in app.js"
+dclaude "Fix the bug in app.js"            # Same as: claude "Fix the bug in app.js"
 
 # Print mode (non-interactive)
-./dclaude.sh -p "Explain this function"         # Same as: claude -p "Explain this function"
+dclaude -p "Explain this function"         # Same as: claude -p "Explain this function"
 
 # Continue previous conversation
-./dclaude.sh --continue                         # Same as: claude --continue
+dclaude --continue                         # Same as: claude --continue
 
 # Use different model
-./dclaude.sh --model opus "Refactor this"       # Same as: claude --model opus "Refactor this"
+dclaude --model opus "Refactor this"       # Same as: claude --model opus "Refactor this"
 
 # Help and options
-./dclaude.sh --help                             # Same as: claude --help
+dclaude --help                             # Same as: claude --help
 
 # Check version
-./dclaude.sh --version                          # Same as: claude --version
+dclaude --version                          # Same as: claude --version
 ```
 
 ### Extra Commands
@@ -161,28 +154,28 @@ DClaude adds special commands and flags:
 
 ```bash
 # Check for and install updates
-./dclaude --update
+dclaude --update
 
 # Rebuild the Docker image (removes and rebuilds)
-./dclaude --rebuild
+dclaude --rebuild
 
 # Can combine with other commands
-./dclaude --rebuild --version
+dclaude --rebuild --version
 
 # YOLO mode - bypass all permission checks (shorthand for --dangerously-skip-permissions)
-./dclaude --yolo "Refactor this entire codebase"
+dclaude --yolo "Refactor this entire codebase"
 
 # Open bash shell inside the container
-./dclaude shell
+dclaude shell
 
 # Run a specific command in the container
-./dclaude shell -c "git config --list"
+dclaude shell -c "git config --list"
 ```
 
 ### Example Session
 
 ```bash
-$ ./dclaude.sh "Create a simple Express server on port 3000"
+$ dclaude "Create a simple Express server on port 3000"
 
 ✓ dclaude:claude-2.1.17 | Node 20.20.0 | GH:- | SSH:- | GPG:- | Docker:-
 
@@ -223,21 +216,21 @@ The server will be available at http://localhost:3000
 # Basic usage
 export ANTHROPIC_API_KEY="your-key"
 export GH_TOKEN="your-github-token"
-./dclaude.sh
+dclaude
 
 # With port mapping for web development
 export DCLAUDE_PORTS="3000,8080,5432"
-./dclaude.sh "Create an Express app"
+dclaude "Create an Express app"
 
 # With SSH and Docker support
 export DCLAUDE_SSH_FORWARD=agent
 export DCLAUDE_DOCKER_FORWARD=isolated
-./dclaude.sh
+dclaude
 
 # Pin to specific versions
 export DCLAUDE_CLAUDE_VERSION=2.1.27
 export DCLAUDE_NODE_VERSION=18
-./dclaude.sh
+dclaude
 ```
 
 ## Common Use Cases
@@ -249,7 +242,7 @@ When Claude starts web services, it needs to tell you the correct host ports:
 ```bash
 # Enable port mapping
 export DCLAUDE_PORTS="3000,8080,5432"
-./dclaude.sh "Create a web server on port 3000"
+dclaude "Create a web server on port 3000"
 
 # Status line shows: Ports:3000→30000,8080→30001
 # Claude will say: "Visit http://localhost:30000 in your browser"
@@ -265,10 +258,10 @@ export DCLAUDE_PORTS="3000,8080,5432"
 **Common scenarios:**
 ```bash
 # Web development
-DCLAUDE_PORTS="3000,5173,8080" ./dclaude.sh
+DCLAUDE_PORTS="3000,5173,8080" dclaude
 
 # Full stack (frontend, backend, database)
-DCLAUDE_PORTS="3000,8000,5432" ./dclaude.sh
+DCLAUDE_PORTS="3000,8000,5432" dclaude
 ```
 
 ### SSH Key Forwarding
@@ -278,11 +271,11 @@ For git operations over SSH, pushing to private repos, etc:
 ```bash
 # Agent forwarding (recommended - more secure)
 export DCLAUDE_SSH_FORWARD=agent
-./dclaude.sh
+dclaude
 
 # Or mount SSH keys directly (exposes all keys)
 export DCLAUDE_SSH_FORWARD=keys
-./dclaude.sh
+dclaude
 ```
 
 **⚠️ Security Warning:**
@@ -303,11 +296,11 @@ Let Claude run Docker commands:
 ```bash
 # Isolated Docker environment (recommended)
 export DCLAUDE_DOCKER_FORWARD=isolated
-./dclaude.sh "Build and run a Docker container"
+dclaude "Build and run a Docker container"
 
 # Or access host Docker socket
 export DCLAUDE_DOCKER_FORWARD=host
-./dclaude.sh
+dclaude
 ```
 
 **Isolated vs Host mode:**
@@ -320,7 +313,7 @@ For signed commits:
 
 ```bash
 export DCLAUDE_GPG_FORWARD=true
-./dclaude.sh
+dclaude
 ```
 
 Your GPG keys are mounted and commits will be signed automatically.
@@ -332,14 +325,14 @@ Pin to specific tool versions:
 ```bash
 # Use specific Claude Code version
 export DCLAUDE_CLAUDE_VERSION=2.1.27
-./dclaude.sh
+dclaude
 
 # Use specific Node.js version
 export DCLAUDE_NODE_VERSION=18
-./dclaude.sh
+dclaude
 
 # Use latest stable (default)
-./dclaude.sh  # Automatically uses latest stable version
+dclaude  # Automatically uses latest stable version
 ```
 
 ### Custom Environment Variables
@@ -352,7 +345,7 @@ export DCLAUDE_ENV_VARS="ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_K
 export AWS_ACCESS_KEY_ID="your-key"
 export AWS_SECRET_ACCESS_KEY="your-secret"
 export AWS_REGION="us-east-1"
-./dclaude.sh
+dclaude
 ```
 
 ### Aliases and Shortcuts
@@ -410,17 +403,14 @@ If Claude Code reports authentication errors:
 claude login
 
 # Then dclaude will automatically use your credentials
-./dclaude.sh
+dclaude
 ```
 
 **Option 2: Use API key**
 ```bash
 # Set API key in environment
 export ANTHROPIC_API_KEY='your-key'
-./dclaude.sh
-
-# Or add to .env file
-echo "ANTHROPIC_API_KEY=your-key" >> .env
+dclaude
 ```
 
 ### Image Not Found
@@ -428,17 +418,17 @@ echo "ANTHROPIC_API_KEY=your-key" >> .env
 The image is built automatically on first run. If you see "image not found":
 
 ```bash
-./dclaude.sh  # Will auto-build
+dclaude  # Will auto-build
 ```
 
 Force rebuild:
 ```bash
 # Easiest way - use --rebuild flag
-./dclaude.sh --rebuild
+dclaude --rebuild
 
 # Or manually remove and rebuild
 docker rmi dclaude:latest
-./dclaude.sh  # Rebuilds automatically
+dclaude  # Rebuilds automatically
 ```
 
 ### Permission Issues
@@ -461,7 +451,7 @@ Your local `.gitconfig` is automatically mounted. Check it exists:
 ls -la ~/.gitconfig
 
 # Test inside container
-./dclaude.sh shell -c "git config --global user.name"
+dclaude shell -c "git config --global user.name"
 ```
 
 ### Port Conflicts
@@ -472,7 +462,7 @@ If ports are already in use:
 # Use different port range
 export DCLAUDE_PORT_RANGE_START=40000
 export DCLAUDE_PORTS="3000,8080"
-./dclaude.sh
+dclaude
 ```
 
 ### Debugging
@@ -480,13 +470,13 @@ export DCLAUDE_PORTS="3000,8080"
 ```bash
 # Enable logging
 export DCLAUDE_LOG=true
-./dclaude.sh
+dclaude
 
 # Check logs
 cat dclaude.log
 
 # Open shell to inspect container
-./dclaude.sh shell
+dclaude shell
 ```
 
 ## How It Works
@@ -536,7 +526,7 @@ The standalone script includes the Dockerfile and entrypoint embedded as heredoc
 
 ```bash
 export DCLAUDE_PORTS="3000"
-./dclaude.sh "Create a simple Express server with a /hello endpoint"
+dclaude "Create a simple Express server with a /hello endpoint"
 ```
 
 ### Work with Private GitHub Repos
@@ -544,28 +534,28 @@ export DCLAUDE_PORTS="3000"
 ```bash
 export GH_TOKEN="your-token"
 export DCLAUDE_SSH_FORWARD=agent
-./dclaude.sh "Clone my private repo and analyze the code structure"
+dclaude "Clone my private repo and analyze the code structure"
 ```
 
 ### Build Docker Images
 
 ```bash
 export DCLAUDE_DOCKER_FORWARD=isolated
-./dclaude.sh "Create a Dockerfile for this Node.js app and build it"
+dclaude "Create a Dockerfile for this Node.js app and build it"
 ```
 
 ### Sign Git Commits
 
 ```bash
 export DCLAUDE_GPG_FORWARD=true
-./dclaude.sh "Make a commit with GPG signature"
+dclaude "Make a commit with GPG signature"
 ```
 
 ### Debug Container Environment
 
 ```bash
 # Open shell
-./dclaude.sh shell
+dclaude shell
 
 # Inside container
 echo $ANTHROPIC_API_KEY  # Check env vars
