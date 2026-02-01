@@ -160,17 +160,20 @@ Use `./dclaude.sh` exactly like you would use `claude`:
 DClaude adds special commands and flags:
 
 ```bash
+# Check for and install updates
+./dclaude --update
+
 # Rebuild the Docker image (removes and rebuilds)
-./dclaude.sh --rebuild
+./dclaude --rebuild
 
 # Can combine with other commands
-./dclaude.sh --rebuild --version
+./dclaude --rebuild --version
 
 # Open bash shell inside the container
-./dclaude.sh shell
+./dclaude shell
 
 # Run a specific command in the container
-./dclaude.sh shell -c "git config --list"
+./dclaude shell -c "git config --list"
 ```
 
 ### Example Session

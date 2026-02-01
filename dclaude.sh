@@ -10,12 +10,14 @@
 # Usage: ./dclaude.sh [claude-options] [prompt]
 # Special commands:
 #   ./dclaude.sh shell  - Open bash shell in container
+#   ./dclaude.sh --update  - Check for and install updates
 # Examples:
 #   ./dclaude.sh --help
 #   ./dclaude.sh --version
 #   ./dclaude.sh "Fix the bug in app.js"
 #   ./dclaude.sh --model opus "Explain this codebase"
 
+DCLAUDE_VERSION="1.0.0"
 
 set -e
 
@@ -77,9 +79,73 @@ find_available_port() {
     echo "$port"
 }
 
+# Function to check for and install updates
+update_dclaude() {
+    echo "Checking for updates..."
+    echo "Current version: $DCLAUDE_VERSION"
+
+    # Download latest version info
+    LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/jedi4ever/dclaude/main/VERSION 2>/dev/null || echo "")
+
+    if [ -z "$LATEST_VERSION" ]; then
+        echo "Error: Could not check for updates (network issue or repository unavailable)"
+        exit 1
+    fi
+
+    echo "Latest version:  $LATEST_VERSION"
+
+    # Compare versions
+    if [ "$DCLAUDE_VERSION" = "$LATEST_VERSION" ]; then
+        echo "✓ You are already on the latest version"
+        exit 0
+    fi
+
+    # Prompt for update
+    echo ""
+    echo "New version available!"
+    read -p "Update now? [Y/n] " -n 1 -r
+    echo
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
+        echo "Update cancelled"
+        exit 0
+    fi
+
+    # Determine script path
+    SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+    # Download new version
+    echo "Downloading version $LATEST_VERSION..."
+    TMP_FILE=$(mktemp)
+
+    if ! curl -s -o "$TMP_FILE" https://raw.githubusercontent.com/jedi4ever/dclaude/main/dist/dclaude-standalone.sh; then
+        echo "Error: Failed to download update"
+        rm -f "$TMP_FILE"
+        exit 1
+    fi
+
+    # Replace current script
+    chmod +x "$TMP_FILE"
+    if ! mv "$TMP_FILE" "$SCRIPT_PATH"; then
+        echo "Error: Failed to replace script (permission denied?)"
+        rm -f "$TMP_FILE"
+        exit 1
+    fi
+
+    echo "✓ Updated to version $LATEST_VERSION"
+    echo ""
+    echo "Run dclaude again to use the new version"
+    exit 0
+}
+
 # Check for special flags and commands
 OPEN_SHELL=false
 REBUILD_IMAGE=false
+
+# Check for --update flag
+if [ "$1" = "--update" ]; then
+    update_dclaude
+fi
 
 # Check for --rebuild flag
 if [ "$1" = "--rebuild" ]; then
