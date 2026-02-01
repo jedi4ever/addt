@@ -48,7 +48,7 @@ dist: clean fmt
 		os=$${platform%/*}; \
 		arch=$${platform#*/}; \
 		echo "Building for $$os/$$arch..."; \
-		(cd $(SRC_DIR) && GOOS=$$os GOARCH=$$arch go build \
+		(cd $(SRC_DIR) && CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build \
 			-ldflags "-X main.Version=$(VERSION)" \
 			-o ../$(BUILD_DIR)/$(BINARY_NAME)-$$os-$$arch .); \
 		echo "✓ Built $(BUILD_DIR)/$(BINARY_NAME)-$$os-$$arch"; \
