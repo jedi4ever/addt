@@ -42,18 +42,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Add Go to PATH
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-# Install UV (Python package manager)
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then UV_ARCH="x86_64"; \
-    elif [ "$ARCH" = "arm64" ]; then UV_ARCH="aarch64"; \
-    else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
-    curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" -o /tmp/uv.tar.gz && \
-    tar -xzf /tmp/uv.tar.gz -C /tmp && \
-    mv /tmp/uv-${UV_ARCH}-unknown-linux-gnu/uv /usr/local/bin/uv && \
-    mv /tmp/uv-${UV_ARCH}-unknown-linux-gnu/uvx /usr/local/bin/uvx && \
-    rm -rf /tmp/uv.tar.gz /tmp/uv-${UV_ARCH}-unknown-linux-gnu && \
-    chmod +x /usr/local/bin/uv /usr/local/bin/uvx
-
 # Install Claude Code globally (specific version or latest)
 RUN if [ "$CLAUDE_VERSION" = "latest" ]; then \
         npm install -g @anthropic-ai/claude-code; \
@@ -67,8 +55,20 @@ RUN (groupadd -g ${GROUP_ID} ${USERNAME} 2>/dev/null || true) \
     && useradd -m -u ${USER_ID} -g ${GROUP_ID} -s /bin/bash ${USERNAME} 2>/dev/null || usermod -u ${USER_ID} ${USERNAME} \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Add Go and UV to user's PATH in bash profile
-RUN echo 'export PATH="/usr/local/go/bin:$PATH"' >> /home/${USERNAME}/.bashrc
+# Install UV (Python package manager) as the user using official install script
+# This enables 'uv self update' to work inside containers
+USER ${USERNAME}
+RUN if [ "${UV_VERSION}" = "latest" ]; then \
+        curl -LsSf https://astral.sh/uv/install.sh | sh; \
+    else \
+        curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh; \
+    fi
+USER root
+
+# Add Go and UV to PATH environment and bash profile
+# UV installs to ~/.local/bin by default
+ENV PATH="/home/${USERNAME}/.local/bin:/usr/local/go/bin:${PATH}"
+RUN echo 'export PATH="/home/${USERNAME}/.local/bin:/usr/local/go/bin:$PATH"' >> /home/${USERNAME}/.bashrc
 
 # Set working directory
 WORKDIR /workspace
