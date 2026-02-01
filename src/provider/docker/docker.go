@@ -131,7 +131,7 @@ func (p *DockerProvider) List() ([]provider.Environment, error) {
 func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 	currentUser, _ := user.Current()
 	homeDir := currentUser.HomeDir
-	username := currentUser.Username
+	username := "claude" // Always use "claude" in container, but with host UID/GID
 
 	// Check if we should use existing container
 	useExistingContainer := false
@@ -257,7 +257,7 @@ func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 func (p *DockerProvider) Shell(spec *provider.RunSpec) error {
 	currentUser, _ := user.Current()
 	homeDir := currentUser.HomeDir
-	username := currentUser.Username
+	username := "claude" // Always use "claude" in container, but with host UID/GID
 
 	// Check if we should use existing container
 	useExistingContainer := false

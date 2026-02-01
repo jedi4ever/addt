@@ -76,7 +76,7 @@ func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byt
 	currentUser, _ := user.Current()
 	uid := currentUser.Uid
 	gid := currentUser.Gid
-	username := currentUser.Username
+	username := "claude" // Always use "claude" in container, but with host UID/GID
 
 	// Build docker command
 	args := []string{
