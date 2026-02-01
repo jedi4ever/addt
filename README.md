@@ -170,7 +170,48 @@ dclaude shell
 
 # Run a specific command in the container
 dclaude shell -c "git config --list"
+
+# Manage persistent containers
+dclaude containers list           # List all persistent containers
+dclaude containers stop <name>    # Stop a container
+dclaude containers remove <name>  # Remove a container
+dclaude containers clean          # Remove all persistent containers
 ```
+
+### Persistent Mode
+
+By default, dclaude uses ephemeral containers that are removed after each run. Enable persistent mode to keep a long-running container per directory:
+
+```bash
+# Enable persistent mode
+export DCLAUDE_PERSISTENT=true
+
+# First run creates a persistent container
+dclaude "Add a new feature"
+
+# Subsequent runs reuse the same container (much faster!)
+dclaude "Continue working"
+
+# The container name is shown in the status line
+# ✓ dclaude:claude-2.1.17 | Node 20.20.0 | Container:dclaude-persistent-myproject-a1b2c3d4
+
+# List your persistent containers
+dclaude containers list
+
+# Clean up when done with the project
+dclaude containers clean
+```
+
+**Benefits of persistent mode:**
+- **Faster startup** - Container stays running, reconnection is instant
+- **State preservation** - Docker images, installed packages, and files persist
+- **Per-directory isolation** - Each directory gets its own container
+- **Development continuity** - Pick up exactly where you left off
+
+**Container naming:**
+- Format: `dclaude-persistent-<dirname>-<hash>`
+- Example: `dclaude-persistent-myproject-a1b2c3d4`
+- Hash is based on full directory path for uniqueness
 
 ### Example Session
 
@@ -209,6 +250,8 @@ The server will be available at http://localhost:3000
 | **DCLAUDE_PORT_RANGE_START** | `30000` | Starting port number for automatic port allocation. Useful to avoid conflicts with other services |
 | **DCLAUDE_LOG** | `false` | Enable command logging. Set to `true` to log all commands with timestamps, working directory, and container info |
 | **DCLAUDE_LOG_FILE** | `dclaude.log` | Log file location (only used when `DCLAUDE_LOG=true`). Example: `/tmp/dclaude.log` or `~/logs/dclaude.log` |
+| **DCLAUDE_PERSISTENT** | `false` | Enable persistent container mode. Set to `true` to keep containers running across sessions. Each directory gets its own persistent container with preserved state, Docker images, and installed packages |
+| **DCLAUDE_MODE** | `container` | Execution mode: `container` (Docker-based, default) or `shell` (direct host execution - not yet implemented) |
 
 ### Quick Configuration Examples
 

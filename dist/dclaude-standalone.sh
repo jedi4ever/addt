@@ -56,6 +56,8 @@ DCLAUDE_PORTS="${DCLAUDE_PORTS:-}"
 DCLAUDE_PORT_RANGE_START="${DCLAUDE_PORT_RANGE_START:-30000}"
 # Persistent container mode (default: false - ephemeral containers)
 DCLAUDE_PERSISTENT="${DCLAUDE_PERSISTENT:-false}"
+# Mode: container (Docker-based, default) or shell (direct host execution, not yet implemented)
+DCLAUDE_MODE="${DCLAUDE_MODE:-container}"
 IMAGE_NAME="dclaude:latest"
 
 # Get the directory where this script is located
@@ -768,8 +770,11 @@ fi  # End of USE_EXISTING_CONTAINER = false block
 build_status_line() {
     local status=""
 
+    # Mode (container or shell)
+    status="Mode:$DCLAUDE_MODE"
+
     # Image name (includes Claude version in tag)
-    status="$IMAGE_NAME"
+    status="$status | $IMAGE_NAME"
 
     # Node version (from image labels)
     NODE_VERSION=$(docker inspect "$IMAGE_NAME" --format '{{index .Config.Labels "tools.node.version"}}' 2>/dev/null)
