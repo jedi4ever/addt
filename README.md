@@ -85,7 +85,32 @@ Runs Claude Code in local Docker containers:
 
 ## Installation
 
-### Option 1: Download Pre-built Binary (Recommended)
+### Option 1: Homebrew (macOS/Linux - Easiest)
+
+Install via Homebrew tap:
+
+```bash
+# Add the tap
+brew tap jedi4ever/tap
+
+# Install latest version
+brew install dclaude
+
+# Verify installation
+dclaude --dversion
+```
+
+**Upgrading:**
+```bash
+brew upgrade dclaude
+```
+
+**Install specific version:**
+```bash
+brew install jedi4ever/tap/dclaude@1.6.0
+```
+
+### Option 2: Download Pre-built Binary
 
 Download the latest release for your platform:
 
@@ -142,7 +167,7 @@ sudo mv dclaude /usr/local/bin/
 
 See all releases at: https://github.com/jedi4ever/dclaude/releases
 
-### Option 2: Build from Source
+### Option 3: Build from Source
 
 ```bash
 # Clone the repository
