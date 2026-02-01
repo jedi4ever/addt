@@ -82,6 +82,7 @@ func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byt
 	args := []string{
 		"build",
 		"--build-arg", fmt.Sprintf("NODE_VERSION=%s", p.config.NodeVersion),
+		"--build-arg", fmt.Sprintf("GO_VERSION=%s", p.config.GoVersion),
 		"--build-arg", fmt.Sprintf("USER_ID=%s", uid),
 		"--build-arg", fmt.Sprintf("GROUP_ID=%s", gid),
 		"--build-arg", fmt.Sprintf("USERNAME=%s", username),

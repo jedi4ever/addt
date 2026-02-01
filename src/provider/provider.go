@@ -33,6 +33,7 @@ type Provider interface {
 type Config struct {
 	ClaudeVersion     string
 	NodeVersion       string
+	GoVersion         string
 	EnvVars           []string
 	GitHubDetect      bool
 	Ports             []string

@@ -6,6 +6,7 @@ ARG USER_ID=1000
 ARG GROUP_ID=1000
 ARG USERNAME=claude
 ARG CLAUDE_VERSION=latest
+ARG GO_VERSION=1.23
 
 # Install dependencies, GitHub CLI, Docker CLI, and Docker daemon (for DinD)
 RUN apt-get update && apt-get install -y \
@@ -25,6 +26,18 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y gh docker-ce-cli docker-ce containerd.io \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Go
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then GO_ARCH="amd64"; \
+    elif [ "$ARCH" = "arm64" ]; then GO_ARCH="arm64"; \
+    else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
+    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz
+
+# Add Go to PATH
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install Claude Code globally (specific version or latest)
 RUN if [ "$CLAUDE_VERSION" = "latest" ]; then \
@@ -63,6 +76,7 @@ LABEL tools.git="installed"
 LABEL tools.gh="installed"
 LABEL tools.ripgrep="installed"
 LABEL tools.node="installed"
+LABEL tools.go="installed"
 
 # Entry point will be our wrapper script (handles DinD mode)
 # Empty CMD means interactive session by default

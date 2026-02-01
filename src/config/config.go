@@ -10,6 +10,7 @@ import (
 type Config struct {
 	ClaudeVersion     string
 	NodeVersion       string
+	GoVersion         string
 	EnvVars           []string
 	GitHubDetect      bool
 	Ports             []string
@@ -29,10 +30,11 @@ type Config struct {
 }
 
 // LoadConfig loads configuration from environment variables
-func LoadConfig(defaultNodeVersion string, defaultPortRangeStart int) *Config {
+func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultPortRangeStart int) *Config {
 	cfg := &Config{
 		ClaudeVersion:     getEnvOrDefault("DCLAUDE_CLAUDE_VERSION", "latest"),
 		NodeVersion:       getEnvOrDefault("DCLAUDE_NODE_VERSION", defaultNodeVersion),
+		GoVersion:         getEnvOrDefault("DCLAUDE_GO_VERSION", defaultGoVersion),
 		EnvVars:           strings.Split(getEnvOrDefault("DCLAUDE_ENV_VARS", "ANTHROPIC_API_KEY,GH_TOKEN"), ","),
 		GitHubDetect:      getEnvOrDefault("DCLAUDE_GITHUB_DETECT", "false") == "true",
 		PortRangeStart:    getEnvInt("DCLAUDE_PORT_RANGE_START", defaultPortRangeStart),

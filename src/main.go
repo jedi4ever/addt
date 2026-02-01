@@ -10,6 +10,7 @@ var Version = "1.1.0"
 
 const (
 	DefaultNodeVersion    = "20"
+	DefaultGoVersion      = "1.23"
 	DefaultPortRangeStart = 30000
 )
 
@@ -18,5 +19,5 @@ func main() {
 	util.SetupCleanup()
 
 	// Execute CLI
-	cmd.Execute(Version, DefaultNodeVersion, DefaultPortRangeStart)
+	cmd.Execute(Version, DefaultNodeVersion, DefaultGoVersion, DefaultPortRangeStart)
 }
