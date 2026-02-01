@@ -100,13 +100,17 @@ func (o *Orchestrator) buildRunSpec(name string, args []string, openShell bool) 
 
 // buildVolumes builds volume mounts
 func (o *Orchestrator) buildVolumes(cwd string) []provider.VolumeMount {
-	volumes := []provider.VolumeMount{
-		{
+	var volumes []provider.VolumeMount
+
+	// Only mount PWD if enabled (default: true)
+	if o.config.MountPWD {
+		volumes = append(volumes, provider.VolumeMount{
 			Source:   cwd,
 			Target:   "/workspace",
 			ReadOnly: false,
-		},
+		})
 	}
+
 	return volumes
 }
 

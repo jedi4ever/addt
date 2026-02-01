@@ -339,6 +339,8 @@ The server will be available at http://localhost:3000
 | **DCLAUDE_LOG** | `false` | Enable command logging. Set to `true` to log all commands with timestamps, working directory, and container info |
 | **DCLAUDE_LOG_FILE** | `dclaude.log` | Log file location (only used when `DCLAUDE_LOG=true`). Example: `/tmp/dclaude.log` or `~/logs/dclaude.log` |
 | **DCLAUDE_PERSISTENT** | `false` | Enable persistent container mode. Set to `true` to keep containers running across sessions. Each directory gets its own persistent container with preserved state, Docker images, and installed packages |
+| **DCLAUDE_MOUNT_PWD** | `true` | Mount present working directory to `/workspace` in container. Set to `false` to run without mounting the current directory (useful for isolated tasks) |
+| **DCLAUDE_MOUNT_CLAUDE_CONFIG** | `true` | Mount `~/.claude` configuration directory (authentication and session history). Set to `false` to run without Claude config (requires `ANTHROPIC_API_KEY` environment variable) |
 | **DCLAUDE_MODE** | `container` | Execution mode: `container` (Docker-based, default) or `shell` (direct host execution - not yet implemented) |
 | **DCLAUDE_PROVIDER** | `docker` | Provider type: `docker` (default) or `daytona` (experimental, see [docs/README-daytona.md](docs/README-daytona.md)) |
 

@@ -31,22 +31,24 @@ type Provider interface {
 
 // Config holds provider configuration
 type Config struct {
-	ClaudeVersion  string
-	NodeVersion    string
-	EnvVars        []string
-	GitHubDetect   bool
-	Ports          []string
-	PortRangeStart int
-	SSHForward     string
-	GPGForward     bool
-	DindMode       string
-	EnvFile        string
-	LogEnabled     bool
-	LogFile        string
-	ImageName      string
-	Persistent     bool
-	Mode           string
-	Provider       string
+	ClaudeVersion     string
+	NodeVersion       string
+	EnvVars           []string
+	GitHubDetect      bool
+	Ports             []string
+	PortRangeStart    int
+	SSHForward        string
+	GPGForward        bool
+	DindMode          string
+	EnvFile           string
+	LogEnabled        bool
+	LogFile           string
+	ImageName         string
+	Persistent        bool
+	MountPWD          bool
+	MountClaudeConfig bool
+	Mode              string
+	Provider          string
 }
 
 // RunSpec specifies how to run a container/workspace

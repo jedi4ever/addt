@@ -8,41 +8,45 @@ import (
 
 // Config holds all configuration options
 type Config struct {
-	ClaudeVersion  string
-	NodeVersion    string
-	EnvVars        []string
-	GitHubDetect   bool
-	Ports          []string
-	PortRangeStart int
-	SSHForward     string
-	GPGForward     bool
-	DindMode       string
-	EnvFile        string
-	LogEnabled     bool
-	LogFile        string
-	ImageName      string
-	Persistent     bool   // Enable persistent container mode
-	Mode           string // container or shell
-	Provider       string // Provider type: docker or daytona
+	ClaudeVersion     string
+	NodeVersion       string
+	EnvVars           []string
+	GitHubDetect      bool
+	Ports             []string
+	PortRangeStart    int
+	SSHForward        string
+	GPGForward        bool
+	DindMode          string
+	EnvFile           string
+	LogEnabled        bool
+	LogFile           string
+	ImageName         string
+	Persistent        bool   // Enable persistent container mode
+	MountPWD          bool   // Mount present working directory
+	MountClaudeConfig bool   // Mount ~/.claude directory
+	Mode              string // container or shell
+	Provider          string // Provider type: docker or daytona
 }
 
 // LoadConfig loads configuration from environment variables
 func LoadConfig(defaultNodeVersion string, defaultPortRangeStart int) *Config {
 	cfg := &Config{
-		ClaudeVersion:  getEnvOrDefault("DCLAUDE_CLAUDE_VERSION", "latest"),
-		NodeVersion:    getEnvOrDefault("DCLAUDE_NODE_VERSION", defaultNodeVersion),
-		EnvVars:        strings.Split(getEnvOrDefault("DCLAUDE_ENV_VARS", "ANTHROPIC_API_KEY,GH_TOKEN"), ","),
-		GitHubDetect:   getEnvOrDefault("DCLAUDE_GITHUB_DETECT", "false") == "true",
-		PortRangeStart: getEnvInt("DCLAUDE_PORT_RANGE_START", defaultPortRangeStart),
-		SSHForward:     os.Getenv("DCLAUDE_SSH_FORWARD"),
-		GPGForward:     os.Getenv("DCLAUDE_GPG_FORWARD") == "true",
-		DindMode:       os.Getenv("DCLAUDE_DIND_MODE"),
-		EnvFile:        os.Getenv("DCLAUDE_ENV_FILE"), // Empty means use default .env
-		LogEnabled:     os.Getenv("DCLAUDE_LOG") == "true",
-		LogFile:        getEnvOrDefault("DCLAUDE_LOG_FILE", "dclaude.log"),
-		Persistent:     os.Getenv("DCLAUDE_PERSISTENT") == "true",
-		Mode:           getEnvOrDefault("DCLAUDE_MODE", "container"),
-		Provider:       getEnvOrDefault("DCLAUDE_PROVIDER", "docker"),
+		ClaudeVersion:     getEnvOrDefault("DCLAUDE_CLAUDE_VERSION", "latest"),
+		NodeVersion:       getEnvOrDefault("DCLAUDE_NODE_VERSION", defaultNodeVersion),
+		EnvVars:           strings.Split(getEnvOrDefault("DCLAUDE_ENV_VARS", "ANTHROPIC_API_KEY,GH_TOKEN"), ","),
+		GitHubDetect:      getEnvOrDefault("DCLAUDE_GITHUB_DETECT", "false") == "true",
+		PortRangeStart:    getEnvInt("DCLAUDE_PORT_RANGE_START", defaultPortRangeStart),
+		SSHForward:        os.Getenv("DCLAUDE_SSH_FORWARD"),
+		GPGForward:        os.Getenv("DCLAUDE_GPG_FORWARD") == "true",
+		DindMode:          os.Getenv("DCLAUDE_DIND_MODE"),
+		EnvFile:           os.Getenv("DCLAUDE_ENV_FILE"), // Empty means use default .env
+		LogEnabled:        os.Getenv("DCLAUDE_LOG") == "true",
+		LogFile:           getEnvOrDefault("DCLAUDE_LOG_FILE", "dclaude.log"),
+		Persistent:        os.Getenv("DCLAUDE_PERSISTENT") == "true",
+		MountPWD:          getEnvOrDefault("DCLAUDE_MOUNT_PWD", "true") != "false",
+		MountClaudeConfig: getEnvOrDefault("DCLAUDE_MOUNT_CLAUDE_CONFIG", "true") != "false",
+		Mode:              getEnvOrDefault("DCLAUDE_MODE", "container"),
+		Provider:          getEnvOrDefault("DCLAUDE_PROVIDER", "docker"),
 	}
 
 	// Parse ports

@@ -190,16 +190,18 @@ func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.gitconfig:ro", gitconfigPath, username))
 		}
 
-		// Mount .claude directory
-		claudeDir := fmt.Sprintf("%s/.claude", homeDir)
-		if _, err := os.Stat(claudeDir); err == nil {
-			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude", claudeDir, username))
-		}
+		// Mount .claude directory (if enabled)
+		if p.config.MountClaudeConfig {
+			claudeDir := fmt.Sprintf("%s/.claude", homeDir)
+			if _, err := os.Stat(claudeDir); err == nil {
+				dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude", claudeDir, username))
+			}
 
-		// Mount .claude.json
-		claudeJson := fmt.Sprintf("%s/.claude.json", homeDir)
-		if _, err := os.Stat(claudeJson); err == nil {
-			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude.json", claudeJson, username))
+			// Mount .claude.json
+			claudeJson := fmt.Sprintf("%s/.claude.json", homeDir)
+			if _, err := os.Stat(claudeJson); err == nil {
+				dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude.json", claudeJson, username))
+			}
 		}
 
 		// Add env file if exists
@@ -314,16 +316,18 @@ func (p *DockerProvider) Shell(spec *provider.RunSpec) error {
 			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.gitconfig:ro", gitconfigPath, username))
 		}
 
-		// Mount .claude directory
-		claudeDir := fmt.Sprintf("%s/.claude", homeDir)
-		if _, err := os.Stat(claudeDir); err == nil {
-			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude", claudeDir, username))
-		}
+		// Mount .claude directory (if enabled)
+		if p.config.MountClaudeConfig {
+			claudeDir := fmt.Sprintf("%s/.claude", homeDir)
+			if _, err := os.Stat(claudeDir); err == nil {
+				dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude", claudeDir, username))
+			}
 
-		// Mount .claude.json
-		claudeJson := fmt.Sprintf("%s/.claude.json", homeDir)
-		if _, err := os.Stat(claudeJson); err == nil {
-			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude.json", claudeJson, username))
+			// Mount .claude.json
+			claudeJson := fmt.Sprintf("%s/.claude.json", homeDir)
+			if _, err := os.Stat(claudeJson); err == nil {
+				dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.claude.json", claudeJson, username))
+			}
 		}
 
 		// Add env file if exists
