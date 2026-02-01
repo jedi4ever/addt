@@ -1,10 +1,15 @@
 package daytona
 
 import (
+	"bufio"
+	"crypto/md5"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jedi4ever/dclaude/provider"
 )
@@ -32,17 +37,17 @@ func (p *DaytonaProvider) GetName() string {
 	return "daytona"
 }
 
-// CheckPrerequisites verifies Daytona is installed and running
+// CheckPrerequisites verifies Daytona is installed and authenticated
 func (p *DaytonaProvider) CheckPrerequisites() error {
 	// Check Daytona is installed
 	if _, err := exec.LookPath("daytona"); err != nil {
 		return fmt.Errorf("Daytona is not installed. Please install Daytona from: https://github.com/daytonaio/daytona")
 	}
 
-	// Check Daytona server is running
-	cmd := exec.Command("daytona", "server", "status")
+	// Check if user is logged in (Daytona v0.138+ uses cloud-based authentication)
+	cmd := exec.Command("daytona", "list")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Daytona server is not running. Please start Daytona with: daytona server start")
+		return fmt.Errorf("Not logged in to Daytona. Please run: daytona login")
 	}
 
 	return nil
@@ -123,13 +128,47 @@ func (p *DaytonaProvider) Run(spec *provider.RunSpec) error {
 
 	// Check if workspace exists
 	if !p.Exists(workspaceName) {
-		// Create workspace
-		fmt.Printf("Creating Daytona workspace: %s\n", workspaceName)
-		createArgs := []string{"create", workspaceName}
+		// Create sandbox (Daytona v0.138+ terminology)
+		fmt.Printf("Creating Daytona sandbox: %s\n", workspaceName)
+		createArgs := []string{"create", "--name", workspaceName}
 
-		// Add image if specified
-		if spec.ImageName != "" {
-			createArgs = append(createArgs, "--image", spec.ImageName)
+		// Use Dockerfile.daytona from the project root to build custom snapshot with Claude Code
+		cwd, _ := os.Getwd()
+		dockerfilePath := filepath.Join(cwd, "Dockerfile.daytona")
+
+		// Check if we're in the dclaude project directory
+		if _, err := os.Stat(dockerfilePath); err == nil {
+			fmt.Println("Building custom Daytona sandbox with Claude Code installed...")
+			fmt.Println("This will take a few minutes on first build...")
+			createArgs = append(createArgs, "--dockerfile", dockerfilePath)
+		} else if spec.ImageName != "" {
+			// Fall back to using a snapshot if specified
+			createArgs = append(createArgs, "--snapshot", spec.ImageName)
+		} else {
+			// Use default Daytona snapshot
+			fmt.Println("Note: Using default snapshot. Claude Code not pre-installed.")
+		}
+
+		// Note: Daytona cloud sandboxes don't support mounting local filesystem paths
+		// The --volume flag is for Daytona-managed volumes only
+		// We skip volume mounting for cloud sandboxes
+		// TODO: Consider uploading files via other means or using Daytona volumes
+
+		// Add environment variables from env file if specified
+		if envFile := spec.Env["DCLAUDE_ENV_FILE"]; envFile != "" {
+			createArgs = append(createArgs, p.loadEnvFile(envFile)...)
+		}
+
+		// Add environment variables
+		for k, v := range spec.Env {
+			if k != "DCLAUDE_ENV_FILE" { // Skip the env file path itself
+				createArgs = append(createArgs, "--env", fmt.Sprintf("%s=%s", k, v))
+			}
+		}
+
+		// Add GPG_TTY if GPG forwarding is enabled
+		if spec.GPGForward {
+			createArgs = append(createArgs, "--env", "GPG_TTY=/dev/console")
 		}
 
 		cmd := exec.Command("daytona", createArgs...)
@@ -138,18 +177,86 @@ func (p *DaytonaProvider) Run(spec *provider.RunSpec) error {
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to create Daytona workspace: %w", err)
 		}
+
+		// Wait for sandbox to be fully started (max 60 seconds)
+		fmt.Println("Waiting for sandbox to be ready...")
+		for i := 0; i < 60; i++ {
+			infoCmd := exec.Command("daytona", "info", workspaceName)
+			output, err := infoCmd.Output()
+			if err == nil && strings.Contains(string(output), "State           STARTED") {
+				fmt.Println("Sandbox is ready!")
+				break
+			}
+			if i == 59 {
+				return fmt.Errorf("timeout waiting for sandbox to start")
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		// Note: Daytona provides public URLs automatically via preview-url command
+		// Port forwarding is handled differently than Docker
+		if len(spec.Ports) > 0 {
+			fmt.Println("Note: Daytona provides automatic public URLs for exposed ports")
+			fmt.Println("Use 'daytona preview-url' command to access your ports")
+		}
 	} else {
-		fmt.Printf("Using existing Daytona workspace: %s\n", workspaceName)
+		fmt.Printf("Using existing Daytona sandbox: %s\n", workspaceName)
 	}
 
-	// Connect to workspace and run command
-	connectArgs := []string{"connect", workspaceName}
-	if len(spec.Args) > 0 {
-		connectArgs = append(connectArgs, "--")
-		connectArgs = append(connectArgs, spec.Args...)
+	// For interactive sessions, daytona exec doesn't support PTY allocation
+	// Use expect to automate command execution via SSH
+	if spec.Interactive {
+		fmt.Println("Opening interactive SSH session...")
+
+		// Build the command to run
+		cmdToRun := strings.Join(spec.Args, " ")
+		if cmdToRun == "" {
+			cmdToRun = "claude"
+		}
+
+		// Create expect script
+		expectScript := fmt.Sprintf(`#!/usr/bin/expect -f
+set timeout 30
+spawn daytona ssh %s
+expect {
+    "$ " { send "%s\r" }
+    "# " { send "%s\r" }
+    timeout {
+        send_user "Timeout waiting for prompt\n"
+        exit 1
+    }
+}
+interact
+`, workspaceName, cmdToRun, cmdToRun)
+
+		// Create temporary expect script file
+		tmpFile, err := os.CreateTemp("", "daytona-ssh-*.exp")
+		if err != nil {
+			return fmt.Errorf("failed to create expect script: %w", err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		if _, err := tmpFile.WriteString(expectScript); err != nil {
+			return fmt.Errorf("failed to write expect script: %w", err)
+		}
+		if err := tmpFile.Chmod(0755); err != nil {
+			return fmt.Errorf("failed to chmod expect script: %w", err)
+		}
+		tmpFile.Close()
+
+		// Execute expect script
+		cmd := exec.Command("expect", tmpFile.Name())
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
 	}
 
-	cmd := exec.Command("daytona", connectArgs...)
+	// For non-interactive sessions (piped input, scripts), use exec
+	execArgs := []string{"exec", workspaceName, "--"}
+	execArgs = append(execArgs, spec.Args...)
+
+	cmd := exec.Command("daytona", execArgs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -162,13 +269,47 @@ func (p *DaytonaProvider) Shell(spec *provider.RunSpec) error {
 
 	// Check if workspace exists
 	if !p.Exists(workspaceName) {
-		// Create workspace
-		fmt.Printf("Creating Daytona workspace: %s\n", workspaceName)
-		createArgs := []string{"create", workspaceName}
+		// Create sandbox (Daytona v0.138+ terminology)
+		fmt.Printf("Creating Daytona sandbox: %s\n", workspaceName)
+		createArgs := []string{"create", "--name", workspaceName}
 
-		// Add image if specified
-		if spec.ImageName != "" {
-			createArgs = append(createArgs, "--image", spec.ImageName)
+		// Use Dockerfile.daytona from the project root to build custom snapshot with Claude Code
+		cwd, _ := os.Getwd()
+		dockerfilePath := filepath.Join(cwd, "Dockerfile.daytona")
+
+		// Check if we're in the dclaude project directory
+		if _, err := os.Stat(dockerfilePath); err == nil {
+			fmt.Println("Building custom Daytona sandbox with Claude Code installed...")
+			fmt.Println("This will take a few minutes on first build...")
+			createArgs = append(createArgs, "--dockerfile", dockerfilePath)
+		} else if spec.ImageName != "" {
+			// Fall back to using a snapshot if specified
+			createArgs = append(createArgs, "--snapshot", spec.ImageName)
+		} else {
+			// Use default Daytona snapshot
+			fmt.Println("Note: Using default snapshot. Claude Code not pre-installed.")
+		}
+
+		// Note: Daytona cloud sandboxes don't support mounting local filesystem paths
+		// The --volume flag is for Daytona-managed volumes only
+		// We skip volume mounting for cloud sandboxes
+		// TODO: Consider uploading files via other means or using Daytona volumes
+
+		// Add environment variables from env file if specified
+		if envFile := spec.Env["DCLAUDE_ENV_FILE"]; envFile != "" {
+			createArgs = append(createArgs, p.loadEnvFile(envFile)...)
+		}
+
+		// Add environment variables
+		for k, v := range spec.Env {
+			if k != "DCLAUDE_ENV_FILE" { // Skip the env file path itself
+				createArgs = append(createArgs, "--env", fmt.Sprintf("%s=%s", k, v))
+			}
+		}
+
+		// Add GPG_TTY if GPG forwarding is enabled
+		if spec.GPGForward {
+			createArgs = append(createArgs, "--env", "GPG_TTY=/dev/console")
 		}
 
 		cmd := exec.Command("daytona", createArgs...)
@@ -177,13 +318,35 @@ func (p *DaytonaProvider) Shell(spec *provider.RunSpec) error {
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to create Daytona workspace: %w", err)
 		}
+
+		// Wait for sandbox to be fully started (max 60 seconds)
+		fmt.Println("Waiting for sandbox to be ready...")
+		for i := 0; i < 60; i++ {
+			infoCmd := exec.Command("daytona", "info", workspaceName)
+			output, err := infoCmd.Output()
+			if err == nil && strings.Contains(string(output), "State           STARTED") {
+				fmt.Println("Sandbox is ready!")
+				break
+			}
+			if i == 59 {
+				return fmt.Errorf("timeout waiting for sandbox to start")
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		// Note: Daytona provides public URLs automatically via preview-url command
+		// Port forwarding is handled differently than Docker
+		if len(spec.Ports) > 0 {
+			fmt.Println("Note: Daytona provides automatic public URLs for exposed ports")
+			fmt.Println("Use 'daytona preview-url' command to access your ports")
+		}
 	} else {
-		fmt.Printf("Using existing Daytona workspace: %s\n", workspaceName)
+		fmt.Printf("Using existing Daytona sandbox: %s\n", workspaceName)
 	}
 
-	// Connect to workspace with shell
-	fmt.Println("Opening shell in Daytona workspace...")
-	cmd := exec.Command("daytona", "connect", workspaceName)
+	// Connect to sandbox with SSH
+	fmt.Println("Opening SSH session to Daytona sandbox...")
+	cmd := exec.Command("daytona", "ssh", workspaceName)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -198,11 +361,11 @@ func (p *DaytonaProvider) Cleanup() error {
 
 // GetStatus returns a status string for display
 func (p *DaytonaProvider) GetStatus(cfg *provider.Config, envName string) string {
-	status := fmt.Sprintf("Provider:%s Mode:workspace", p.GetName())
+	status := fmt.Sprintf("Provider:%s Mode:sandbox", p.GetName())
 
-	// Workspace name
+	// Sandbox name
 	if cfg.Persistent {
-		status += fmt.Sprintf(" | Workspace:%s", envName)
+		status += fmt.Sprintf(" | Sandbox:%s", envName)
 	}
 
 	// GitHub token status
@@ -212,25 +375,70 @@ func (p *DaytonaProvider) GetStatus(cfg *provider.Config, envName string) string
 		status += " | GH:-"
 	}
 
-	// SSH is built-in to Daytona
-	status += " | SSH:builtin"
+	// SSH forwarding status
+	switch cfg.SSHForward {
+	case "agent":
+		status += " | SSH:builtin"
+	case "keys":
+		status += " | SSH:keys"
+	default:
+		status += " | SSH:builtin"
+	}
 
-	// Docker support (if workspace has it)
+	// GPG forwarding status
+	if cfg.GPGForward {
+		status += " | GPG:✓"
+	} else {
+		status += " | GPG:-"
+	}
+
+	// Docker support - note that Daytona may not support this
 	if cfg.DockerForward != "" {
-		status += " | Docker:workspace"
+		status += " | Docker:limited"
+	}
+
+	// Environment variables
+	if len(cfg.EnvVars) > 0 || cfg.EnvFile != "" {
+		status += " | Env:✓"
+	}
+
+	// Port mappings
+	if len(cfg.Ports) > 0 {
+		status += fmt.Sprintf(" | Ports:%d", len(cfg.Ports))
 	}
 
 	return status
 }
 
-// GeneratePersistentName generates a workspace name for persistent mode
+// GeneratePersistentName generates a sandbox name for persistent mode
 func (p *DaytonaProvider) GeneratePersistentName() string {
-	return "dclaude-workspace"
+	workdir, err := os.Getwd()
+	if err != nil {
+		return "dclaude-sandbox"
+	}
+
+	// Get directory name
+	dirname := filepath.Base(workdir)
+
+	// Sanitize directory name (lowercase, remove special chars, max 20 chars)
+	re := regexp.MustCompile(`[^a-z0-9-]+`)
+	dirname = strings.ToLower(dirname)
+	dirname = re.ReplaceAllString(dirname, "-")
+	dirname = strings.Trim(dirname, "-")
+	if len(dirname) > 20 {
+		dirname = dirname[:20]
+	}
+
+	// Create hash of full path for uniqueness
+	hash := md5.Sum([]byte(workdir))
+	hashStr := fmt.Sprintf("%x", hash)[:8]
+
+	return fmt.Sprintf("dclaude-sandbox-%s-%s", dirname, hashStr)
 }
 
-// GenerateEphemeralName generates a unique workspace name for ephemeral mode
+// GenerateEphemeralName generates a unique sandbox name for ephemeral mode
 func (p *DaytonaProvider) GenerateEphemeralName() string {
-	return fmt.Sprintf("dclaude-%d", os.Getpid())
+	return fmt.Sprintf("dclaude-%s-%d", time.Now().Format("20060102-150405"), os.Getpid())
 }
 
 // BuildIfNeeded is a no-op for Daytona (no image building needed)
@@ -241,4 +449,42 @@ func (p *DaytonaProvider) BuildIfNeeded(rebuild bool) error {
 // DetermineImageName returns empty string for Daytona (no image concept)
 func (p *DaytonaProvider) DetermineImageName() string {
 	return ""
+}
+
+// loadEnvFile reads an env file and converts it to --env flags
+// Daytona doesn't support --env-file, so we parse it manually
+func (p *DaytonaProvider) loadEnvFile(envFilePath string) []string {
+	var args []string
+
+	if envFilePath == "" {
+		return args
+	}
+
+	file, err := os.Open(envFilePath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to open env file %s: %v\n", envFilePath, err)
+		return args
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse KEY=VALUE
+		if strings.Contains(line, "=") {
+			args = append(args, "--env", line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Warning: Error reading env file: %v\n", err)
+	}
+
+	return args
 }

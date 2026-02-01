@@ -1,0 +1,38 @@
+FROM node:20-slim
+
+# Install basic dependencies first
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add GitHub CLI repository and install tools
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y \
+        git \
+        gh \
+        sudo \
+        ripgrep \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Set working directory
+WORKDIR /workspace
+
+# Add version labels for tracking
+LABEL org.opencontainers.image.title="dclaude-daytona"
+LABEL org.opencontainers.image.description="Claude Code with Git, GitHub CLI, and Ripgrep for Daytona"
+LABEL tools.claude="installed"
+LABEL tools.git="installed"
+LABEL tools.gh="installed"
+LABEL tools.ripgrep="installed"
+LABEL tools.node="installed"
+
+CMD ["/bin/bash"]

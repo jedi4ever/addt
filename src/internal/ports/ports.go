@@ -34,7 +34,8 @@ type Config interface {
 }
 
 // HandlePortMappings configures port mappings and returns mapping strings for display
-func HandlePortMappings(cfg Config, dockerArgs *[]string) (string, string) {
+// Note: This function appends Docker-specific "-p" flags. It's currently used only by Docker provider.
+func HandlePortMappings(cfg Config, providerArgs *[]string) (string, string) {
 	ports := cfg.GetPorts()
 	if len(ports) == 0 {
 		return "", ""
@@ -47,7 +48,7 @@ func HandlePortMappings(cfg Config, dockerArgs *[]string) (string, string) {
 		containerPort = strings.TrimSpace(containerPort)
 		hostPort = FindAvailablePort(hostPort)
 
-		*dockerArgs = append(*dockerArgs, "-p", fmt.Sprintf("%d:%s", hostPort, containerPort))
+		*providerArgs = append(*providerArgs, "-p", fmt.Sprintf("%d:%s", hostPort, containerPort))
 		portMappings = append(portMappings, fmt.Sprintf("%s:%d", containerPort, hostPort))
 		hostPort++
 	}

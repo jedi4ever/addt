@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/jedi4ever/dclaude/assets"
 	"github.com/jedi4ever/dclaude/provider"
 	"github.com/jedi4ever/dclaude/provider/daytona"
 	"github.com/jedi4ever/dclaude/provider/docker"
@@ -12,7 +13,7 @@ import (
 func NewProvider(providerType string, cfg *provider.Config) (provider.Provider, error) {
 	switch providerType {
 	case "docker", "":
-		return docker.NewDockerProvider(cfg)
+		return docker.NewDockerProvider(cfg, assets.EmbeddedDockerfile, assets.EmbeddedEntrypoint)
 	case "daytona":
 		return daytona.NewDaytonaProvider(cfg)
 	default:

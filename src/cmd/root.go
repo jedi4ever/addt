@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jedi4ever/dclaude/assets"
 	"github.com/jedi4ever/dclaude/config"
 	"github.com/jedi4ever/dclaude/core"
 	"github.com/jedi4ever/dclaude/internal/update"
@@ -101,17 +100,15 @@ func Execute(version, defaultNodeVersion string, defaultPortRangeStart int) {
 		os.Exit(1)
 	}
 
-	// Create orchestrator
-	orch := core.NewOrchestrator(prov, providerCfg)
-
-	// Determine image name (Docker provider only)
-	providerCfg.ImageName = orch.DetermineImageName()
-
-	// Build image if needed (Docker provider only)
-	if err := orch.BuildIfNeeded(assets.EmbeddedDockerfile, assets.EmbeddedEntrypoint, rebuildImage); err != nil {
+	// Determine image name and build if needed (provider-specific)
+	providerCfg.ImageName = prov.DetermineImageName()
+	if err := prov.BuildIfNeeded(rebuildImage); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Create orchestrator
+	orch := core.NewOrchestrator(prov, providerCfg)
 
 	// Auto-detect GitHub token if enabled
 	if cfg.GitHubDetect && os.Getenv("GH_TOKEN") == "" {

@@ -4,17 +4,17 @@ import "fmt"
 
 // PrintHelp displays usage information
 func PrintHelp(version string) {
-	fmt.Printf(`dclaude - Run Claude Code in Docker container
+	fmt.Printf(`dclaude - Run Claude Code in containerized environments
 
 Version: %s
 
 Usage: dclaude [options] [prompt]
 
 Commands:
-  shell                       Open bash shell in container
-  containers [list|stop|rm|clean]  Manage persistent containers
+  shell                       Open bash shell in environment
+  containers [list|stop|rm|clean]  Manage persistent environments
   --update                    Check for and install updates
-  --rebuild                   Rebuild the Docker image
+  --rebuild                   Rebuild the environment (Docker only)
   --version                   Show version
   --help                      Show this help
 
