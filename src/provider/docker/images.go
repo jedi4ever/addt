@@ -159,11 +159,9 @@ func (p *DockerProvider) detectToolVersions(imageName string) map[string]string 
 }
 
 func (p *DockerProvider) addVersionLabels(cfg interface{}, versions map[string]string) {
-	// Type assertion to get ImageName - handle both provider.Config and local config
-	var imageName string
-	if c, ok := cfg.(*Config); ok {
-		imageName = c.ImageName
-	} else {
+	// Get ImageName from config (using p.config directly)
+	imageName := p.config.ImageName
+	if imageName == "" {
 		return
 	}
 

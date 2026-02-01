@@ -522,16 +522,20 @@ func (p *DockerProvider) BuildIfNeeded(rebuild bool) error {
 		return p.BuildImage(p.embeddedDockerfile, p.embeddedEntrypoint)
 	}
 
-	// Check if versions match (Claude and Node)
+	// Check if versions match (Claude and Node) using prefix matching
 	claudeLabel := p.GetImageLabel(p.config.ImageName, "tools.claude.version")
 	nodeLabel := p.GetImageLabel(p.config.ImageName, "tools.node.version")
 
 	needsRebuild := false
-	if claudeLabel != p.config.ClaudeVersion && p.config.ClaudeVersion != "latest" {
-		fmt.Printf("Claude version mismatch: image has %s, requested %s\n", claudeLabel, p.config.ClaudeVersion)
-		needsRebuild = true
+	// Claude version: use prefix matching unless "latest"
+	if p.config.ClaudeVersion != "latest" && claudeLabel != "" {
+		if !strings.HasPrefix(claudeLabel, p.config.ClaudeVersion) {
+			fmt.Printf("Claude version mismatch: image has %s, requested %s\n", claudeLabel, p.config.ClaudeVersion)
+			needsRebuild = true
+		}
 	}
-	if nodeLabel != p.config.NodeVersion {
+	// Node version: use prefix matching (e.g., "20" matches "20.20.0")
+	if nodeLabel != "" && !strings.HasPrefix(nodeLabel, p.config.NodeVersion) {
 		fmt.Printf("Node version mismatch: image has %s, requested %s\n", nodeLabel, p.config.NodeVersion)
 		needsRebuild = true
 	}
