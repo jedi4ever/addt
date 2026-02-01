@@ -15,10 +15,12 @@ Commands:
   containers [list|stop|rm|clean]  Manage persistent environments
   --update                    Check for and install updates
   --rebuild                   Rebuild the environment (Docker only)
-  --version                   Show version
-  --help                      Show this help
+  --dversion                  Show dclaude version
+  --dhelp                     Show this help
 
 Options (passed to claude):
+  --version                   Show Claude Code version (passed through)
+  --help                      Show Claude Code help (passed through)
   --yolo                      Bypass all permission checks (alias for --dangerously-skip-permissions)
   --model <model>             Specify model to use
 
@@ -40,10 +42,11 @@ Environment Variables:
   DCLAUDE_MODE                Execution mode: container or shell (default: container)
 
 Examples:
-  dclaude --help
+  dclaude --dhelp
   dclaude "Fix the bug in app.js"
   dclaude --model opus "Explain this codebase"
   dclaude --yolo "Refactor this entire codebase"
+  dclaude --help              # Shows Claude Code's help
   dclaude shell
 `, version)
 }

@@ -2,6 +2,7 @@ package daytona
 
 import (
 	"bufio"
+	"context"
 	"crypto/md5"
 	"fmt"
 	"os"
@@ -11,18 +12,23 @@ import (
 	"strings"
 	"time"
 
+	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/jedi4ever/dclaude/provider"
 )
 
 // DaytonaProvider implements the Provider interface for Daytona
 type DaytonaProvider struct {
-	config *provider.Config
+	config            *provider.Config
+	embeddedDockerfile []byte
+	embeddedEntrypoint []byte
 }
 
 // NewDaytonaProvider creates a new Daytona provider
-func NewDaytonaProvider(cfg *provider.Config) (provider.Provider, error) {
+func NewDaytonaProvider(cfg *provider.Config, dockerfile, entrypoint []byte) (provider.Provider, error) {
 	return &DaytonaProvider{
-		config: cfg,
+		config:            cfg,
+		embeddedDockerfile: dockerfile,
+		embeddedEntrypoint: entrypoint,
 	}, nil
 }
 
@@ -132,15 +138,33 @@ func (p *DaytonaProvider) Run(spec *provider.RunSpec) error {
 		fmt.Printf("Creating Daytona sandbox: %s\n", workspaceName)
 		createArgs := []string{"create", "--name", workspaceName}
 
-		// Use Dockerfile.daytona from the project root to build custom snapshot with Claude Code
-		cwd, _ := os.Getwd()
-		dockerfilePath := filepath.Join(cwd, "Dockerfile.daytona")
-
-		// Check if we're in the dclaude project directory
-		if _, err := os.Stat(dockerfilePath); err == nil {
+		// Use embedded Dockerfile and entrypoint to build custom snapshot with Claude Code
+		if len(p.embeddedDockerfile) > 0 && len(p.embeddedEntrypoint) > 0 {
 			fmt.Println("Building custom Daytona sandbox with Claude Code installed...")
 			fmt.Println("This will take a few minutes on first build...")
+
+			// Create temp directory for build context
+			tmpDir, err := os.MkdirTemp("", "daytona-build-*")
+			if err != nil {
+				return fmt.Errorf("failed to create temp directory: %w", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			// Write Dockerfile to temp directory
+			dockerfilePath := filepath.Join(tmpDir, "Dockerfile")
+			if err := os.WriteFile(dockerfilePath, p.embeddedDockerfile, 0644); err != nil {
+				return fmt.Errorf("failed to write Dockerfile: %w", err)
+			}
+
+			// Write entrypoint script to temp directory
+			entrypointPath := filepath.Join(tmpDir, "daytona-entrypoint.sh")
+			if err := os.WriteFile(entrypointPath, p.embeddedEntrypoint, 0755); err != nil {
+				return fmt.Errorf("failed to write entrypoint: %w", err)
+			}
+
+			// Add Dockerfile and context flags
 			createArgs = append(createArgs, "--dockerfile", dockerfilePath)
+			createArgs = append(createArgs, "--context", tmpDir)
 		} else if spec.ImageName != "" {
 			// Fall back to using a snapshot if specified
 			createArgs = append(createArgs, "--snapshot", spec.ImageName)
@@ -203,53 +227,10 @@ func (p *DaytonaProvider) Run(spec *provider.RunSpec) error {
 		fmt.Printf("Using existing Daytona sandbox: %s\n", workspaceName)
 	}
 
-	// For interactive sessions, daytona exec doesn't support PTY allocation
-	// Use expect to automate command execution via SSH
+	// For interactive sessions, use SSH with API token for proper TTY support
 	if spec.Interactive {
-		fmt.Println("Opening interactive SSH session...")
-
-		// Build the command to run
-		cmdToRun := strings.Join(spec.Args, " ")
-		if cmdToRun == "" {
-			cmdToRun = "claude"
-		}
-
-		// Create expect script
-		expectScript := fmt.Sprintf(`#!/usr/bin/expect -f
-set timeout 30
-spawn daytona ssh %s
-expect {
-    "$ " { send "%s\r" }
-    "# " { send "%s\r" }
-    timeout {
-        send_user "Timeout waiting for prompt\n"
-        exit 1
-    }
-}
-interact
-`, workspaceName, cmdToRun, cmdToRun)
-
-		// Create temporary expect script file
-		tmpFile, err := os.CreateTemp("", "daytona-ssh-*.exp")
-		if err != nil {
-			return fmt.Errorf("failed to create expect script: %w", err)
-		}
-		defer os.Remove(tmpFile.Name())
-
-		if _, err := tmpFile.WriteString(expectScript); err != nil {
-			return fmt.Errorf("failed to write expect script: %w", err)
-		}
-		if err := tmpFile.Chmod(0755); err != nil {
-			return fmt.Errorf("failed to chmod expect script: %w", err)
-		}
-		tmpFile.Close()
-
-		// Execute expect script
-		cmd := exec.Command("expect", tmpFile.Name())
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
+		fmt.Println("Starting interactive SSH session...")
+		return p.runInteractiveSSH(workspaceName, spec.Args)
 	}
 
 	// For non-interactive sessions (piped input, scripts), use exec
@@ -273,15 +254,33 @@ func (p *DaytonaProvider) Shell(spec *provider.RunSpec) error {
 		fmt.Printf("Creating Daytona sandbox: %s\n", workspaceName)
 		createArgs := []string{"create", "--name", workspaceName}
 
-		// Use Dockerfile.daytona from the project root to build custom snapshot with Claude Code
-		cwd, _ := os.Getwd()
-		dockerfilePath := filepath.Join(cwd, "Dockerfile.daytona")
-
-		// Check if we're in the dclaude project directory
-		if _, err := os.Stat(dockerfilePath); err == nil {
+		// Use embedded Dockerfile and entrypoint to build custom snapshot with Claude Code
+		if len(p.embeddedDockerfile) > 0 && len(p.embeddedEntrypoint) > 0 {
 			fmt.Println("Building custom Daytona sandbox with Claude Code installed...")
 			fmt.Println("This will take a few minutes on first build...")
+
+			// Create temp directory for build context
+			tmpDir, err := os.MkdirTemp("", "daytona-build-*")
+			if err != nil {
+				return fmt.Errorf("failed to create temp directory: %w", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			// Write Dockerfile to temp directory
+			dockerfilePath := filepath.Join(tmpDir, "Dockerfile")
+			if err := os.WriteFile(dockerfilePath, p.embeddedDockerfile, 0644); err != nil {
+				return fmt.Errorf("failed to write Dockerfile: %w", err)
+			}
+
+			// Write entrypoint script to temp directory
+			entrypointPath := filepath.Join(tmpDir, "daytona-entrypoint.sh")
+			if err := os.WriteFile(entrypointPath, p.embeddedEntrypoint, 0755); err != nil {
+				return fmt.Errorf("failed to write entrypoint: %w", err)
+			}
+
+			// Add Dockerfile and context flags
 			createArgs = append(createArgs, "--dockerfile", dockerfilePath)
+			createArgs = append(createArgs, "--context", tmpDir)
 		} else if spec.ImageName != "" {
 			// Fall back to using a snapshot if specified
 			createArgs = append(createArgs, "--snapshot", spec.ImageName)
@@ -344,13 +343,10 @@ func (p *DaytonaProvider) Shell(spec *provider.RunSpec) error {
 		fmt.Printf("Using existing Daytona sandbox: %s\n", workspaceName)
 	}
 
-	// Connect to sandbox with SSH
+	// Connect to sandbox with SSH for interactive shell
 	fmt.Println("Opening SSH session to Daytona sandbox...")
-	cmd := exec.Command("daytona", "ssh", workspaceName)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	// Pass empty args to run the entrypoint which will start claude by default
+	return p.runInteractiveSSH(workspaceName, []string{})
 }
 
 // Cleanup cleans up resources
@@ -487,4 +483,80 @@ func (p *DaytonaProvider) loadEnvFile(envFilePath string) []string {
 	}
 
 	return args
+}
+
+// runInteractiveSSH uses the Daytona API to get an SSH token and connects via native ssh
+func (p *DaytonaProvider) runInteractiveSSH(sandboxName string, args []string) error {
+	ctx := context.Background()
+
+	fmt.Println("Creating Daytona API client...")
+	// Create API client configuration with proper settings
+	cfg := apiclient.NewConfiguration()
+
+	// Configure API URL (default to app.daytona.io/api)
+	apiURL := os.Getenv("DAYTONA_API_URL")
+	if apiURL == "" {
+		apiURL = "https://app.daytona.io/api"
+	}
+	cfg.Servers[0].URL = apiURL
+	fmt.Printf("Using API URL: %s\n", apiURL)
+
+	// Add API key authentication
+	apiKey := os.Getenv("DAYTONA_API_KEY")
+	if apiKey == "" {
+		return fmt.Errorf("DAYTONA_API_KEY environment variable not set")
+	}
+	cfg.AddDefaultHeader("Authorization", "Bearer "+apiKey)
+
+	// Add organization ID if set
+	orgID := os.Getenv("DAYTONA_ORGANIZATION_ID")
+	if orgID != "" {
+		cfg.AddDefaultHeader("X-Daytona-Organization-ID", orgID)
+		fmt.Printf("Using Organization ID: %s\n", orgID)
+	}
+
+	apiClient := apiclient.NewAPIClient(cfg)
+
+	fmt.Printf("Requesting SSH token for sandbox: %s\n", sandboxName)
+	// Generate SSH token (30 minutes expiry)
+	expiresIn := float32(30)
+	req := apiClient.SandboxAPI.CreateSshAccess(ctx, sandboxName).ExpiresInMinutes(expiresIn)
+	sshAccess, resp, err := req.Execute()
+	if err != nil {
+		fmt.Printf("API Error: %v\n", err)
+		if resp != nil {
+			fmt.Printf("Response Status: %s\n", resp.Status)
+		}
+		return fmt.Errorf("failed to create SSH access: %w", err)
+	}
+
+	if sshAccess.Token == "" {
+		return fmt.Errorf("SSH token is empty")
+	}
+
+	fmt.Printf("Got SSH token: %s...\n", sshAccess.Token[:10])
+
+	// Build command to run - use entrypoint script which handles port mapping and setup
+	entrypointCmd := "/usr/local/bin/daytona-entrypoint.sh"
+	var cmdToRun string
+	if len(args) > 0 {
+		cmdToRun = entrypointCmd + " " + strings.Join(args, " ")
+	} else {
+		cmdToRun = entrypointCmd
+	}
+
+	// Use native SSH with -t flag for TTY allocation
+	fmt.Println("Connecting via SSH with proper TTY...")
+	sshCmd := exec.Command("ssh",
+		"-t",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "LogLevel=ERROR",
+		fmt.Sprintf("%s@ssh.app.daytona.io", sshAccess.Token),
+		cmdToRun)
+	sshCmd.Stdin = os.Stdin
+	sshCmd.Stdout = os.Stdout
+	sshCmd.Stderr = os.Stderr
+
+	return sshCmd.Run()
 }

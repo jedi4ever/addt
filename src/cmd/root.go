@@ -21,10 +21,10 @@ func Execute(version, defaultNodeVersion string, defaultPortRangeStart int) {
 		case "--update":
 			update.UpdateDClaude(version)
 			return
-		case "--version":
+		case "--dversion":
 			fmt.Printf("dclaude version %s\n", version)
 			return
-		case "--help", "-h":
+		case "--dhelp":
 			PrintHelp(version)
 			return
 		case "containers":
