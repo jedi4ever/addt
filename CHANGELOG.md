@@ -7,15 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2025-02-01
+
 ### Added
 - Go language support with configurable version (DCLAUDE_GO_VERSION, default: 1.23.5)
 - UV Python package manager with configurable version (DCLAUDE_UV_VERSION, default: 0.5.11)
 - DCLAUDE_MOUNT_WORKDIR flag to control mounting working directory (default: true)
 - DCLAUDE_MOUNT_CLAUDE_CONFIG flag to control mounting ~/.claude config (default: true)
+- Go binary installed at /usr/local/go/bin/go with PATH configured
+- UV and uvx binaries installed at /usr/local/bin with full functionality
+- .bashrc configuration for Go PATH in interactive shells
 
 ### Changed
 - Go and UV are now available in both container processes and interactive bash shells
 - Improved documentation for mount configuration options
+- Pre-installed tools list updated to include Go and UV
+
+### Tested
+- Go version 1.23.5 working in interactive shells
+- UV 0.5.11 with full project workflow (init, add, run)
+- UVX tool runner for on-demand Python tools
+- Mount configuration flags working correctly
 
 ## [1.4.4] - 2025-02-01
 
@@ -86,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Release Links
 
+- [v1.5.0](https://github.com/jedi4ever/dclaude/releases/tag/v1.5.0) - Latest
 - [v1.4.4](https://github.com/jedi4ever/dclaude/releases/tag/v1.4.4)
 - [v1.4.3](https://github.com/jedi4ever/dclaude/releases/tag/v1.4.3)
 - [v1.4.2](https://github.com/jedi4ever/dclaude/releases/tag/v1.4.2)
