@@ -96,10 +96,10 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
-# Check if we need a specific Claude Code version or latest from npm
+# Check if we need a specific Claude Code version or latest from npm registry
 if [ "$DCLAUDE_CLAUDE_VERSION" = "latest" ]; then
-    # Check npm for the stable version (not pre-release)
-    NPM_LATEST=$(npm info @anthropic-ai/claude-code dist-tags.stable 2>/dev/null)
+    # Query npm registry directly via HTTP (faster than npm CLI)
+    NPM_LATEST=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code 2>/dev/null | grep -o '"stable":"[^"]*"' | cut -d'"' -f4)
 
     if [ -n "$NPM_LATEST" ]; then
         # Check if we already have an image with this version (exclude dangling images)
@@ -113,11 +113,12 @@ if [ "$DCLAUDE_CLAUDE_VERSION" = "latest" ]; then
         fi
     fi
 else
-    # Specific version requested - validate it exists in npm
-    if ! npm view "@anthropic-ai/claude-code@$DCLAUDE_CLAUDE_VERSION" version &>/dev/null; then
+    # Specific version requested - validate it exists in npm registry
+    NPM_DATA=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code 2>/dev/null)
+    if ! echo "$NPM_DATA" | grep -q "\"$DCLAUDE_CLAUDE_VERSION\":"; then
         echo "Error: Claude Code version $DCLAUDE_CLAUDE_VERSION does not exist in npm"
         echo "Available versions: https://www.npmjs.com/package/@anthropic-ai/claude-code?activeTab=versions"
-        echo "Hint: Use 'latest' or check npm with: npm view @anthropic-ai/claude-code versions"
+        echo "Hint: Use 'latest' or check available versions at the link above"
         exit 1
     fi
 

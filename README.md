@@ -256,57 +256,44 @@ Benefits:
 
 ### Environment Variables
 
-- **ANTHROPIC_API_KEY** (required): Your Anthropic API key for authentication
-- **GH_TOKEN** (optional): GitHub personal access token for gh CLI authentication
-  - Required for private repository access
-  - Required for creating PRs, issues, and other write operations
-  - Get yours at: https://github.com/settings/tokens
-- **DCLAUDE_CLAUDE_VERSION** (optional, default: `latest`): Pin to a specific Claude Code version
-  - Set to `latest` to automatically use the newest **stable** version from npm
-  - Set to a specific version like `2.1.27` to pin to that version
-  - Automatically checks npm and only rebuilds if a newer stable version is available
-  - Automatically reuses existing images with matching version labels
-- **DCLAUDE_NODE_VERSION** (optional, default: `20`): Specify Node.js version for the container
-  - Set to a specific major version like `18`, `20`, `22`
-  - Set to `lts` for latest LTS version
-  - Set to `current` for the newest Node.js release
-- **DCLAUDE_GPG_FORWARD** (optional, default: `false`): Enable GPG commit signing
-  - Set to `true` to mount `~/.gnupg` for commit signing
-- **DCLAUDE_SSH_FORWARD** (optional, default: `false`): Enable SSH forwarding
-  - Set to `agent` or `true` for SSH agent forwarding only (most secure - recommended)
-  - Set to `keys` to mount entire `~/.ssh` directory (less secure but simpler)
-  - Enables git operations over SSH, SSH to remote servers, etc.
-- **DCLAUDE_DOCKER_FORWARD** (optional, default: `false`): Enable Docker support
-  - Set to `isolated` or `true` for isolated Docker environment (recommended)
-  - Set to `host` to mount host Docker socket (see all host containers)
-  - Allows Claude Code to run Docker commands
-- **DCLAUDE_ENV_VARS** (optional, default: `ANTHROPIC_API_KEY,GH_TOKEN`): Environment variables to pass
-  - Comma-separated list of environment variable names to pass to the container
-  - Example: `DCLAUDE_ENV_VARS="ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY"`
-  - Only passes variables that are actually set in your environment
-- **DCLAUDE_ENV_FILE** (optional, default: `.env`): Path to environment file
-  - Specify a custom `.env` file to load instead of the default
-  - Example: `DCLAUDE_ENV_FILE=".env.production"` or `DCLAUDE_ENV_FILE="/path/to/config.env"`
-- **DCLAUDE_GITHUB_DETECT** (optional, default: `false`): Auto-detect GitHub token from `gh` CLI
-  - Set to `true` to enable automatic token detection from `gh auth login`
-  - Convenient for automatically using your `gh` CLI authentication
-- **DCLAUDE_LOG** (optional, default: `false`): Enable command logging
-  - Set to `true` to log all commands to a log file
-  - Useful for debugging and auditing what commands are being executed
-  - Log entries include timestamps, working directory, container name, and command
-- **DCLAUDE_LOG_FILE** (optional, default: `dclaude.log`): Log file location
-  - Specify a custom path for the log file
-  - Only used when `DCLAUDE_LOG=true`
-  - Default is `dclaude.log` in the script directory
-  - Example: `DCLAUDE_LOG_FILE="/tmp/dclaude.log"` or `DCLAUDE_LOG_FILE="~/logs/dclaude.log"`
-- **DCLAUDE_PORTS** (optional): Automatic port mapping for web services
-  - Comma-separated list of container ports to expose (e.g., `"3000,8080,5432"`)
-  - Automatically maps to available host ports starting from `DCLAUDE_PORT_RANGE_START`
-  - Claude Code receives port mapping information and will tell you the correct host ports
-  - Displayed in status line (e.g., `Ports:3000→30000,8080→30001`)
-- **DCLAUDE_PORT_RANGE_START** (optional, default: `30000`): Starting port for automatic allocation
-  - Sets the base port number for automatic port mapping
-  - Useful to avoid conflicts with other services
+| Variable | Default | Description |
+|----------|---------|-------------|
+| **ANTHROPIC_API_KEY** | *(required)* | Your Anthropic API key for authentication |
+| **GH_TOKEN** | *(none)* | GitHub personal access token for gh CLI. Required for private repos, PRs, and write operations. Get yours at [github.com/settings/tokens](https://github.com/settings/tokens) |
+| **DCLAUDE_CLAUDE_VERSION** | `latest` | Pin to a specific Claude Code version. Set to `latest` for newest stable, or specific version like `2.1.27`. Automatically checks npm registry and reuses existing images |
+| **DCLAUDE_NODE_VERSION** | `20` | Node.js version for the container. Use major version (`18`, `20`, `22`), `lts`, or `current` |
+| **DCLAUDE_GPG_FORWARD** | `false` | Enable GPG commit signing. Set to `true` to mount `~/.gnupg` |
+| **DCLAUDE_SSH_FORWARD** | `false` | Enable SSH forwarding. Use `agent` or `true` for agent forwarding (recommended), or `keys` to mount entire `~/.ssh` directory |
+| **DCLAUDE_DOCKER_FORWARD** | `false` | Enable Docker support. Use `isolated` or `true` for isolated environment (recommended), or `host` to access host Docker daemon |
+| **DCLAUDE_ENV_VARS** | `ANTHROPIC_API_KEY,GH_TOKEN` | Comma-separated list of environment variables to pass to container. Example: `ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY` |
+| **DCLAUDE_ENV_FILE** | `.env` | Path to environment file. Example: `.env.production` or `/path/to/config.env` |
+| **DCLAUDE_GITHUB_DETECT** | `false` | Auto-detect GitHub token from `gh` CLI. Set to `true` to use token from `gh auth login` |
+| **DCLAUDE_PORTS** | *(none)* | Comma-separated list of container ports to expose. Example: `3000,8080,5432`. Automatically maps to available host ports and tells Claude the correct URLs |
+| **DCLAUDE_PORT_RANGE_START** | `30000` | Starting port number for automatic port allocation. Useful to avoid conflicts with other services |
+| **DCLAUDE_LOG** | `false` | Enable command logging. Set to `true` to log all commands with timestamps, working directory, and container info |
+| **DCLAUDE_LOG_FILE** | `dclaude.log` | Log file location (only used when `DCLAUDE_LOG=true`). Example: `/tmp/dclaude.log` or `~/logs/dclaude.log` |
+
+**Quick Examples:**
+```bash
+# Basic usage
+export ANTHROPIC_API_KEY="your-key"
+export GH_TOKEN="your-github-token"
+./dclaude.sh
+
+# With port mapping for web development
+export DCLAUDE_PORTS="3000,8080,5432"
+./dclaude.sh "Create an Express app"
+
+# With SSH and Docker support
+export DCLAUDE_SSH_FORWARD=agent
+export DCLAUDE_DOCKER_FORWARD=isolated
+./dclaude.sh
+
+# Pin to specific versions
+export DCLAUDE_CLAUDE_VERSION=2.1.27
+export DCLAUDE_NODE_VERSION=18
+./dclaude.sh
+```
 
 ### Custom Environment Variables
 
@@ -448,11 +435,11 @@ Control which Claude Code version to use with `DCLAUDE_CLAUDE_VERSION`:
 
 **Use latest stable version (default):**
 ```bash
-./dclaude.sh  # Checks npm for latest stable version, only rebuilds if needed
+./dclaude.sh  # Queries npm registry for latest stable version, only rebuilds if needed
 ```
 
 When you run with default settings:
-1. Checks npm for the latest **stable** version (uses `dist-tags.stable`, not pre-release)
+1. Queries npm registry via HTTP for the latest **stable** version (uses `dist-tags.stable`, not pre-release)
 2. Checks if you already have an image with that version
 3. If yes, uses existing image (fast!)
 4. If no, builds new image with that version
