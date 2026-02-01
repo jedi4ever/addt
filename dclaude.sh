@@ -24,7 +24,7 @@
 #   ./dclaude.sh --yolo "Refactor this entire codebase"
 #   DCLAUDE_PERSISTENT=true ./dclaude.sh  # Start persistent session
 
-DCLAUDE_VERSION="1.0.0"
+DCLAUDE_VERSION="1.1.0"
 
 set -e
 

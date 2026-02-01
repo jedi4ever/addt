@@ -8,7 +8,7 @@ help:
 
 standalone: dist/dclaude-standalone.sh
 
-dist/dclaude-standalone.sh: dclaude.sh Dockerfile docker-entrypoint.sh build.sh
+dist/dclaude-standalone.sh: dclaude.sh Dockerfile docker-entrypoint.sh build.sh VERSION
 	@./build.sh
 
 test: dist/dclaude-standalone.sh
