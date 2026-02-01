@@ -74,8 +74,8 @@ func (o *Orchestrator) buildRunSpec(name string, args []string, openShell bool) 
 	} else if openShell {
 		spec.Args = []string{}
 	} else {
-		// Normal mode - add "claude" command
-		spec.Args = append([]string{"claude"}, args...)
+		// Normal mode - pass args directly (entrypoint calls claude)
+		spec.Args = args
 	}
 
 	// Log command if enabled

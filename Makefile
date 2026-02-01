@@ -45,12 +45,13 @@ dist: clean fmt
 	@echo "Building $(BINARY_NAME) v$(VERSION) for all platforms..."
 	@mkdir -p $(BUILD_DIR)
 	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%/*} GOARCH=$${platform#*/} \
-		cd $(SRC_DIR) && go build \
+		os=$${platform%/*}; \
+		arch=$${platform#*/}; \
+		echo "Building for $$os/$$arch..."; \
+		(cd $(SRC_DIR) && GOOS=$$os GOARCH=$$arch go build \
 			-ldflags "-X main.Version=$(VERSION)" \
-			-o ../$(BUILD_DIR)/$(BINARY_NAME)-$${platform%/*}-$${platform#*/} . && \
-		cd .. && \
-		echo "✓ Built $(BUILD_DIR)/$(BINARY_NAME)-$${platform%/*}-$${platform#*/}"; \
+			-o ../$(BUILD_DIR)/$(BINARY_NAME)-$$os-$$arch .); \
+		echo "✓ Built $(BUILD_DIR)/$(BINARY_NAME)-$$os-$$arch"; \
 	done
 	@echo ""
 	@echo "Build complete! Binaries in $(BUILD_DIR)/"
