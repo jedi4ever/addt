@@ -77,8 +77,17 @@ find_available_port() {
     echo "$port"
 }
 
-# Check for special "shell" command
+# Check for special flags and commands
 OPEN_SHELL=false
+REBUILD_IMAGE=false
+
+# Check for --rebuild flag
+if [ "$1" = "--rebuild" ]; then
+    REBUILD_IMAGE=true
+    shift  # Remove "--rebuild" from arguments
+fi
+
+# Check for "shell" command
 if [ "$1" = "shell" ]; then
     OPEN_SHELL=true
     shift  # Remove "shell" from arguments
@@ -138,6 +147,15 @@ else
         IMAGE_NAME="$EXISTING_IMAGE"
     else
         IMAGE_NAME="dclaude:claude-$DCLAUDE_CLAUDE_VERSION"
+    fi
+fi
+
+# Handle --rebuild flag
+if [ "$REBUILD_IMAGE" = true ]; then
+    echo "Rebuilding $IMAGE_NAME..."
+    if docker image inspect "$IMAGE_NAME" &> /dev/null; then
+        echo "Removing existing image..."
+        docker rmi "$IMAGE_NAME" &> /dev/null || true
     fi
 fi
 

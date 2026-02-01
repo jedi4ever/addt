@@ -25,7 +25,7 @@ claude --model opus ./dclaude.sh --model opus
 
 **✓ Extra Features (Enable What You Need)**
 - [x] **GitHub Token Forwarding** - *Opt-in:* Auto-pass `GH_TOKEN` for private repos
-- [x] **SSH Key Forwarding** - *Opt-in:* Mount SSH keys for git over SSH (agent or keys mode)
+- [x] **SSH Key Forwarding** - *Opt-in:* Mount SSH keys for git over SSH (agent mode recommended, keys mode exposes all private keys)
 - [x] **GPG Key Forwarding** - *Opt-in:* Mount GPG keys for signed commits
 - [x] **Docker-in-Docker** - *Opt-in:* Run Docker commands inside container (isolated or host mode)
 - [x] **Automatic Port Mapping** - *Opt-in:* Maps container ports to host, Claude knows the URLs
@@ -71,6 +71,27 @@ claude --model opus ./dclaude.sh --model opus
 
 ### Optional
 - **GH_TOKEN** - GitHub personal access token for private repos and write operations ([create one](https://github.com/settings/tokens))
+
+## Installation
+
+**Single-file download:**
+
+```bash
+# Download and install
+curl -o dclaude https://raw.githubusercontent.com/jedi4ever/dclaude/main/dist/dclaude-standalone.sh
+chmod +x dclaude
+
+# Option 1: Run from current directory
+./dclaude --version
+
+# Option 2: Add to your PATH
+mkdir -p ~/.local/bin
+mv dclaude ~/.local/bin/
+export PATH="$HOME/.local/bin:$PATH"  # Add to ~/.bashrc or ~/.zshrc
+
+# Now run from anywhere
+dclaude --version
+```
 
 ## Quick Start
 
@@ -136,9 +157,15 @@ Use `./dclaude.sh` exactly like you would use `claude`:
 
 ### Extra Commands
 
-DClaude adds a special `shell` command for debugging:
+DClaude adds special commands and flags:
 
 ```bash
+# Rebuild the Docker image (removes and rebuilds)
+./dclaude.sh --rebuild
+
+# Can combine with other commands
+./dclaude.sh --rebuild --version
+
 # Open bash shell inside the container
 ./dclaude.sh shell
 
@@ -174,7 +201,7 @@ The server will be available at http://localhost:3000
 | **DCLAUDE_CLAUDE_VERSION** | `latest` | Pin to a specific Claude Code version. Set to `latest` for newest stable, or specific version like `2.1.27`. Automatically checks npm registry and reuses existing images |
 | **DCLAUDE_NODE_VERSION** | `20` | Node.js version for the container. Use major version (`18`, `20`, `22`), `lts`, or `current` |
 | **DCLAUDE_GPG_FORWARD** | `false` | Enable GPG commit signing. Set to `true` to mount `~/.gnupg` |
-| **DCLAUDE_SSH_FORWARD** | `false` | Enable SSH forwarding. Use `agent` or `true` for agent forwarding (recommended), or `keys` to mount entire `~/.ssh` directory |
+| **DCLAUDE_SSH_FORWARD** | `false` | Enable SSH forwarding. Use `agent` or `true` for agent forwarding (recommended - secure), or `keys` to mount entire `~/.ssh` directory (⚠️ exposes all private keys) |
 | **DCLAUDE_DOCKER_FORWARD** | `false` | Enable Docker support. Use `isolated` or `true` for isolated environment (recommended), or `host` to access host Docker daemon |
 | **DCLAUDE_ENV_VARS** | `ANTHROPIC_API_KEY,GH_TOKEN` | Comma-separated list of environment variables to pass to container. Example: `ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY` |
 | **DCLAUDE_ENV_FILE** | `.env` | Path to environment file. Example: `.env.production` or `/path/to/config.env` |
@@ -225,7 +252,8 @@ export DCLAUDE_PORTS="3000,8080,5432"
 **How it works:**
 - You specify container ports to expose
 - DClaude automatically maps them to available host ports
-- Claude receives the mappings and tells you the correct URLs
+- Port mappings are passed to Claude via `--append-system-prompt`
+- Claude knows the correct URLs and tells you the host ports
 - Internal testing uses container ports, user URLs use host ports
 
 **Common scenarios:**
@@ -242,14 +270,19 @@ DCLAUDE_PORTS="3000,8000,5432" ./dclaude.sh
 For git operations over SSH, pushing to private repos, etc:
 
 ```bash
-# Agent forwarding (recommended)
+# Agent forwarding (recommended - more secure)
 export DCLAUDE_SSH_FORWARD=agent
 ./dclaude.sh
 
-# Or mount SSH keys directly
+# Or mount SSH keys directly (exposes all keys)
 export DCLAUDE_SSH_FORWARD=keys
 ./dclaude.sh
 ```
+
+**⚠️ Security Warning:**
+- **`agent` mode (recommended)**: Only forwards SSH agent socket, keys stay on host
+- **`keys` mode**: Mounts entire `~/.ssh` directory - **exposes ALL private keys** to the container
+- Use `agent` mode unless you have specific compatibility issues
 
 **When you need this:**
 - Pushing to GitHub/GitLab over SSH
@@ -351,6 +384,10 @@ The image is built automatically on first run. If you see "image not found":
 
 Force rebuild:
 ```bash
+# Easiest way - use --rebuild flag
+./dclaude.sh --rebuild
+
+# Or manually remove and rebuild
 docker rmi dclaude:latest
 ./dclaude.sh  # Rebuilds automatically
 ```
