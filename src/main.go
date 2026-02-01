@@ -7,7 +7,7 @@ import (
 )
 
 // Version can be overridden at build time with -ldflags "-X main.Version=x.y.z"
-var Version = "1.0.0"
+var Version = "1.1.0"
 
 const (
 	DefaultNodeVersion    = "20"
@@ -32,6 +32,9 @@ func main() {
 			return
 		case "--help", "-h":
 			printHelp()
+			return
+		case "containers":
+			HandleContainersCommand(args[1:])
 			return
 		}
 	}
@@ -102,29 +105,32 @@ Version: %s
 Usage: dclaude [options] [prompt]
 
 Commands:
-  shell              Open bash shell in container
-  --update           Check for and install updates
-  --rebuild          Rebuild the Docker image
-  --version          Show version
-  --help             Show this help
+  shell                       Open bash shell in container
+  containers [list|stop|rm|clean]  Manage persistent containers
+  --update                    Check for and install updates
+  --rebuild                   Rebuild the Docker image
+  --version                   Show version
+  --help                      Show this help
 
 Options (passed to claude):
-  --yolo             Bypass all permission checks (alias for --dangerously-skip-permissions)
-  --model <model>    Specify model to use
+  --yolo                      Bypass all permission checks (alias for --dangerously-skip-permissions)
+  --model <model>             Specify model to use
 
 Environment Variables:
-  DCLAUDE_CLAUDE_VERSION    Claude Code version (default: latest)
-  DCLAUDE_NODE_VERSION      Node.js version (default: 20)
-  DCLAUDE_ENV_VARS          Comma-separated env vars to pass (default: ANTHROPIC_API_KEY,GH_TOKEN)
-  DCLAUDE_GITHUB_DETECT     Auto-detect GitHub token from gh CLI (default: false)
-  DCLAUDE_PORTS             Comma-separated container ports to expose
-  DCLAUDE_PORT_RANGE_START  Starting port for auto allocation (default: 30000)
-  DCLAUDE_SSH_FORWARD       SSH forwarding mode: agent, keys, or empty
-  DCLAUDE_GPG_FORWARD       Enable GPG forwarding (true/false)
-  DCLAUDE_DOCKER_FORWARD    Docker mode: host, isolated, or empty
-  DCLAUDE_ENV_FILE          Path to .env file (default: .env)
-  DCLAUDE_LOG               Enable command logging (default: false)
-  DCLAUDE_LOG_FILE          Log file path
+  DCLAUDE_CLAUDE_VERSION      Claude Code version (default: latest)
+  DCLAUDE_NODE_VERSION        Node.js version (default: 20)
+  DCLAUDE_ENV_VARS            Comma-separated env vars to pass (default: ANTHROPIC_API_KEY,GH_TOKEN)
+  DCLAUDE_GITHUB_DETECT       Auto-detect GitHub token from gh CLI (default: false)
+  DCLAUDE_PORTS               Comma-separated container ports to expose
+  DCLAUDE_PORT_RANGE_START    Starting port for auto allocation (default: 30000)
+  DCLAUDE_SSH_FORWARD         SSH forwarding mode: agent, keys, or empty
+  DCLAUDE_GPG_FORWARD         Enable GPG forwarding (true/false)
+  DCLAUDE_DOCKER_FORWARD      Docker mode: host, isolated, or empty
+  DCLAUDE_ENV_FILE            Path to .env file (default: .env)
+  DCLAUDE_LOG                 Enable command logging (default: false)
+  DCLAUDE_LOG_FILE            Log file path
+  DCLAUDE_PERSISTENT          Enable persistent container mode (true/false)
+  DCLAUDE_MODE                Execution mode: container or shell (default: container)
 
 Examples:
   dclaude --help

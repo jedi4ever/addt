@@ -221,21 +221,68 @@ func RunDocker(cfg *Config, args []string, openShell bool) {
 	username := currentUser.Username
 	cwd, _ := os.Getwd()
 
-	// Generate unique container name
-	containerName := fmt.Sprintf("dclaude-%s-%d", time.Now().Format("20060102-150405"), os.Getpid())
+	// Generate container name (persistent or ephemeral)
+	var containerName string
+	useExistingContainer := false
+
+	if cfg.Persistent {
+		containerName = GenerateContainerName()
+
+		// Check if persistent container exists
+		if ContainerExists(containerName) {
+			fmt.Printf("Found existing persistent container: %s\n", containerName)
+
+			// Check if it's running
+			if ContainerIsRunning(containerName) {
+				fmt.Println("Container is running, connecting...")
+				useExistingContainer = true
+			} else {
+				fmt.Println("Container is stopped, starting...")
+				exec.Command("docker", "start", containerName).Run()
+				useExistingContainer = true
+			}
+		} else {
+			fmt.Printf("Creating new persistent container: %s\n", containerName)
+		}
+	} else {
+		// Ephemeral mode - generate unique name
+		containerName = fmt.Sprintf("dclaude-%s-%d", time.Now().Format("20060102-150405"), os.Getpid())
+	}
 
 	// Build docker command
-	dockerArgs := []string{"run", "--rm", "--name", containerName}
+	var dockerArgs []string
+	if useExistingContainer {
+		// Use exec to connect to existing container
+		dockerArgs = []string{"exec"}
+	} else {
+		// Create new container
+		if cfg.Persistent {
+			// Persistent container - don't use --rm
+			dockerArgs = []string{"run", "--name", containerName}
+		} else {
+			// Ephemeral container - use --rm
+			dockerArgs = []string{"run", "--rm", "--name", containerName}
+		}
+	}
 
 	// Detect if running in interactive terminal
 	if IsTerminal() {
 		dockerArgs = append(dockerArgs, "-it")
+		// Use init to handle signals properly for interactive sessions
+		if !useExistingContainer {
+			dockerArgs = append(dockerArgs, "--init")
+		}
 	} else {
 		dockerArgs = append(dockerArgs, "-i")
 	}
 
-	// Mount current directory
-	dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/workspace", cwd))
+	// Declare port mapping variables outside the block so they're accessible for status line
+	var portMapString, portMapDisplay string
+
+	// Only add volumes and environment when creating a new container
+	if !useExistingContainer {
+		// Mount current directory
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/workspace", cwd))
 
 	// Add env file if exists
 	envFilePath := cfg.EnvFile
@@ -283,10 +330,22 @@ func RunDocker(cfg *Config, args []string, openShell bool) {
 	dockerArgs = append(dockerArgs, HandleDockerForwarding(cfg, containerName)...)
 
 	// Port mappings
-	portMapString, portMapDisplay := HandlePortMappings(cfg, &dockerArgs)
+	portMapString, portMapDisplay = HandlePortMappings(cfg, &dockerArgs)
 	if portMapString != "" {
 		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("DCLAUDE_PORT_MAP=%s", portMapString))
 	}
+
+	// Pass terminal environment variables for proper paste handling
+	if term := os.Getenv("TERM"); term != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("TERM=%s", term))
+	}
+	if colorterm := os.Getenv("COLORTERM"); colorterm != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("COLORTERM=%s", colorterm))
+	}
+	// Pass terminal size variables (critical for proper line handling in containers)
+	cols, lines := GetTerminalSize()
+	dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("COLUMNS=%d", cols))
+	dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("LINES=%d", lines))
 
 	// Pass environment variables
 	for _, varName := range cfg.EnvVars {
@@ -294,16 +353,30 @@ func RunDocker(cfg *Config, args []string, openShell bool) {
 			dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", varName, value))
 		}
 	}
+	} // End of useExistingContainer = false block
 
 	// Display status line
-	BuildStatusLine(cfg, portMapDisplay)
+	BuildStatusLine(cfg, portMapDisplay, containerName)
 
 	// Handle shell mode or normal mode
-	if openShell {
-		fmt.Println("Opening bash shell in container...")
-		if cfg.DockerForward == "isolated" || cfg.DockerForward == "true" {
-			// DinD mode with shell
-			script := `
+	if useExistingContainer {
+		// Exec into existing container
+		dockerArgs = append(dockerArgs, containerName)
+		if openShell {
+			dockerArgs = append(dockerArgs, "/bin/bash")
+			dockerArgs = append(dockerArgs, args...)
+		} else {
+			// Run claude command in existing container
+			dockerArgs = append(dockerArgs, "claude")
+			dockerArgs = append(dockerArgs, args...)
+		}
+	} else {
+		// Create new container
+		if openShell {
+			fmt.Println("Opening bash shell in container...")
+			if cfg.DockerForward == "isolated" || cfg.DockerForward == "true" {
+				// DinD mode with shell
+				script := `
 if [ "$DCLAUDE_DIND" = "true" ]; then
     echo 'Starting Docker daemon in isolated mode...'
     sudo dockerd --host=unix:///var/run/docker.sock >/tmp/docker.log 2>&1 &
@@ -321,15 +394,16 @@ if [ "$DCLAUDE_DIND" = "true" ]; then
 fi
 exec /bin/bash "$@"
 `
-			dockerArgs = append(dockerArgs, cfg.ImageName, "/bin/bash", "-c", script, "bash")
-			dockerArgs = append(dockerArgs, args...)
+				dockerArgs = append(dockerArgs, cfg.ImageName, "/bin/bash", "-c", script, "bash")
+				dockerArgs = append(dockerArgs, args...)
+			} else {
+				dockerArgs = append(dockerArgs, "--entrypoint", "/bin/bash", cfg.ImageName)
+				dockerArgs = append(dockerArgs, args...)
+			}
 		} else {
-			dockerArgs = append(dockerArgs, "--entrypoint", "/bin/bash", cfg.ImageName)
+			dockerArgs = append(dockerArgs, cfg.ImageName)
 			dockerArgs = append(dockerArgs, args...)
 		}
-	} else {
-		dockerArgs = append(dockerArgs, cfg.ImageName)
-		dockerArgs = append(dockerArgs, args...)
 	}
 
 	// Log the command
@@ -348,8 +422,12 @@ exec /bin/bash "$@"
 }
 
 // BuildStatusLine displays the status line with configuration info
-func BuildStatusLine(cfg *Config, portMapDisplay string) {
-	status := cfg.ImageName
+func BuildStatusLine(cfg *Config, portMapDisplay string, containerName string) {
+	// Mode (container or shell)
+	status := fmt.Sprintf("Mode:%s", cfg.Mode)
+
+	// Image name
+	status += fmt.Sprintf(" | %s", cfg.ImageName)
 
 	// Get Node version from image labels
 	cmd := exec.Command("docker", "inspect", cfg.ImageName, "--format", "{{index .Config.Labels \"tools.node.version\"}}")
@@ -396,6 +474,11 @@ func BuildStatusLine(cfg *Config, portMapDisplay string) {
 	// Port mappings
 	if portMapDisplay != "" {
 		status += fmt.Sprintf(" | Ports:%s", portMapDisplay)
+	}
+
+	// Persistent container name
+	if cfg.Persistent {
+		status += fmt.Sprintf(" | Container:%s", containerName)
 	}
 
 	fmt.Printf("✓ %s\n", status)

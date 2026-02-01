@@ -21,6 +21,8 @@ type Config struct {
 	LogEnabled     bool
 	LogFile        string
 	ImageName      string
+	Persistent     bool   // Enable persistent container mode
+	Mode           string // container or shell
 }
 
 // LoadConfig loads configuration from environment variables
@@ -37,6 +39,8 @@ func LoadConfig() *Config {
 		EnvFile:        os.Getenv("DCLAUDE_ENV_FILE"), // Empty means use default .env
 		LogEnabled:     os.Getenv("DCLAUDE_LOG") == "true",
 		LogFile:        getEnvOrDefault("DCLAUDE_LOG_FILE", "dclaude.log"),
+		Persistent:     os.Getenv("DCLAUDE_PERSISTENT") == "true",
+		Mode:           getEnvOrDefault("DCLAUDE_MODE", "container"),
 	}
 
 	// Parse ports

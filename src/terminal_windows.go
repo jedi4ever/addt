@@ -28,3 +28,11 @@ func isatty(fd int) bool {
 	}
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
+
+// GetTerminalSize returns the terminal dimensions (columns, lines)
+// Windows version - returns default values
+func GetTerminalSize() (int, int) {
+	// TODO: Implement proper Windows terminal size detection using Windows API
+	// For now, return reasonable defaults
+	return 80, 24
+}
