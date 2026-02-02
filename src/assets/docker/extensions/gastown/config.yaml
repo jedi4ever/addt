@@ -1,0 +1,9 @@
+name: gastown
+description: Multi-agent orchestration for Claude Code
+entrypoint: gt
+dependencies:
+  - claude
+  - beads
+mounts:
+  - source: ~/.gastown
+    target: /home/claude/.gastown

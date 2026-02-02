@@ -1,0 +1,10 @@
+name: tessl
+description: Agent enablement platform - package manager for AI agent skills
+entrypoint: tessl
+dependencies:
+  - claude
+mounts:
+  - source: ~/.tessl
+    target: /home/claude/.tessl
+  - source: ~/.config/tessl
+    target: /home/claude/.config/tessl

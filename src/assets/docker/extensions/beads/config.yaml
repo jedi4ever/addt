@@ -1,0 +1,7 @@
+name: beads
+description: Git-backed issue tracker for AI agents
+entrypoint: bd
+dependencies: []
+mounts:
+  - source: ~/.beads
+    target: /home/claude/.beads
