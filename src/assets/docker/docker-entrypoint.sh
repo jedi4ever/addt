@@ -33,6 +33,27 @@ if [ "${DCLAUDE_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewa
     sudo /usr/local/bin/init-firewall.sh
 fi
 
+# Run extension setup scripts (if not already run in this session)
+EXTENSIONS_DIR="/usr/local/share/dclaude/extensions"
+EXTENSIONS_JSON="$HOME/.dclaude/extensions.json"
+SETUP_MARKER="$HOME/.dclaude/.setup-done"
+
+if [ -f "$EXTENSIONS_JSON" ] && [ ! -f "$SETUP_MARKER" ]; then
+    # Extract extension names from JSON
+    extensions=$(grep -oE '"[a-z]+":' "$EXTENSIONS_JSON" | tr -d '":' | sort -u)
+
+    for ext in $extensions; do
+        setup_script="$EXTENSIONS_DIR/$ext/setup.sh"
+        if [ -f "$setup_script" ]; then
+            echo "Running setup for extension: $ext"
+            bash "$setup_script" || echo "Warning: setup.sh for $ext failed"
+        fi
+    done
+
+    # Mark setup as done for this session
+    touch "$SETUP_MARKER"
+fi
+
 # Build system prompt for port mappings
 CLAUDE_ARGS=()
 
