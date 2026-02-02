@@ -31,6 +31,7 @@ type Config struct {
 	Mode              string // container or shell
 	Provider          string // Provider type: docker or daytona
 	Extensions        string // Comma-separated list of extensions to install (e.g., "gastown,beads")
+	Command           string // Command to run instead of claude (e.g., "gt" for gastown)
 }
 
 // LoadConfig loads configuration from environment variables
@@ -57,6 +58,7 @@ func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultUvVer
 		Mode:              getEnvOrDefault("DCLAUDE_MODE", "container"),
 		Provider:          getEnvOrDefault("DCLAUDE_PROVIDER", "docker"),
 		Extensions:        getEnvOrDefault("DCLAUDE_EXTENSIONS", "none"),
+		Command:           os.Getenv("DCLAUDE_COMMAND"), // Empty means use default "claude"
 	}
 
 	// Parse ports

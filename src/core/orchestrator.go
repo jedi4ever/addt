@@ -181,6 +181,11 @@ func (o *Orchestrator) buildEnvironment() map[string]string {
 		env["DCLAUDE_FIREWALL_MODE"] = o.config.FirewallMode
 	}
 
+	// Add command override if specified
+	if o.config.Command != "" {
+		env["DCLAUDE_COMMAND"] = o.config.Command
+	}
+
 	return env
 }
 

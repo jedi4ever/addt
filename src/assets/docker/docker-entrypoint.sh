@@ -63,5 +63,8 @@ IMPORTANT:
     CLAUDE_ARGS+=(--append-system-prompt "$SYSTEM_PROMPT")
 fi
 
-# Execute claude with system prompt (if any) and all user arguments
-exec claude "${CLAUDE_ARGS[@]}" "$@"
+# Determine which command to run (default: claude)
+DCLAUDE_CMD="${DCLAUDE_COMMAND:-claude}"
+
+# Execute command with system prompt (if any) and all user arguments
+exec "$DCLAUDE_CMD" "${CLAUDE_ARGS[@]}" "$@"

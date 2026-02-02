@@ -54,6 +54,7 @@ type Config struct {
 	Mode              string
 	Provider          string
 	Extensions        string
+	Command           string
 }
 
 // RunSpec specifies how to run a container/workspace

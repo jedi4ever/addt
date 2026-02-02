@@ -45,6 +45,13 @@ Environment Variables:
   DCLAUDE_FIREWALL            Enable network firewall (default: false, requires --cap-add=NET_ADMIN)
   DCLAUDE_FIREWALL_MODE       Firewall mode: strict, permissive, off (default: strict)
   DCLAUDE_MODE                Execution mode: container or shell (default: container)
+  DCLAUDE_EXTENSIONS          Extensions to install at build time (e.g., gastown,tessl)
+  DCLAUDE_COMMAND             Command to run instead of claude (e.g., gt for gastown)
+
+Build Command:
+  dclaude build [--build-arg KEY=VALUE]...
+                              Build the container image with optional build args
+                              Example: dclaude build --build-arg DCLAUDE_EXTENSIONS=gastown
 
 Examples:
   dclaude --dhelp
@@ -53,5 +60,6 @@ Examples:
   dclaude --yolo "Refactor this entire codebase"
   dclaude --help              # Shows Claude Code's help
   dclaude shell
+  DCLAUDE_COMMAND=gt dclaude  # Run gastown instead of claude
 `, version)
 }

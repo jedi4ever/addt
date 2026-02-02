@@ -98,6 +98,7 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		Mode:              cfg.Mode,
 		Provider:          cfg.Provider,
 		Extensions:        cfg.Extensions,
+		Command:           cfg.Command,
 	}
 
 	// Create provider

@@ -182,7 +182,10 @@ Gastown provides multi-agent orchestration for Claude Code:
 # Build with gastown
 dclaude build --build-arg DCLAUDE_EXTENSIONS=gastown
 
-# Use gastown
+# Run gastown instead of claude
+DCLAUDE_COMMAND=gt dclaude
+
+# Or use shell mode
 dclaude shell
 gt --help
 ```
