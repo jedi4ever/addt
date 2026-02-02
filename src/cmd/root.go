@@ -43,21 +43,23 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 				PrintHelp(version)
 			}
 			return
-		case "build":
-			HandleBuildCommand(args[1:], defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
-			return
 		case "containers":
 			// Load config for provider
 			cfg := config.LoadConfig(defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
 			providerCfg := &provider.Config{
-				Provider: cfg.Provider,
+				ExtensionVersions: cfg.ExtensionVersions,
+				NodeVersion:       cfg.NodeVersion,
+				GoVersion:         cfg.GoVersion,
+				UvVersion:         cfg.UvVersion,
+				Provider:          cfg.Provider,
+				Extensions:        cfg.Extensions,
 			}
 			prov, err := NewProvider(cfg.Provider, providerCfg)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 				os.Exit(1)
 			}
-			HandleContainersCommand(prov, args[1:])
+			HandleContainersCommand(prov, providerCfg, args[1:])
 			return
 		case "firewall":
 			HandleFirewallCommand(args[1:])

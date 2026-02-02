@@ -9,6 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -507,7 +508,7 @@ func (p *DockerProvider) GetStatus(cfg *provider.Config, envName string) string 
 	return status
 }
 
-// GenerateContainerName generates a persistent container name based on working directory
+// GenerateContainerName generates a persistent container name based on working directory and extensions
 func (p *DockerProvider) GenerateContainerName() string {
 	workdir, err := os.Getwd()
 	if err != nil {
@@ -529,8 +530,25 @@ func (p *DockerProvider) GenerateContainerName() string {
 		dirname = dirname[:20]
 	}
 
-	// Create hash of full path for uniqueness
-	hash := md5.Sum([]byte(workdir))
+	// Get sorted extensions for consistent naming
+	extensions := strings.Split(p.config.Extensions, ",")
+	for i := range extensions {
+		extensions[i] = strings.TrimSpace(extensions[i])
+	}
+	var validExts []string
+	for _, ext := range extensions {
+		if ext != "" {
+			validExts = append(validExts, ext)
+		}
+	}
+	sort.Strings(validExts)
+	extStr := strings.Join(validExts, ",")
+
+	// Create hash of workdir + extensions for uniqueness
+	// Same workdir + same extensions = same container
+	// Same workdir + different extensions = different container
+	hashInput := workdir + "|" + extStr
+	hash := md5.Sum([]byte(hashInput))
 	hashStr := fmt.Sprintf("%x", hash)[:8]
 
 	return fmt.Sprintf("dclaude-persistent-%s-%s", dirname, hashStr)
@@ -566,70 +584,72 @@ func (p *DockerProvider) BuildIfNeeded(rebuild bool) error {
 		return p.BuildImage(p.embeddedDockerfile, p.embeddedEntrypoint)
 	}
 
-	// Image exists - check if versions match using prefix matching
-	claudeLabel := p.GetImageLabel(p.config.ImageName, "tools.claude.version")
-	nodeLabel := p.GetImageLabel(p.config.ImageName, "tools.node.version")
-
-	needsRebuild := false
-	// Claude version: use prefix matching unless "latest"
-	claudeVersion := p.getExtensionVersion("claude")
-	if claudeVersion != "latest" && claudeLabel != "" {
-		if !strings.HasPrefix(claudeLabel, claudeVersion) {
-			fmt.Printf("Claude version mismatch: image has %s, requested %s\n", claudeLabel, claudeVersion)
-			needsRebuild = true
-		}
-	}
-	// Node version: use prefix matching (e.g., "20" matches "20.20.0")
-	if nodeLabel != "" && !strings.HasPrefix(nodeLabel, p.config.NodeVersion) {
-		fmt.Printf("Node version mismatch: image has %s, requested %s\n", nodeLabel, p.config.NodeVersion)
-		needsRebuild = true
-	}
-
-	if needsRebuild {
-		fmt.Println("Rebuilding image with new versions...")
-		cmd := exec.Command("docker", "rmi", p.config.ImageName)
-		cmd.Run()
-		return p.BuildImage(p.embeddedDockerfile, p.embeddedEntrypoint)
-	}
-
-	// Image exists with correct versions - no build needed
+	// Image exists with matching tag - versions are encoded in tag, no rebuild needed
 	return nil
 }
 
-// DetermineImageName determines the appropriate Docker image name based on config
+// DetermineImageName determines the appropriate Docker image name based on installed extensions
 func (p *DockerProvider) DetermineImageName() string {
-	claudeVersion := p.getExtensionVersion("claude")
+	// Parse extensions list (comma-separated)
+	extensions := strings.Split(p.config.Extensions, ",")
+	for i := range extensions {
+		extensions[i] = strings.TrimSpace(extensions[i])
+	}
 
-	// Handle dist-tags (latest, stable, next)
-	if claudeVersion == "latest" || claudeVersion == "stable" || claudeVersion == "next" {
-		// Query npm registry for the version pointed to by this tag
-		npmVersion := p.getNpmVersionByTag(claudeVersion)
-		if npmVersion != "" {
-			// Update config with resolved version (needed for BuildIfNeeded checks)
-			p.setExtensionVersion("claude", npmVersion)
-			// Check if we already have an image with this version
-			existingImage := p.FindImageByLabel("tools.claude.version", npmVersion)
-			if existingImage != "" {
-				return existingImage
-			}
-			return fmt.Sprintf("dclaude:claude-%s", npmVersion)
+	// Filter empty entries and sort alphabetically for consistent naming
+	var validExts []string
+	for _, ext := range extensions {
+		if ext != "" {
+			validExts = append(validExts, ext)
 		}
-		return fmt.Sprintf("dclaude:%s", claudeVersion)
+	}
+	sort.Strings(validExts)
+
+	// Build tag parts: ext1-version1_ext2-version2
+	var tagParts []string
+	for _, ext := range validExts {
+		version := p.resolveExtensionVersion(ext)
+		tagParts = append(tagParts, fmt.Sprintf("%s-%s", ext, version))
 	}
 
-	// Specific version requested - validate it exists
-	if !p.validateNpmVersion(claudeVersion) {
-		fmt.Printf("Error: Claude Code version %s does not exist in npm\n", claudeVersion)
-		fmt.Println("Available versions: https://www.npmjs.com/package/@anthropic-ai/claude-code?activeTab=versions")
-		os.Exit(1)
+	// Join with underscore
+	tag := strings.Join(tagParts, "_")
+	if tag == "" {
+		tag = "base"
 	}
 
-	// Check if image exists
-	existingImage := p.FindImageByLabel("tools.claude.version", claudeVersion)
-	if existingImage != "" {
-		return existingImage
+	// Check if image already exists with this exact tag
+	imageName := fmt.Sprintf("dclaude:%s", tag)
+	if p.ImageExists(imageName) {
+		return imageName
 	}
-	return fmt.Sprintf("dclaude:claude-%s", claudeVersion)
+
+	return imageName
+}
+
+// resolveExtensionVersion resolves the version for an extension, handling dist-tags
+func (p *DockerProvider) resolveExtensionVersion(extName string) string {
+	version := p.getExtensionVersion(extName)
+
+	// For claude extension, handle npm dist-tags (latest, stable, next)
+	if extName == "claude" && (version == "latest" || version == "stable" || version == "next") {
+		npmVersion := p.getNpmVersionByTag(version)
+		if npmVersion != "" {
+			p.setExtensionVersion(extName, npmVersion)
+			return npmVersion
+		}
+	}
+
+	// For claude with specific version, validate it exists
+	if extName == "claude" && version != "latest" && version != "stable" && version != "next" {
+		if !p.validateNpmVersion(version) {
+			fmt.Printf("Error: Claude Code version %s does not exist in npm\n", version)
+			fmt.Println("Available versions: https://www.npmjs.com/package/@anthropic-ai/claude-code?activeTab=versions")
+			os.Exit(1)
+		}
+	}
+
+	return version
 }
 
 // getExtensionVersion returns the version for an extension, defaulting to "stable" for claude

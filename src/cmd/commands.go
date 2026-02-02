@@ -3,18 +3,21 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/jedi4ever/dclaude/provider"
 )
 
 // HandleContainersCommand handles the containers subcommand using a provider
-func HandleContainersCommand(prov provider.Provider, args []string) {
+func HandleContainersCommand(prov provider.Provider, cfg *provider.Config, args []string) {
 	if len(args) == 0 {
 		args = []string{"list"}
 	}
 
 	action := args[0]
 	switch action {
+	case "build":
+		handleBuildSubcommand(prov, cfg, args[1:])
 	case "list", "ls":
 		envs, err := prov.List()
 		if err != nil {
@@ -61,13 +64,55 @@ func HandleContainersCommand(prov provider.Provider, args []string) {
 		}
 		fmt.Println("✓ Cleaned")
 	default:
-		fmt.Println(`Usage: dclaude containers [list|stop|remove|clean]
+		fmt.Println(`Usage: dclaude containers [build|list|stop|remove|clean]
 
 Commands:
+  build       - Build the container image
   list, ls    - List all persistent environments
   stop <name> - Stop a persistent environment
   remove <name> - Remove a persistent environment
   clean       - Remove all persistent environments`)
+		os.Exit(1)
+	}
+}
+
+// handleBuildSubcommand handles the build subcommand within containers
+func handleBuildSubcommand(prov provider.Provider, cfg *provider.Config, args []string) {
+	// Parse --build-arg flags
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--build-arg" && i+1 < len(args) {
+			parts := strings.SplitN(args[i+1], "=", 2)
+			if len(parts) == 2 {
+				key, val := parts[0], parts[1]
+				switch {
+				case key == "DCLAUDE_EXTENSIONS":
+					cfg.Extensions = val
+				case key == "NODE_VERSION":
+					cfg.NodeVersion = val
+				case key == "GO_VERSION":
+					cfg.GoVersion = val
+				case key == "UV_VERSION":
+					cfg.UvVersion = val
+				case strings.HasSuffix(key, "_VERSION"):
+					// Per-extension versions (e.g., CLAUDE_VERSION, CODEX_VERSION)
+					extName := strings.TrimSuffix(key, "_VERSION")
+					extName = strings.ToLower(extName)
+					if cfg.ExtensionVersions == nil {
+						cfg.ExtensionVersions = make(map[string]string)
+					}
+					cfg.ExtensionVersions[extName] = val
+				}
+			}
+			i++ // Skip next arg
+		}
+	}
+
+	// Determine image name
+	cfg.ImageName = prov.DetermineImageName()
+
+	// Always rebuild when using build command
+	if err := prov.BuildIfNeeded(true); err != nil {
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 }

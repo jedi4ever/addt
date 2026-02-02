@@ -21,13 +21,14 @@ Version: %s
 Usage: dclaude [options] [prompt]
 
 Commands:
-  shell                       Open bash shell in environment
-  containers [list|stop|rm|clean]  Manage persistent environments
-  firewall [list|add|remove|reset] Manage network firewall domains
-  --update                    Check for and install updates
-  --rebuild                   Rebuild the environment (Docker only)
-  --dversion                  Show dclaude version
-  --dhelp                     Show this help
+  shell                              Open bash shell in environment
+  containers build [--build-arg ...] Build the container image
+  containers [list|stop|rm|clean]    Manage persistent environments
+  firewall [list|add|remove|reset]   Manage network firewall domains
+  --update                           Check for and install updates
+  --rebuild                          Rebuild the environment (Docker only)
+  --dversion                         Show dclaude version
+  --dhelp                            Show this help
 
 `, version)
 
@@ -71,9 +72,9 @@ Per-Extension Configuration:
   DCLAUDE_<EXT>_MOUNT_CONFIG  Mount extension config dir (e.g., DCLAUDE_CLAUDE_MOUNT_CONFIG=false)
 
 Build Command:
-  dclaude build [--build-arg KEY=VALUE]...
+  dclaude containers build [--build-arg KEY=VALUE]...
                               Build the container image with optional build args
-                              Example: dclaude build --build-arg DCLAUDE_EXTENSIONS=gastown
+                              Example: dclaude containers build --build-arg DCLAUDE_EXTENSIONS=gastown
 
 Examples:
   dclaude --dhelp
