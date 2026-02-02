@@ -1,10 +1,20 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+
+	"github.com/jedi4ever/dclaude/provider/docker"
+)
 
 // PrintHelp displays usage information
 func PrintHelp(version string) {
-	fmt.Printf(`dclaude - Run Claude Code in containerized environments
+	PrintHelpWithFlags(version, "", "")
+}
+
+// PrintHelpWithFlags displays usage information with extension-specific flags
+func PrintHelpWithFlags(version, imageName, command string) {
+	fmt.Printf(`dclaude - Run AI coding agents in containerized environments
 
 Version: %s
 
@@ -19,11 +29,20 @@ Commands:
   --dversion                  Show dclaude version
   --dhelp                     Show this help
 
-Options:
-  All options are passed to Claude Code. Additionally:
-  --yolo                      Bypass all permission checks (alias for --dangerously-skip-permissions)
+`, version)
 
-Environment Variables:
+	// Try to get extension-specific flags
+	if imageName != "" && command != "" {
+		printExtensionFlags(imageName, command)
+	} else {
+		// Fallback to generic options
+		fmt.Println(`Options:
+  All options are passed to the agent. Generic flags transformed by extensions:
+  --yolo                      Bypass permission checks (transformed by extension's args.sh)
+`)
+	}
+
+	fmt.Print(`Environment Variables:
   DCLAUDE_PROVIDER            Provider type: docker or daytona (default: docker)
   DCLAUDE_NODE_VERSION        Node.js version (default: 22)
   DCLAUDE_GO_VERSION          Go version (default: latest)
@@ -59,10 +78,43 @@ Build Command:
 Examples:
   dclaude --dhelp
   dclaude "Fix the bug in app.js"
-  dclaude --model opus "Explain this codebase"
   dclaude --yolo "Refactor this entire codebase"
-  dclaude --help              # Shows Claude Code's help
+  dclaude --help              # Shows agent's help
   dclaude shell
-  DCLAUDE_COMMAND=gt dclaude  # Run gastown instead of claude
-`, version)
+  DCLAUDE_COMMAND=codex dclaude   # Run Codex instead of Claude
+  DCLAUDE_COMMAND=gemini dclaude  # Run Gemini instead of Claude
+`)
+}
+
+// printExtensionFlags queries and prints flags for the active extension
+func printExtensionFlags(imageName, command string) {
+	// Create a minimal docker provider to query extension flags
+	p := &docker.DockerProvider{}
+	flags := p.GetExtensionFlags(imageName, command)
+
+	if len(flags) > 0 {
+		fmt.Printf("Options (%s):\n", command)
+		fmt.Println("  Generic flags (transformed by extension's args.sh):")
+		fmt.Println("  --yolo                      Bypass permission checks")
+		fmt.Println()
+		fmt.Printf("  Extension-specific flags (%s):\n", command)
+		for _, flag := range flags {
+			// Format flag with padding
+			fmt.Printf("  %-25s %s\n", flag.Flag, flag.Description)
+		}
+		fmt.Println()
+	} else {
+		fmt.Println(`Options:
+  All options are passed to the agent. Generic flags transformed by extensions:
+  --yolo                      Bypass permission checks (transformed by extension's args.sh)
+`)
+	}
+}
+
+// GetActiveCommand returns the active command from env or default
+func GetActiveCommand() string {
+	if cmd := os.Getenv("DCLAUDE_COMMAND"); cmd != "" {
+		return cmd
+	}
+	return "claude"
 }

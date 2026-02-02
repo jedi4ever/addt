@@ -25,7 +25,23 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 			fmt.Printf("dclaude version %s\n", version)
 			return
 		case "--dhelp":
-			PrintHelp(version)
+			// Try to show help with extension-specific flags
+			cfg := config.LoadConfig(defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
+			providerCfg := &provider.Config{
+				ExtensionVersions: cfg.ExtensionVersions,
+				NodeVersion:       cfg.NodeVersion,
+				Provider:          cfg.Provider,
+				Extensions:        cfg.Extensions,
+			}
+			prov, err := NewProvider(cfg.Provider, providerCfg)
+			if err == nil {
+				prov.Initialize(providerCfg)
+				imageName := prov.DetermineImageName()
+				command := GetActiveCommand()
+				PrintHelpWithFlags(version, imageName, command)
+			} else {
+				PrintHelp(version)
+			}
 			return
 		case "build":
 			HandleBuildCommand(args[1:], defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
@@ -66,12 +82,8 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		args = args[1:]
 	}
 
-	// Replace --yolo with --dangerously-skip-permissions
-	for i, arg := range args {
-		if arg == "--yolo" {
-			args[i] = "--dangerously-skip-permissions"
-		}
-	}
+	// Note: --yolo and other agent-specific arg transformations are handled
+	// by each extension's args.sh script in the container
 
 	// Convert main config to provider config
 	providerCfg := &provider.Config{

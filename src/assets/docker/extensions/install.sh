@@ -150,6 +150,56 @@ yaml_get_mounts_json() {
     echo -n "]"
 }
 
+# Parse flags from YAML (returns JSON array of {flag, description} objects)
+yaml_get_flags_json() {
+    local file="$1"
+    local in_flags=false
+    local current_flag=""
+    local current_desc=""
+    local first=true
+
+    echo -n "["
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^flags: ]]; then
+            if [[ "$line" =~ \[\] ]]; then
+                echo -n "]"
+                return
+            fi
+            in_flags=true
+            continue
+        fi
+        if $in_flags; then
+            # Stop if we hit another top-level key
+            if [[ "$line" =~ ^[a-z] ]] && [[ ! "$line" =~ ^[[:space:]] ]]; then
+                break
+            fi
+            # Parse flag
+            if [[ "$line" =~ ^[[:space:]]*-?[[:space:]]*flag:[[:space:]]*[\"\']*([^\"\']+)[\"\']*$ ]]; then
+                current_flag="${BASH_REMATCH[1]}"
+            fi
+            # Parse description
+            if [[ "$line" =~ ^[[:space:]]*description:[[:space:]]*[\"\']*([^\"\']+)[\"\']*$ ]]; then
+                current_desc="${BASH_REMATCH[1]}"
+                # Output the flag entry
+                if [ "$first" = true ]; then
+                    first=false
+                else
+                    echo -n ","
+                fi
+                # Escape quotes in flag and description
+                current_flag=$(echo "$current_flag" | sed 's/"/\\"/g')
+                current_desc=$(echo "$current_desc" | sed 's/"/\\"/g')
+                printf '{"flag":"%s","description":"%s"}' "$current_flag" "$current_desc"
+                current_flag=""
+                current_desc=""
+            fi
+        fi
+    done < "$file"
+
+    echo -n "]"
+}
+
 # Build installation order with dependencies
 declare -A installed
 declare -a install_order
@@ -248,10 +298,11 @@ echo "Extensions: Writing metadata to $METADATA_FILE"
         description=$(yaml_get "$config" "description")
         entrypoint=$(yaml_get "$config" "entrypoint")
         mounts=$(yaml_get_mounts_json "$config")
+        flags=$(yaml_get_flags_json "$config")
 
         [ "$first" = true ] && first=false || echo ","
-        printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","mounts":%s}' \
-            "$ext" "$name" "$description" "$entrypoint" "$mounts"
+        printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","mounts":%s,"flags":%s}' \
+            "$ext" "$name" "$description" "$entrypoint" "$mounts" "$flags"
     done
     echo '}}'
 } > "$METADATA_FILE"

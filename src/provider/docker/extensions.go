@@ -14,12 +14,19 @@ type ExtensionMount struct {
 	Target string `json:"target"`
 }
 
+// ExtensionFlag represents a CLI flag for an extension
+type ExtensionFlag struct {
+	Flag        string `json:"flag"`
+	Description string `json:"description"`
+}
+
 // ExtensionMetadata represents metadata for an installed extension
 type ExtensionMetadata struct {
 	Name        string           `json:"name"`
 	Description string           `json:"description"`
 	Entrypoint  string           `json:"entrypoint"`
 	Mounts      []ExtensionMount `json:"mounts"`
+	Flags       []ExtensionFlag  `json:"flags"`
 }
 
 // ExtensionsConfig represents the extensions.json file structure
@@ -111,4 +118,39 @@ func (p *DockerProvider) AddExtensionMounts(dockerArgs []string, imageName, home
 		}
 	}
 	return dockerArgs
+}
+
+// GetExtensionMetadata reads all extension metadata from the image
+func (p *DockerProvider) GetExtensionMetadata(imageName string) map[string]ExtensionMetadata {
+	// Read extensions.json from the image
+	cmd := exec.Command("docker", "run", "--rm", "--entrypoint", "cat", imageName,
+		"/home/claude/.dclaude/extensions.json")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var config ExtensionsConfig
+	if err := json.Unmarshal(output, &config); err != nil {
+		return nil
+	}
+
+	return config.Extensions
+}
+
+// GetExtensionFlags returns flags for a specific extension by entrypoint command
+func (p *DockerProvider) GetExtensionFlags(imageName, command string) []ExtensionFlag {
+	metadata := p.GetExtensionMetadata(imageName)
+	if metadata == nil {
+		return nil
+	}
+
+	// Find extension by entrypoint
+	for _, ext := range metadata {
+		if ext.Entrypoint == command {
+			return ext.Flags
+		}
+	}
+
+	return nil
 }
