@@ -29,24 +29,41 @@ Extensions allow you to add tools and AI agents to your DClaude container image.
 
 ### Building with Extensions
 
-Use the `build` command with `--build-arg` to include extensions:
+Use the `containers build` command with `--build-arg` to include extensions:
 
 ```bash
 # Default build (installs claude extension)
-dclaude build
+dclaude containers build
 
 # Build with gastown (automatically includes claude and beads dependencies)
-dclaude build --build-arg DCLAUDE_EXTENSIONS=gastown
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=gastown
 
 # Build with multiple extensions
-dclaude build --build-arg DCLAUDE_EXTENSIONS=claude,tessl
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=claude,tessl
 
 # Build minimal image with only tessl (no claude)
-dclaude build --build-arg DCLAUDE_EXTENSIONS=tessl
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=tessl
 
 # Via environment variable
-DCLAUDE_EXTENSIONS=gastown dclaude build
+DCLAUDE_EXTENSIONS=gastown dclaude containers build
 ```
+
+### Image Naming Convention
+
+Docker images are automatically named based on the installed extensions and their versions:
+
+```bash
+# Single extension
+dclaude:claude-2.1.17
+
+# Multiple extensions (sorted alphabetically)
+dclaude:claude-2.1.17_codex-latest
+
+# Different combination = different image
+dclaude:gemini-latest_tessl-latest
+```
+
+This ensures that different extension combinations always get their own isolated images.
 
 ### Extension Dependencies
 
@@ -71,6 +88,58 @@ dclaude shell -c "cat ~/.dclaude/extensions.json"
 # Check specific tools
 dclaude shell -c "which gt bd tessl"
 ```
+
+### Symlink-Based Extension Selection
+
+You can create symlinks to the `dclaude` binary with names matching your extensions. When invoked via a symlink, dclaude automatically uses that extension:
+
+```bash
+# Create symlinks
+ln -s dclaude codex
+ln -s dclaude gemini
+ln -s dclaude claude-flow
+
+# Now these are equivalent:
+./codex "help me with this code"           # Uses codex extension
+DCLAUDE_EXTENSIONS=codex dclaude "..."     # Same result
+
+./gemini "explain this function"           # Uses gemini extension
+DCLAUDE_EXTENSIONS=gemini dclaude "..."    # Same result
+```
+
+**How it works:**
+- Detects the binary name from how it was invoked
+- If not "dclaude", sets `DCLAUDE_EXTENSIONS` and `DCLAUDE_COMMAND` to match the binary name
+- Environment variables can still override this behavior
+
+This is useful for:
+- Creating dedicated commands for different AI agents
+- Simplifying workflows when you frequently use a specific agent
+- Installing multiple "binaries" from a single dclaude installation
+
+### Per-Extension Configuration
+
+Each extension can be configured individually via environment variables:
+
+```bash
+# Set version for a specific extension
+DCLAUDE_CLAUDE_VERSION=2.0.0 dclaude containers build
+DCLAUDE_CODEX_VERSION=0.1.0 dclaude containers build
+
+# Disable config directory mounting for an extension
+DCLAUDE_CLAUDE_MOUNT_CONFIG=false dclaude
+
+# Multiple extensions with specific versions
+DCLAUDE_EXTENSIONS=claude,codex \
+  DCLAUDE_CLAUDE_VERSION=2.1.0 \
+  DCLAUDE_CODEX_VERSION=latest \
+  dclaude containers build
+```
+
+| Variable Pattern | Description |
+|-----------------|-------------|
+| `DCLAUDE_<EXT>_VERSION` | Version to install (e.g., `2.1.0`, `latest`, `stable`) |
+| `DCLAUDE_<EXT>_MOUNT_CONFIG` | Mount extension config dirs (`true`/`false`) |
 
 ## Creating Extensions
 
@@ -193,7 +262,7 @@ Setup scripts run once per container session. In persistent mode, they only run 
 
 1. Create the extension directory and files
 2. Build dclaude: `make build`
-3. Build image with extension: `./dist/dclaude build --build-arg DCLAUDE_EXTENSIONS=myextension`
+3. Build image with extension: `./dist/dclaude containers build --build-arg DCLAUDE_EXTENSIONS=myextension`
 4. Verify: `./dist/dclaude shell -c "which mycommand"`
 
 ## Extension Metadata
@@ -235,7 +304,7 @@ You can build images with different AI coding agents and switch between them:
 
 ```bash
 # Build with multiple AI agents
-dclaude build --build-arg DCLAUDE_EXTENSIONS=claude,codex,gemini,copilot
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=claude,codex,gemini,copilot
 
 # Run Claude (default)
 dclaude
@@ -256,18 +325,42 @@ DCLAUDE_COMMAND=amp dclaude
 DCLAUDE_COMMAND=cursor dclaude
 ```
 
+**Using symlinks for dedicated agent commands:**
+
+```bash
+# Create symlinks for each agent
+cd /usr/local/bin  # or wherever dclaude is installed
+ln -s dclaude codex
+ln -s dclaude gemini
+ln -s dclaude copilot
+
+# Build images for each (first run will auto-build)
+codex containers build
+gemini containers build
+
+# Now use them directly
+codex "refactor this function"
+gemini "explain this code"
+```
+
+Each symlink automatically builds and uses its own isolated image (`dclaude:codex-latest`, `dclaude:gemini-latest`, etc.).
+
 ### Cursor Extension
 
 Cursor CLI provides an AI-powered code editor agent:
 
 ```bash
 # Build with cursor only
-dclaude build --build-arg DCLAUDE_EXTENSIONS=cursor
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=cursor
 
 # Run cursor agent
 DCLAUDE_COMMAND=cursor dclaude
 # or
 DCLAUDE_COMMAND=agent dclaude
+
+# Or use symlink
+ln -s dclaude cursor
+./cursor "help me with this code"
 ```
 
 ### Gastown Extension
@@ -276,7 +369,7 @@ Gastown provides multi-agent orchestration for Claude Code:
 
 ```bash
 # Build with gastown
-dclaude build --build-arg DCLAUDE_EXTENSIONS=gastown
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=gastown
 
 # Run gastown instead of claude
 DCLAUDE_COMMAND=gt dclaude
@@ -292,7 +385,7 @@ Tessl is an agent enablement platform with a skills package manager:
 
 ```bash
 # Build with tessl
-dclaude build --build-arg DCLAUDE_EXTENSIONS=tessl
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=tessl
 
 # Use tessl
 dclaude shell

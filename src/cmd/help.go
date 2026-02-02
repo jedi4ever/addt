@@ -39,11 +39,11 @@ Commands:
 		// Fallback to generic options
 		fmt.Println(`Options:
   All options are passed to the agent. Generic flags transformed by extensions:
-  --yolo                      Bypass permission checks (transformed by extension's args.sh)
-`)
+  --yolo                      Bypass permission checks (transformed by extension's args.sh)`)
 	}
 
-	fmt.Print(`Environment Variables:
+	fmt.Print(`
+Environment Variables:
   DCLAUDE_PROVIDER            Provider type: docker or daytona (default: docker)
   DCLAUDE_NODE_VERSION        Node.js version (default: 22)
   DCLAUDE_GO_VERSION          Go version (default: latest)
@@ -95,20 +95,14 @@ func printExtensionFlags(imageName, command string) {
 
 	if len(flags) > 0 {
 		fmt.Printf("Options (%s):\n", command)
-		fmt.Println("  Generic flags (transformed by extension's args.sh):")
-		fmt.Println("  --yolo                      Bypass permission checks")
-		fmt.Println()
-		fmt.Printf("  Extension-specific flags (%s):\n", command)
 		for _, flag := range flags {
-			// Format flag with padding
 			fmt.Printf("  %-25s %s\n", flag.Flag, flag.Description)
 		}
 		fmt.Println()
 	} else {
 		fmt.Println(`Options:
   All options are passed to the agent. Generic flags transformed by extensions:
-  --yolo                      Bypass permission checks (transformed by extension's args.sh)
-`)
+  --yolo                      Bypass permission checks (transformed by extension's args.sh)`)
 	}
 }
 

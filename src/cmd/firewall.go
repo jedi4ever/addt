@@ -289,6 +289,5 @@ to restrict network access to only approved domains.
 Firewall modes:
   strict      - Block all non-whitelisted traffic (default)
   permissive  - Log but allow all traffic (for testing)
-  off         - Disable firewall
-`)
+  off         - Disable firewall`)
 }

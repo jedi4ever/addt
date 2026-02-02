@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/jedi4ever/dclaude/config"
 	"github.com/jedi4ever/dclaude/core"
@@ -12,6 +14,21 @@ import (
 
 // Execute is the main entry point for the CLI
 func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion string, defaultPortRangeStart int) {
+	// Detect binary name for symlink-based extension selection
+	// If binary is named "codex", "gemini", etc. (not "dclaude"), use that as the extension
+	binaryName := filepath.Base(os.Args[0])
+	binaryName = strings.TrimSuffix(binaryName, filepath.Ext(binaryName)) // Remove .exe on Windows
+
+	if binaryName != "dclaude" && binaryName != "" {
+		// Set extension and command based on binary name if not already set
+		if os.Getenv("DCLAUDE_EXTENSIONS") == "" {
+			os.Setenv("DCLAUDE_EXTENSIONS", binaryName)
+		}
+		if os.Getenv("DCLAUDE_COMMAND") == "" {
+			os.Setenv("DCLAUDE_COMMAND", binaryName)
+		}
+	}
+
 	// Parse command line arguments
 	args := os.Args[1:]
 

@@ -272,9 +272,13 @@ dclaude shell -c "git config --list"
 
 ### Container Management
 
-Manage persistent containers (see Persistent Mode section below):
+Manage containers and images:
 
 ```bash
+# Build the container image
+dclaude containers build
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=claude,codex
+
 # List all persistent containers with their status
 dclaude containers list
 dclaude containers ls              # Short form
@@ -291,6 +295,27 @@ dclaude containers clean
 ```
 
 **Note:** Container management commands only work with persistent containers created using `DCLAUDE_PERSISTENT=true`. Ephemeral containers are automatically removed after each run.
+
+### Symlink-Based Extension Selection
+
+Create symlinks to run different AI agents as dedicated commands:
+
+```bash
+# Create symlinks to dclaude
+ln -s /usr/local/bin/dclaude /usr/local/bin/codex
+ln -s /usr/local/bin/dclaude /usr/local/bin/gemini
+
+# Now use them directly (auto-builds on first run)
+codex "help me with this code"     # Uses codex extension
+gemini "explain this function"     # Uses gemini extension
+```
+
+Each symlink automatically:
+- Sets `DCLAUDE_EXTENSIONS` to match the binary name
+- Sets `DCLAUDE_COMMAND` to match the binary name
+- Builds and uses its own isolated image (`dclaude:codex-latest`, etc.)
+
+See [docs/extensions.md](docs/extensions.md) for more details on extensions.
 
 ### Network Firewall
 
@@ -411,7 +436,10 @@ The server will be available at http://localhost:3000
 |----------|---------|-------------|
 | **ANTHROPIC_API_KEY** | *(optional)* | Your Anthropic API key for authentication. Not needed if you've already run `claude login` locally (uses `~/.claude` config) |
 | **GH_TOKEN** | *(optional)* | GitHub personal access token for gh CLI. Required for private repos, PRs, and write operations. Get yours at [github.com/settings/tokens](https://github.com/settings/tokens) |
-| **DCLAUDE_CLAUDE_VERSION** | `stable` | Claude Code version. Use `stable` for production (recommended), `latest` for newest version, or specific version like `2.1.27`. Automatically checks npm registry and reuses existing images |
+| **DCLAUDE_EXTENSIONS** | `claude` | Comma-separated list of extensions to install. Example: `claude,codex,gemini`. See [docs/extensions.md](docs/extensions.md) |
+| **DCLAUDE_COMMAND** | *(auto)* | Command to run instead of default. Example: `codex`, `gemini`, `gt` |
+| **DCLAUDE_<EXT>_VERSION** | `stable`/`latest` | Version for specific extension. Example: `DCLAUDE_CLAUDE_VERSION=2.1.27`, `DCLAUDE_CODEX_VERSION=latest` |
+| **DCLAUDE_<EXT>_MOUNT_CONFIG** | `true` | Mount extension config dirs. Example: `DCLAUDE_CLAUDE_MOUNT_CONFIG=false` |
 | **DCLAUDE_NODE_VERSION** | `20` | Node.js version for the container. Use major version (`18`, `20`, `22`), `lts`, or `current` |
 | **DCLAUDE_GO_VERSION** | `latest` | Go version for the container. Use `latest` for newest stable, or specific version like `1.23.5`, `1.25.6`, etc. |
 | **DCLAUDE_UV_VERSION** | `latest` | UV (Python package manager) version. Use `latest` for newest stable, or specific version like `0.5.11`, `0.9.28`, etc. Supports `uv self update` inside containers. |
@@ -553,6 +581,11 @@ dclaude
 # Use specific Node.js version
 export DCLAUDE_NODE_VERSION=18
 dclaude
+
+# Per-extension versioning
+export DCLAUDE_CLAUDE_VERSION=2.1.27
+export DCLAUDE_CODEX_VERSION=latest
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=claude,codex
 
 # Use stable version (default)
 dclaude  # Automatically uses stable version
