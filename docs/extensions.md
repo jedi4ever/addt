@@ -141,6 +141,55 @@ DCLAUDE_EXTENSIONS=claude,codex \
 | `DCLAUDE_<EXT>_VERSION` | Version to install (e.g., `2.1.0`, `latest`, `stable`) |
 | `DCLAUDE_<EXT>_MOUNT_CONFIG` | Mount extension config dirs (`true`/`false`) |
 
+### Automatic Environment Variable Forwarding
+
+Extensions can declare which environment variables they need in their `config.yaml`. When running dclaude, these variables are automatically forwarded from your host to the container - no need to specify them manually.
+
+**Example extension configs:**
+
+```yaml
+# claude extension
+env_vars:
+  - ANTHROPIC_API_KEY
+
+# codex extension
+env_vars:
+  - OPENAI_API_KEY
+
+# gemini extension
+env_vars:
+  - GEMINI_API_KEY
+  - GOOGLE_API_KEY
+```
+
+**How it works:**
+
+1. When you build an image, each extension's `env_vars` are collected into `~/.dclaude/extensions.json`
+2. At runtime, dclaude reads this metadata and automatically forwards listed variables from host to container
+3. Variables are only forwarded if they're set on the host (empty values are skipped)
+
+**Benefits:**
+
+- No need to remember which API keys each tool needs
+- Just set the variable on your host once, it's automatically available in containers
+- Different extensions in the same image can have different env vars
+- Users can still add additional variables via `DCLAUDE_FORWARD_ENV`
+
+**Example:**
+
+```bash
+# Just set your API keys on the host
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+
+# Build with both extensions
+dclaude containers build --build-arg DCLAUDE_EXTENSIONS=claude,codex
+
+# Run - both API keys are automatically forwarded
+dclaude "help me with this code"        # Uses ANTHROPIC_API_KEY
+DCLAUDE_COMMAND=codex dclaude "..."     # Uses OPENAI_API_KEY
+```
+
 ## Creating Extensions
 
 Extensions are stored in `src/assets/docker/extensions/` as directories containing:
@@ -165,6 +214,9 @@ description: Short description of what the extension does
 entrypoint: mycommand
 dependencies:
   - beads           # Other extensions this depends on
+env_vars:
+  - MY_API_KEY      # Environment variables to forward from host
+  - MY_SECRET_TOKEN
 mounts:
   - source: ~/.myextension
     target: /home/claude/.myextension
@@ -178,6 +230,7 @@ mounts:
 | `description` | Yes | Brief description |
 | `entrypoint` | Yes | Main command provided by extension |
 | `dependencies` | No | List of other extensions required |
+| `env_vars` | No | Environment variables to automatically forward from host |
 | `mounts` | No | Directories to mount from host to container |
 
 ### Extension Files
@@ -272,13 +325,18 @@ When extensions are installed, metadata is written to `~/.dclaude/extensions.jso
 ```json
 {
   "extensions": {
-    "beads": {
-      "name": "beads",
-      "description": "Git-backed issue tracker for AI agents",
-      "entrypoint": "bd",
+    "claude": {
+      "name": "claude",
+      "description": "Claude Code - AI coding assistant by Anthropic",
+      "entrypoint": "claude",
       "mounts": [
-        {"source": "~/.beads", "target": "/home/claude/.beads"}
-      ]
+        {"source": "~/.claude", "target": "/home/claude/.claude"},
+        {"source": "~/.claude.json", "target": "/home/claude/.claude.json"}
+      ],
+      "flags": [
+        {"flag": "--yolo", "description": "Bypass permission checks"}
+      ],
+      "env_vars": ["ANTHROPIC_API_KEY"]
     },
     "gastown": {
       "name": "gastown",
@@ -286,7 +344,8 @@ When extensions are installed, metadata is written to `~/.dclaude/extensions.jso
       "entrypoint": "gt",
       "mounts": [
         {"source": "~/.gastown", "target": "/home/claude/.gastown"}
-      ]
+      ],
+      "env_vars": ["ANTHROPIC_API_KEY"]
     }
   }
 }
@@ -295,6 +354,7 @@ When extensions are installed, metadata is written to `~/.dclaude/extensions.jso
 This metadata is used at runtime to:
 - Mount extension directories from the host
 - Discover available extensions and their entrypoints
+- Automatically forward required environment variables
 
 ## Examples
 

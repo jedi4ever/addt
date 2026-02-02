@@ -28,6 +28,7 @@ type ExtensionMetadata struct {
 	AutoMount   *bool            `json:"auto_mount,omitempty"` // nil or true = auto mount, false = only if explicitly enabled
 	Mounts      []ExtensionMount `json:"mounts"`
 	Flags       []ExtensionFlag  `json:"flags"`
+	EnvVars     []string         `json:"env_vars"` // Environment variables needed by this extension
 }
 
 // ExtensionsConfig represents the extensions.json file structure
@@ -172,4 +173,28 @@ func (p *DockerProvider) GetExtensionFlags(imageName, command string) []Extensio
 	}
 
 	return nil
+}
+
+// GetExtensionEnvVars returns all unique environment variables needed by installed extensions
+func (p *DockerProvider) GetExtensionEnvVars(imageName string) []string {
+	metadata := p.GetExtensionMetadata(imageName)
+	if metadata == nil {
+		return nil
+	}
+
+	// Use a map to deduplicate env vars
+	envVarSet := make(map[string]bool)
+	for _, ext := range metadata {
+		for _, envVar := range ext.EnvVars {
+			envVarSet[envVar] = true
+		}
+	}
+
+	// Convert to slice
+	var envVars []string
+	for envVar := range envVarSet {
+		envVars = append(envVars, envVar)
+	}
+
+	return envVars
 }

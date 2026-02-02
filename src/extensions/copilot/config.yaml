@@ -3,6 +3,9 @@ description: GitHub Copilot CLI - AI coding assistant by GitHub
 entrypoint: copilot
 default_version: latest
 dependencies: []
+env_vars:
+  - GH_TOKEN
+  - GITHUB_TOKEN
 mounts:
   - source: ~/.copilot
     target: /home/claude/.copilot

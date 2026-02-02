@@ -141,7 +141,15 @@ func (o *Orchestrator) buildPorts() []provider.PortMapping {
 func (o *Orchestrator) buildEnvironment() map[string]string {
 	env := make(map[string]string)
 
-	// Pass configured environment variables
+	// Get extension-required environment variables from the image
+	extensionEnvVars := o.provider.GetExtensionEnvVars(o.config.ImageName)
+	for _, varName := range extensionEnvVars {
+		if value := os.Getenv(varName); value != "" {
+			env[varName] = value
+		}
+	}
+
+	// Pass user-configured environment variables (can override extension vars)
 	for _, varName := range o.config.EnvVars {
 		if value := os.Getenv(varName); value != "" {
 			env[varName] = value

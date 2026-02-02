@@ -4,6 +4,8 @@ entrypoint: claude
 default_version: stable
 auto_mount: true
 dependencies: []
+env_vars:
+  - ANTHROPIC_API_KEY
 mounts:
   - source: ~/.claude
     target: /home/claude/.claude

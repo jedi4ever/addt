@@ -3,6 +3,9 @@ description: Gemini CLI - AI coding agent by Google
 entrypoint: gemini
 default_version: latest
 dependencies: []
+env_vars:
+  - GEMINI_API_KEY
+  - GOOGLE_API_KEY
 mounts:
   - source: ~/.gemini
     target: /home/claude/.gemini

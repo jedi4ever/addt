@@ -3,6 +3,12 @@ description: Kiro CLI - AI-powered development agent by AWS
 entrypoint: kiro-cli
 default_version: latest
 dependencies: []
+env_vars:
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+  - AWS_SESSION_TOKEN
+  - AWS_REGION
+  - AWS_DEFAULT_REGION
 mounts:
   - source: ~/.kiro
     target: /home/claude/.kiro

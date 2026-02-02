@@ -5,6 +5,8 @@ default_version: latest
 dependencies:
   - claude
   - beads
+env_vars:
+  - ANTHROPIC_API_KEY
 mounts:
   - source: ~/.gastown
     target: /home/claude/.gastown

@@ -447,6 +447,13 @@ func (p *DaytonaProvider) DetermineImageName() string {
 	return ""
 }
 
+// GetExtensionEnvVars returns extension-required environment variables
+// For Daytona, we don't have local image metadata, so return nil
+// TODO: Read extension config from sandbox or config file
+func (p *DaytonaProvider) GetExtensionEnvVars(imageName string) []string {
+	return nil
+}
+
 // loadEnvFile reads an env file and converts it to --env flags
 // Daytona doesn't support --env-file, so we parse it manually
 func (p *DaytonaProvider) loadEnvFile(envFilePath string) []string {

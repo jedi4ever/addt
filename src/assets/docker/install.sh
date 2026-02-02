@@ -103,6 +103,24 @@ yaml_get_deps() {
     yaml_get_list "$1" "dependencies"
 }
 
+# Parse env_vars from YAML (returns JSON array of strings)
+yaml_get_env_vars_json() {
+    local file="$1"
+    local items=$(yaml_get_list "$file" "env_vars")
+    local first=true
+
+    echo -n "["
+    for item in $items; do
+        if [ "$first" = true ]; then
+            first=false
+        else
+            echo -n ","
+        fi
+        printf '"%s"' "$item"
+    done
+    echo -n "]"
+}
+
 # Parse mounts from YAML (returns JSON array of {source, target} objects)
 yaml_get_mounts_json() {
     local file="$1"
@@ -313,15 +331,16 @@ echo "Extensions: Writing metadata to $METADATA_FILE"
         auto_mount=$(yaml_get "$config" "auto_mount")
         mounts=$(yaml_get_mounts_json "$config")
         flags=$(yaml_get_flags_json "$config")
+        env_vars=$(yaml_get_env_vars_json "$config")
 
         [ "$first" = true ] && first=false || echo ","
         # Build JSON with optional auto_mount field
         if [ -n "$auto_mount" ]; then
-            printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","auto_mount":%s,"mounts":%s,"flags":%s}' \
-                "$ext" "$name" "$description" "$entrypoint" "$auto_mount" "$mounts" "$flags"
+            printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","auto_mount":%s,"mounts":%s,"flags":%s,"env_vars":%s}' \
+                "$ext" "$name" "$description" "$entrypoint" "$auto_mount" "$mounts" "$flags" "$env_vars"
         else
-            printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","mounts":%s,"flags":%s}' \
-                "$ext" "$name" "$description" "$entrypoint" "$mounts" "$flags"
+            printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","mounts":%s,"flags":%s,"env_vars":%s}' \
+                "$ext" "$name" "$description" "$entrypoint" "$mounts" "$flags" "$env_vars"
         fi
     done
     echo '}}'

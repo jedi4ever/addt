@@ -27,6 +27,9 @@ type Provider interface {
 	// Status information
 	GetStatus(cfg *Config, envName string) string
 	GetName() string // "docker" or "daytona"
+
+	// Extension metadata
+	GetExtensionEnvVars(imageName string) []string
 }
 
 // Config holds provider configuration
