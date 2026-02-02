@@ -1,0 +1,7 @@
+name: amp
+description: Amp - AI coding agent by Sourcegraph
+entrypoint: amp
+dependencies: []
+mounts:
+  - source: ~/.amp
+    target: /home/claude/.amp

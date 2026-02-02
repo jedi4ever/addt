@@ -1,0 +1,7 @@
+name: gemini
+description: Gemini CLI - AI coding agent by Google
+entrypoint: gemini
+dependencies: []
+mounts:
+  - source: ~/.gemini
+    target: /home/claude/.gemini

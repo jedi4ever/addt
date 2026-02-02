@@ -1,0 +1,7 @@
+name: copilot
+description: GitHub Copilot CLI - AI coding assistant by GitHub
+entrypoint: copilot
+dependencies: []
+mounts:
+  - source: ~/.copilot
+    target: /home/claude/.copilot

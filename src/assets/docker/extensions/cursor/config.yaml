@@ -1,0 +1,7 @@
+name: cursor
+description: Cursor CLI Agent - AI-powered code editor agent
+entrypoint: cursor
+dependencies: []
+mounts:
+  - source: ~/.cursor
+    target: /home/claude/.cursor

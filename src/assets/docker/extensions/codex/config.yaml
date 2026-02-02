@@ -1,0 +1,8 @@
+name: codex
+description: OpenAI Codex CLI - AI coding assistant by OpenAI
+entrypoint: codex
+dependencies: []
+mounts:
+  - source: ~/.codex
+    target: /home/claude/.codex
+
