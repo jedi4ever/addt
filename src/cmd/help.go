@@ -30,7 +30,8 @@ Flags:
   --addt-version                     Show addt version
   --addt-list-extensions             List available extensions
   --addt-update                      Check for and install updates
-  --addt-rebuild                     Rebuild the container image
+  --addt-rebuild                     Rebuild the extension image (uses cached base)
+  --addt-rebuild-base                Rebuild both base and extension images
   --addt-help                        Show this help
 
 `, version)

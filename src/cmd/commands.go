@@ -119,8 +119,9 @@ func HandleBuildCommand(prov provider.Provider, cfg *provider.Config, args []str
 	// Determine image name
 	cfg.ImageName = prov.DetermineImageName()
 
-	// Always rebuild when using build command
-	if err := prov.BuildIfNeeded(true); err != nil {
+	// Always rebuild extension image when using build command
+	// Base image is only rebuilt if it doesn't exist
+	if err := prov.BuildIfNeeded(true, false); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}

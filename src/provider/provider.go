@@ -21,7 +21,7 @@ type Provider interface {
 	GenerateEphemeralName() string
 
 	// Environment preparation (Docker: builds images, Daytona: no-op)
-	BuildIfNeeded(rebuild bool) error
+	BuildIfNeeded(rebuild bool, rebuildBase bool) error
 	DetermineImageName() string
 
 	// Status information

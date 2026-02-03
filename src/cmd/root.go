@@ -145,7 +145,7 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 					os.Exit(1)
 				}
 				providerCfg.ImageName = prov.DetermineImageName()
-				if err := prov.BuildIfNeeded(false); err != nil {
+				if err := prov.BuildIfNeeded(false, false); err != nil {
 					fmt.Printf("Error: %v\n", err)
 					os.Exit(1)
 				}
@@ -189,11 +189,20 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 	// Load configuration
 	cfg := config.LoadConfig(defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
 
-	// Check for --addt-rebuild flag
+	// Check for --addt-rebuild and --addt-rebuild-base flags
 	rebuildImage := false
-	if len(args) > 0 && args[0] == "--addt-rebuild" {
-		rebuildImage = true
-		args = args[1:]
+	rebuildBase := false
+	for len(args) > 0 {
+		if args[0] == "--addt-rebuild" {
+			rebuildImage = true
+			args = args[1:]
+		} else if args[0] == "--addt-rebuild-base" {
+			rebuildBase = true
+			rebuildImage = true // Rebuilding base also requires extension rebuild
+			args = args[1:]
+		} else {
+			break
+		}
 	}
 
 	// Note: --yolo and other agent-specific arg transformations are handled
@@ -243,7 +252,7 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 
 	// Determine image name and build if needed (provider-specific)
 	providerCfg.ImageName = prov.DetermineImageName()
-	if err := prov.BuildIfNeeded(rebuildImage); err != nil {
+	if err := prov.BuildIfNeeded(rebuildImage, rebuildBase); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}

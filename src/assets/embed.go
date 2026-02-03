@@ -9,6 +9,9 @@ import _ "embed"
 //go:embed docker/Dockerfile
 var DockerDockerfile []byte
 
+//go:embed docker/Dockerfile.base
+var DockerDockerfileBase []byte
+
 //go:embed docker/docker-entrypoint.sh
 var DockerEntrypoint []byte
 

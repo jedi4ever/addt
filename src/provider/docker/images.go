@@ -48,9 +48,102 @@ func (p *DockerProvider) GetImageLabel(imageName, label string) string {
 	return strings.TrimSpace(string(output))
 }
 
-// BuildImage builds the Docker image
+// GetBaseImageName returns the base image name for the current config
+func (p *DockerProvider) GetBaseImageName() string {
+	// Get current user info for UID/GID in tag
+	currentUser, err := user.Current()
+	if err != nil {
+		return "addt-base:latest"
+	}
+	// Base image is tagged with node version and UID to ensure compatibility
+	return fmt.Sprintf("addt-base:node%s-uid%s", p.config.NodeVersion, currentUser.Uid)
+}
+
+// BuildBaseImage builds the base Docker image (contains Node, Go, UV, system packages)
+func (p *DockerProvider) BuildBaseImage() error {
+	baseImageName := p.GetBaseImageName()
+	fmt.Printf("Building base image %s...\n", baseImageName)
+
+	// Create temp directory for build context
+	buildDir, err := os.MkdirTemp("", "addt-base-build-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp build directory: %w", err)
+	}
+	defer os.RemoveAll(buildDir)
+
+	// Write embedded Dockerfile.base
+	dockerfilePath := filepath.Join(buildDir, "Dockerfile.base")
+	if err := os.WriteFile(dockerfilePath, p.embeddedDockerfileBase, 0644); err != nil {
+		return fmt.Errorf("failed to write Dockerfile.base: %w", err)
+	}
+
+	// Write embedded entrypoint script
+	entrypointPath := filepath.Join(buildDir, "docker-entrypoint.sh")
+	if err := os.WriteFile(entrypointPath, p.embeddedEntrypoint, 0755); err != nil {
+		return fmt.Errorf("failed to write docker-entrypoint.sh: %w", err)
+	}
+
+	// Write embedded firewall init script
+	initFirewallPath := filepath.Join(buildDir, "init-firewall.sh")
+	if err := os.WriteFile(initFirewallPath, p.embeddedInitFirewall, 0755); err != nil {
+		return fmt.Errorf("failed to write init-firewall.sh: %w", err)
+	}
+
+	// Get current user info
+	currentUser, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("failed to get current user: %w", err)
+	}
+	uid := currentUser.Uid
+	gid := currentUser.Gid
+
+	// Build docker command for base image
+	args := []string{
+		"build",
+		"--build-arg", fmt.Sprintf("NODE_VERSION=%s", p.config.NodeVersion),
+		"--build-arg", fmt.Sprintf("GO_VERSION=%s", p.config.GoVersion),
+		"--build-arg", fmt.Sprintf("UV_VERSION=%s", p.config.UvVersion),
+		"--build-arg", fmt.Sprintf("USER_ID=%s", uid),
+		"--build-arg", fmt.Sprintf("GROUP_ID=%s", gid),
+		"--build-arg", "USERNAME=addt",
+		"-t", baseImageName,
+		"-f", dockerfilePath,
+		buildDir,
+	}
+
+	cmd := exec.Command("docker", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to build base Docker image: %w", err)
+	}
+
+	fmt.Printf("✓ Base image built: %s\n\n", baseImageName)
+	return nil
+}
+
+// EnsureBaseImage checks if base image exists and builds it if needed
+func (p *DockerProvider) EnsureBaseImage(forceRebuild bool) error {
+	baseImageName := p.GetBaseImageName()
+
+	if forceRebuild || !p.ImageExists(baseImageName) {
+		return p.BuildBaseImage()
+	}
+
+	fmt.Printf("✓ Using cached base image: %s\n", baseImageName)
+	return nil
+}
+
+// BuildImage builds the Docker image (extension layer on top of base)
 func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byte) error {
-	fmt.Printf("Building %s...\n", p.config.ImageName)
+	// First ensure base image exists
+	if err := p.EnsureBaseImage(false); err != nil {
+		return fmt.Errorf("failed to ensure base image: %w", err)
+	}
+
+	baseImageName := p.GetBaseImageName()
+	fmt.Printf("Building %s (from %s)...\n", p.config.ImageName, baseImageName)
 
 	// Create temp directory for build context with embedded files
 	buildDir, err := os.MkdirTemp("", "addt-build-*")
@@ -114,15 +207,6 @@ func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byt
 
 	scriptDir := buildDir
 
-	// Get current user info
-	currentUser, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %w", err)
-	}
-	uid := currentUser.Uid
-	gid := currentUser.Gid
-	username := "addt" // Always use "addt" in container, but with host UID/GID
-
 	// Build EXTENSION_VERSIONS string from map (e.g., "claude:stable,codex:latest")
 	var versionPairs []string
 	for extName, version := range p.config.ExtensionVersions {
@@ -130,15 +214,10 @@ func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byt
 	}
 	extensionVersions := strings.Join(versionPairs, ",")
 
-	// Build docker command
+	// Build docker command - use base image and only pass extension args
 	args := []string{
 		"build",
-		"--build-arg", fmt.Sprintf("NODE_VERSION=%s", p.config.NodeVersion),
-		"--build-arg", fmt.Sprintf("GO_VERSION=%s", p.config.GoVersion),
-		"--build-arg", fmt.Sprintf("UV_VERSION=%s", p.config.UvVersion),
-		"--build-arg", fmt.Sprintf("USER_ID=%s", uid),
-		"--build-arg", fmt.Sprintf("GROUP_ID=%s", gid),
-		"--build-arg", fmt.Sprintf("USERNAME=%s", username),
+		"--build-arg", fmt.Sprintf("BASE_IMAGE=%s", baseImageName),
 		"--build-arg", fmt.Sprintf("ADDT_EXTENSIONS=%s", p.config.Extensions),
 		"--build-arg", fmt.Sprintf("EXTENSION_VERSIONS=%s", extensionVersions),
 		"-t", p.config.ImageName,

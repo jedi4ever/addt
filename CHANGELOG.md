@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2025-02-03
+
+### Added
+- Two-stage Docker build for faster extension builds
+- Base image (`addt-base:nodeXX-uidXXX`) caches Node, Go, UV, and system packages
+- Extension images build FROM base, taking only ~10-30 seconds
+- `--addt-rebuild-base` flag to force base image rebuild
+
+### Changed
+- `--addt-rebuild` now only rebuilds extension layer (uses cached base)
+- Dockerfile split into `Dockerfile.base` and `Dockerfile`
+
 ## [0.0.3] - 2025-02-03
 
 ### Fixed

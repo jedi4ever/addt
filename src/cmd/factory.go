@@ -14,7 +14,7 @@ import (
 func NewProvider(providerType string, cfg *provider.Config) (provider.Provider, error) {
 	switch providerType {
 	case "docker", "":
-		return docker.NewDockerProvider(cfg, assets.DockerDockerfile, assets.DockerEntrypoint, assets.DockerInitFirewall, assets.DockerInstallSh, extensions.FS)
+		return docker.NewDockerProvider(cfg, assets.DockerDockerfile, assets.DockerDockerfileBase, assets.DockerEntrypoint, assets.DockerInitFirewall, assets.DockerInstallSh, extensions.FS)
 	case "daytona":
 		return daytona.NewDaytonaProvider(cfg, assets.DaytonaDockerfile, assets.DaytonaEntrypoint)
 	default:

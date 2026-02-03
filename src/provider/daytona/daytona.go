@@ -443,7 +443,7 @@ func (p *DaytonaProvider) GenerateEphemeralName() string {
 }
 
 // BuildIfNeeded is a no-op for Daytona (no image building needed)
-func (p *DaytonaProvider) BuildIfNeeded(rebuild bool) error {
+func (p *DaytonaProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
 	return nil
 }
 

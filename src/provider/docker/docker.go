@@ -18,25 +18,27 @@ import (
 
 // DockerProvider implements the Provider interface for Docker
 type DockerProvider struct {
-	config               *provider.Config
-	tempDirs             []string
-	embeddedDockerfile   []byte
-	embeddedEntrypoint   []byte
-	embeddedInitFirewall []byte
-	embeddedInstallSh    []byte
-	embeddedExtensions   embed.FS
+	config                 *provider.Config
+	tempDirs               []string
+	embeddedDockerfile     []byte
+	embeddedDockerfileBase []byte
+	embeddedEntrypoint     []byte
+	embeddedInitFirewall   []byte
+	embeddedInstallSh      []byte
+	embeddedExtensions     embed.FS
 }
 
 // NewDockerProvider creates a new Docker provider
-func NewDockerProvider(cfg *provider.Config, dockerfile, entrypoint, initFirewall, installSh []byte, extensions embed.FS) (provider.Provider, error) {
+func NewDockerProvider(cfg *provider.Config, dockerfile, dockerfileBase, entrypoint, initFirewall, installSh []byte, extensions embed.FS) (provider.Provider, error) {
 	return &DockerProvider{
-		config:               cfg,
-		tempDirs:             []string{},
-		embeddedDockerfile:   dockerfile,
-		embeddedEntrypoint:   entrypoint,
-		embeddedInitFirewall: initFirewall,
-		embeddedInstallSh:    installSh,
-		embeddedExtensions:   extensions,
+		config:                 cfg,
+		tempDirs:               []string{},
+		embeddedDockerfile:     dockerfile,
+		embeddedDockerfileBase: dockerfileBase,
+		embeddedEntrypoint:     entrypoint,
+		embeddedInitFirewall:   initFirewall,
+		embeddedInstallSh:      installSh,
+		embeddedExtensions:     extensions,
 	}, nil
 }
 
@@ -498,7 +500,20 @@ func (p *DockerProvider) GeneratePersistentName() string {
 }
 
 // BuildIfNeeded ensures the Docker image is ready
-func (p *DockerProvider) BuildIfNeeded(rebuild bool) error {
+func (p *DockerProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
+	// Handle --addt-rebuild-base flag - rebuild base image first
+	if rebuildBase {
+		baseImageName := p.GetBaseImageName()
+		fmt.Printf("Rebuilding base image %s...\n", baseImageName)
+		if p.ImageExists(baseImageName) {
+			cmd := exec.Command("docker", "rmi", baseImageName)
+			cmd.Run()
+		}
+		if err := p.BuildBaseImage(); err != nil {
+			return err
+		}
+	}
+
 	imageExists := p.ImageExists(p.config.ImageName)
 
 	// Handle --addt-rebuild flag
