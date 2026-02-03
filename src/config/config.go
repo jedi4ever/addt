@@ -42,13 +42,18 @@ type GlobalConfig struct {
 }
 
 // loadGlobalConfig loads the global config from ~/.addt/config.yaml
+// Can be overridden with ADDT_CONFIG_DIR environment variable
 func loadGlobalConfig() *GlobalConfig {
-	currentUser, err := user.Current()
-	if err != nil {
-		return &GlobalConfig{}
+	configDir := os.Getenv("ADDT_CONFIG_DIR")
+	if configDir == "" {
+		currentUser, err := user.Current()
+		if err != nil {
+			return &GlobalConfig{}
+		}
+		configDir = filepath.Join(currentUser.HomeDir, ".addt")
 	}
 
-	configPath := filepath.Join(currentUser.HomeDir, ".addt", "config.yaml")
+	configPath := filepath.Join(configDir, "config.yaml")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return &GlobalConfig{}

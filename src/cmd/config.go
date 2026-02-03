@@ -82,12 +82,17 @@ func getConfigKeys() []configKeyInfo {
 }
 
 // GetConfigFilePath returns the path to the global config file
+// Can be overridden with ADDT_CONFIG_DIR environment variable
 func GetConfigFilePath() string {
-	currentUser, err := user.Current()
-	if err != nil {
-		return ""
+	configDir := os.Getenv("ADDT_CONFIG_DIR")
+	if configDir == "" {
+		currentUser, err := user.Current()
+		if err != nil {
+			return ""
+		}
+		configDir = filepath.Join(currentUser.HomeDir, ".addt")
 	}
-	return filepath.Join(currentUser.HomeDir, ".addt", "config.yaml")
+	return filepath.Join(configDir, "config.yaml")
 }
 
 // GetProjectConfigFilePath returns the path to the project config file

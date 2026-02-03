@@ -279,6 +279,7 @@ claude "Continue working"       # Reuses same container (instant!)
 | **ADDT_FIREWALL_MODE** | `strict` | Firewall mode: `strict` (block non-whitelisted traffic), `permissive` (log but allow all traffic), or `off` (disable firewall). Default is `strict` when firewall is enabled |
 | **ADDT_MODE** | `container` | Execution mode: `container` (Docker-based, default) or `shell` (direct host execution - not yet implemented) |
 | **ADDT_PROVIDER** | `docker` | Provider type: `docker` (default) or `daytona` (experimental, see [docs/README-daytona.md](docs/README-daytona.md)) |
+| **ADDT_CONFIG_DIR** | `~/.addt` | Directory for global config file. Config is stored as `config.yaml` in this directory |
 
 ### Persistent Configuration
 
