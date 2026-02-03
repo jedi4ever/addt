@@ -1,12 +1,12 @@
-# addt- Nope, Don't Do That
+# addt - AI Don't Do That
 
 > **Warning:** This project is experimental and things are not perfect yet.
 
-> **Note:** This project was formerly known as "dclaude". It has been renamed to "addt" to reflect its support for multiple AI agents beyond Claude.
+> **Note:** This project was formerly known as "dclaude" and then "nddt" (Nope, Don't Do That). It has been renamed to "addt" (AI Don't Do That) to reflect its support for multiple AI agents beyond Claude.
 
 **Run AI coding agents in Docker containers.** Your agent can read, write, and execute code in complete isolation - no surprises on your host machine.
 
-The binary name determines which agent runs. Symlink `addt` to an extension name (e.g., `claude`, `codex`, `gemini`) and it auto-detects which agent to use. Run `addt--addt-list-extensions` to see all available extensions.
+The binary name determines which agent runs. Symlink `addt` to an extension name (e.g., `claude`, `codex`, `gemini`) and it auto-detects which agent to use. Run `addt --addt-list-extensions` to see all available extensions.
 
 ## Quick Start
 
@@ -14,12 +14,12 @@ The binary name determines which agent runs. Symlink `addt` to an extension name
 # 1. Download (macOS Apple Silicon)
 curl -fsSL https://github.com/jedi4ever/addt/releases/latest/download/addt-darwin-arm64 -o addt
 chmod +x addt
-xattr -c addt&& codesign --sign - --force addt
-sudo mv addt/usr/local/bin/
+xattr -c addt && codesign --sign - --force addt
+sudo mv addt /usr/local/bin/
 
 # 2. Use it directly or via symlink
-addt"Fix the bug in app.js"           # Uses default (claude)
-addt--addt-list-extensions            # See all available agents
+addt "Fix the bug in app.js"           # Uses default (claude)
+addt --addt-list-extensions            # See all available agents
 ```
 
 **That's it.** First run auto-builds the container.
@@ -82,8 +82,8 @@ Each symlink name runs its own containerized agent with isolated config and Dock
 ```bash
 curl -fsSL https://github.com/jedi4ever/addt/releases/latest/download/addt-darwin-arm64 -o addt
 chmod +x addt
-xattr -c addt&& codesign --sign - --force addt
-sudo mv addt/usr/local/bin/
+xattr -c addt && codesign --sign - --force addt
+sudo mv addt /usr/local/bin/
 ```
 
 ### macOS Intel
@@ -91,8 +91,8 @@ sudo mv addt/usr/local/bin/
 ```bash
 curl -fsSL https://github.com/jedi4ever/addt/releases/latest/download/addt-darwin-amd64 -o addt
 chmod +x addt
-xattr -c addt&& codesign --sign - --force addt
-sudo mv addt/usr/local/bin/
+xattr -c addt && codesign --sign - --force addt
+sudo mv addt /usr/local/bin/
 ```
 
 ### Linux x86_64
@@ -100,7 +100,7 @@ sudo mv addt/usr/local/bin/
 ```bash
 curl -fsSL https://github.com/jedi4ever/addt/releases/latest/download/addt-linux-amd64 -o addt
 chmod +x addt
-sudo mv addt/usr/local/bin/
+sudo mv addt /usr/local/bin/
 ```
 
 ### Linux ARM64
@@ -108,7 +108,7 @@ sudo mv addt/usr/local/bin/
 ```bash
 curl -fsSL https://github.com/jedi4ever/addt/releases/latest/download/addt-linux-arm64 -o addt
 chmod +x addt
-sudo mv addt/usr/local/bin/
+sudo mv addt /usr/local/bin/
 ```
 
 ### Homebrew
@@ -121,8 +121,8 @@ brew install addt
 ### Verify Installation
 
 ```bash
-addt--addt-version         # Shows addtversion
-addt--addt-list-extensions # List available agents
+addt --addt-version         # Shows addt version
+addt --addt-list-extensions # List available agents
 ```
 
 **Upgrading:**
@@ -132,8 +132,8 @@ Re-run the installation command with codesign to avoid corruption:
 ```bash
 curl -fsSL https://github.com/jedi4ever/addt/releases/latest/download/addt-darwin-arm64 -o addt
 chmod +x addt
-xattr -c addt&& codesign --sign - --force addt
-sudo mv addt/usr/local/bin/
+xattr -c addt && codesign --sign - --force addt
+sudo mv addt /usr/local/bin/
 ```
 
 ### Build from Source
@@ -163,36 +163,36 @@ claude --help
 These flags control the container, not the agent:
 
 ```bash
-claude --addt-version          # Show addtversion
-claude --addt-help             # Show addthelp (not agent help)
+claude --addt-version          # Show addt version
+claude --addt-help             # Show addt help (not agent help)
 claude --addt-rebuild          # Rebuild the Docker image
-claude --addt-update           # Check for addtupdates
+claude --addt-update           # Check for addt updates
 claude --addt-list-extensions  # List available extensions
 
 # YOLO mode - bypass all permission checks
 claude --yolo "Refactor this entire codebase"
 ```
 
-### addtSubcommands
+### addt Subcommands
 
 Container management commands live under the `addt` subcommand:
 
 ```bash
-claude addtbuild                    # Build the container image
-claude addtbuild --build-arg ADDT_EXTENSIONS=claude,codex
+claude addt build                    # Build the container image
+claude addt build --build-arg ADDT_EXTENSIONS=claude,codex
 
-claude addtshell                    # Open bash shell in container
-claude addtshell -c "git status"    # Run a command in container
+claude addt shell                    # Open bash shell in container
+claude addt shell -c "git status"    # Run a command in container
 
-claude addtcontainers list          # List persistent containers
-claude addtcontainers stop <name>   # Stop a container
-claude addtcontainers rm <name>     # Remove a container
-claude addtcontainers clean         # Remove all persistent containers
+claude addt containers list          # List persistent containers
+claude addt containers stop <name>   # Stop a container
+claude addt containers rm <name>     # Remove a container
+claude addt containers clean         # Remove all persistent containers
 
-claude addtfirewall list            # List allowed domains
-claude addtfirewall add example.com # Add domain to whitelist
-claude addtfirewall rm example.com  # Remove domain
-claude addtfirewall reset           # Reset to defaults
+claude addt firewall list            # List allowed domains
+claude addt firewall add example.com # Add domain to whitelist
+claude addt firewall rm example.com  # Remove domain
+claude addt firewall reset           # Reset to defaults
 ```
 
 Firewall config: `~/.addt/firewall/allowed-domains.txt`

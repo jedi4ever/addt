@@ -5,277 +5,358 @@ Technical documentation for developers and contributors.
 ## Table of Contents
 
 - [Architecture](#architecture)
+- [Project Structure](#project-structure)
 - [Build System](#build-system)
+- [Extension System](#extension-system)
+- [Provider Architecture](#provider-architecture)
 - [Docker Image Structure](#docker-image-structure)
-- [Volume Mounts](#volume-mounts)
-- [Image Metadata & Labels](#image-metadata--labels)
-- [File Structure](#file-structure)
 - [Development Workflow](#development-workflow)
 - [Testing](#testing)
-- [Advanced Usage](#advanced-usage)
+- [Contributing](#contributing)
 
 ## Architecture
 
-### Base Image
+addt is written in Go and uses a provider-based architecture to support multiple container runtimes.
 
-addt uses `node:${NODE_VERSION}-slim` as the base image:
-- **Debian-based** for easy package installation
-- **Slim variant** for smaller image size (~500MB vs 1GB+)
-- **Configurable Node version** via `ADDT_NODE_VERSION`
+### High-Level Overview
 
-### Non-Root User Setup
-
-The container runs as a non-root user matching your local user:
-- **UID/GID matching**: Container user has same UID/GID as host user
-- **Benefit**: Files created in container have correct ownership on host
-- **Implementation**: Build args pass `USER_ID` and `GROUP_ID` from `id -u` and `id -g`
-
-### Installed Tools
-
-Tools pre-installed in the image:
-- **Claude Code** - Latest or pinned version from npm
-- **Git** - Version control
-- **GitHub CLI (gh)** - GitHub operations
-- **Ripgrep (rg)** - Fast code search
-- **Docker CLI** - For Docker-in-Docker support
-- **curl** - HTTP requests
-- **sudo** - For privileged operations (DinD)
-
-### Volume Mounting
-
-The wrapper script (`addt.sh`) automatically mounts:
-
-1. **Current directory** → `/workspace`
-   - Your project files
-   - Read/write access
-
-2. **`~/.gitconfig`** → `/home/<user>/.gitconfig` (read-only)
-   - Git identity (name, email)
-   - Git aliases and configuration
-   - Prevents accidental modification
-
-3. **`~/.claude`** → `/home/<user>/.claude`
-   - Session persistence
-   - Conversation history
-   - Authentication credentials
-
-4. **`~/.claude.json`** → `/home/<user>/.claude.json`
-   - Claude configuration
-   - Preferences
-
-5. **`~/.gnupg`** → `/home/<user>/.gnupg` (opt-in)
-   - GPG keys for commit signing
-   - Only when `ADDT_GPG_FORWARD=true`
-
-6. **`~/.ssh`** or SSH agent (opt-in)
-   - SSH keys for git operations
-   - Agent forwarding or key mounting
-   - Only when `ADDT_SSH_FORWARD` is set
-
-### Authentication & Identity
-
-**Claude Code Authentication:**
-- **Option 1**: Mount `~/.claude` directory (automatic if exists)
-- **Option 2**: Pass `ANTHROPIC_API_KEY` environment variable
-
-**Git Identity:**
-- Automatically inherited from host `~/.gitconfig`
-- No manual configuration needed
-- Commits show your name/email
-
-**GitHub CLI:**
-- Requires `GH_TOKEN` environment variable
-- Or use `ADDT_GITHUB_DETECT=true` to auto-detect from `gh` CLI
-
-### Image Metadata & Labels
-
-Images include OCI-compliant labels:
-
-```json
-{
-  "org.opencontainers.image.title": "addt",
-  "org.opencontainers.image.description": "Claude Code with Git, GitHub CLI, and Ripgrep",
-  "tools.claude.version": "2.1.27",
-  "tools.gh.version": "2.86.0",
-  "tools.ripgrep.version": "13.0.0",
-  "tools.git.version": "2.39.5",
-  "tools.node.version": "20.20.0"
-}
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      CLI (cmd/root.go)                      │
+│  - Parses arguments and flags                               │
+│  - Handles --addt-* special flags                           │
+│  - Detects binary name for symlink-based extension selection│
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Orchestrator (core/)                       │
+│  - Coordinates provider operations                          │
+│  - Builds RunSpec from configuration                        │
+│  - Handles port mapping, volumes, environment               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Provider Interface                        │
+├─────────────────────────┬───────────────────────────────────┤
+│    Docker Provider      │      Daytona Provider             │
+│  (provider/docker/)     │    (provider/daytona/)            │
+│  - Builds images        │    - Manages workspaces           │
+│  - Runs containers      │    - Cloud-based execution        │
+│  - Manages lifecycle    │    - (Experimental)               │
+└─────────────────────────┴───────────────────────────────────┘
 ```
 
-**Query images by labels:**
-```bash
-# Filter images by tool
-docker images --filter "label=tools.claude.version=2.1.27"
+### Key Components
 
-# Get specific label value
-docker inspect addt:claude-2.1.27 --format '{{index .Config.Labels "tools.node.version"}}'
+1. **CLI Layer** (`cmd/`) - Command parsing, flag handling, subcommands
+2. **Core Layer** (`core/`) - Business logic orchestration
+3. **Provider Layer** (`provider/`) - Container runtime abstraction
+4. **Config Layer** (`config/`) - Environment variable and configuration loading
+5. **Extensions** (`extensions/`) - Embedded AI agent definitions
+6. **Assets** (`assets/`) - Docker files, scripts, and resources
 
-# View all labels
-docker inspect addt:latest --format '{{json .Config.Labels}}' | jq
+## Project Structure
+
+```
+addt/
+├── src/
+│   ├── main.go                    # Entry point
+│   ├── go.mod                     # Go module definition
+│   ├── cmd/                       # CLI commands
+│   │   ├── root.go                # Main CLI logic
+│   │   ├── commands.go            # Subcommand handlers
+│   │   ├── extensions.go          # Extension listing
+│   │   ├── factory.go             # Provider factory
+│   │   ├── firewall.go            # Firewall commands
+│   │   └── help.go                # Help text generation
+│   ├── config/                    # Configuration
+│   │   ├── config.go              # Config loading
+│   │   ├── env.go                 # Environment file parsing
+│   │   └── github.go              # GitHub token detection
+│   ├── core/                      # Business logic
+│   │   ├── orchestrator.go        # Main orchestrator
+│   │   └── version.go             # Version utilities
+│   ├── provider/                  # Provider implementations
+│   │   ├── provider.go            # Provider interface
+│   │   ├── docker/                # Docker provider
+│   │   │   ├── docker.go          # Main Docker implementation
+│   │   │   ├── images.go          # Image management
+│   │   │   ├── extensions.go      # Extension metadata reading
+│   │   │   ├── forwarding.go      # SSH/GPG forwarding
+│   │   │   └── version.go         # Version detection
+│   │   └── daytona/               # Daytona provider (experimental)
+│   │       └── daytona.go
+│   ├── extensions/                # Embedded extensions
+│   │   ├── embed.go               # Go embed directive
+│   │   ├── claude/                # Claude Code extension
+│   │   │   ├── config.yaml        # Extension metadata
+│   │   │   ├── install.sh         # Build-time installation
+│   │   │   ├── setup.sh           # Runtime setup
+│   │   │   └── args.sh            # Argument transformation
+│   │   ├── codex/                 # OpenAI Codex extension
+│   │   ├── gemini/                # Google Gemini extension
+│   │   ├── copilot/               # GitHub Copilot extension
+│   │   ├── amp/                   # Sourcegraph Amp extension
+│   │   ├── cursor/                # Cursor extension
+│   │   ├── gastown/               # Multi-agent orchestration
+│   │   ├── beads/                 # Git-backed issue tracker
+│   │   └── ...                    # Other extensions
+│   ├── assets/                    # Embedded assets
+│   │   ├── embed.go               # Go embed directive
+│   │   └── docker/                # Docker-specific assets
+│   │       ├── Dockerfile         # Main Dockerfile
+│   │       ├── docker-entrypoint.sh
+│   │       ├── init-firewall.sh
+│   │       └── install.sh         # Extension installer
+│   └── internal/                  # Internal utilities
+│       ├── ports/                 # Port availability checking
+│       ├── terminal/              # Terminal detection
+│       ├── update/                # Self-update functionality
+│       └── util/                  # General utilities
+├── dist/                          # Build output
+├── docs/                          # Documentation
+├── legacy/                        # Old shell-based implementation
+├── Makefile                       # Build automation
+├── VERSION                        # Version file
+└── CHANGELOG.md                   # Release notes
 ```
 
 ## Build System
 
-### Standalone Build
+addt uses a standard Go build system with Make for automation.
 
-The `make standalone` command creates a single self-contained script:
+### Prerequisites
+
+- Go 1.21 or later
+- Docker (for testing)
+- Make
+
+### Build Commands
 
 ```bash
-make standalone
-# Creates: dist/addt-standalone.sh
+# Format code and build for current platform
+make build
+
+# Build for all platforms (darwin/amd64, darwin/arm64, linux/amd64, linux/arm64)
+make dist
+
+# Install to /usr/local/bin
+make install
+
+# Run tests
+make test
+
+# Clean build artifacts
+make clean
+
+# Create a release (updates VERSION, creates git tag)
+make release
 ```
 
-**How it works:**
-1. `build.sh` reads `addt.sh`, `Dockerfile`, and `docker-entrypoint.sh`
-2. Embeds Dockerfile and entrypoint as heredocs at `INJECT:*` markers
-3. Adds cleanup for temporary files
-4. Outputs single executable script
+### Cross-Platform Builds
 
-**Build process:**
+The `make dist` command builds binaries for all supported platforms:
+
 ```bash
-# build.sh uses awk to inject content
-awk '
-/INJECT:Dockerfile-start/ {
-    print "    DOCKERFILE_PATH=\"$SCRIPT_DIR/.addt-Dockerfile.tmp\""
-    print "    cat > \"$DOCKERFILE_PATH\" <<'\''DOCKERFILE_EOF'\''"
-    # Insert full Dockerfile content
-    print "DOCKERFILE_EOF"
-    # Skip until end marker
-    while (getline > 0 && !/INJECT:Dockerfile-end/) { }
-    next
+make dist
+# Creates:
+#   dist/addt-darwin-amd64  (macOS Intel)
+#   dist/addt-darwin-arm64  (macOS Apple Silicon)
+#   dist/addt-linux-amd64   (Linux x86_64)
+#   dist/addt-linux-arm64   (Linux ARM64)
+```
+
+### Embedding Assets
+
+Go's `embed` directive is used to include assets in the binary:
+
+```go
+// src/assets/embed.go
+//go:embed docker/*
+var DockerAssets embed.FS
+
+// src/extensions/embed.go
+//go:embed */config.yaml */install.sh */setup.sh */args.sh
+var ExtensionAssets embed.FS
+```
+
+This allows the binary to be distributed as a single file with all Docker files and extension definitions included.
+
+## Extension System
+
+Extensions add AI agents and tools to the container image.
+
+### Extension Structure
+
+Each extension is a directory containing:
+
+```
+extensions/myextension/
+├── config.yaml    # Required: Extension metadata
+├── install.sh     # Optional: Build-time installation
+├── setup.sh       # Optional: Runtime initialization
+└── args.sh        # Optional: Argument transformation
+```
+
+### config.yaml
+
+Defines extension metadata:
+
+```yaml
+name: claude
+description: Claude Code - AI coding assistant by Anthropic
+entrypoint: claude
+default_version: stable
+auto_mount: true
+dependencies: []
+env_vars:
+  - ANTHROPIC_API_KEY
+mounts:
+  - source: ~/.claude
+    target: /home/addt/.claude
+  - source: ~/.claude.json
+    target: /home/addt/.claude.json
+flags:
+  - flag: "--yolo"
+    description: "Bypass permission checks"
+```
+
+### Extension Scripts
+
+| Script | When | Purpose |
+|--------|------|---------|
+| `install.sh` | Docker build | Install packages, tools, dependencies |
+| `setup.sh` | Container start | Initialize runtime environment |
+| `args.sh` | Before execution | Transform CLI arguments (e.g., `--yolo` expansion) |
+
+### Adding a New Extension
+
+1. Create directory: `src/extensions/myextension/`
+2. Add `config.yaml` with metadata
+3. Add `install.sh` if packages need to be installed
+4. Add `setup.sh` if runtime initialization is needed
+5. Rebuild: `make build`
+6. Test: `./dist/addt containers build --build-arg ADDT_EXTENSIONS=myextension`
+
+## Provider Architecture
+
+The provider interface abstracts container runtime operations.
+
+### Provider Interface
+
+```go
+type Provider interface {
+    // Core lifecycle
+    Initialize(cfg *Config) error
+    Run(spec *RunSpec) error
+    Shell(spec *RunSpec) error
+    Cleanup() error
+
+    // Environment management
+    Exists(name string) bool
+    IsRunning(name string) bool
+    Start(name string) error
+    Stop(name string) error
+    Remove(name string) error
+    List() ([]Environment, error)
+
+    // Image/workspace management
+    BuildIfNeeded(rebuild bool) error
+    DetermineImageName() string
+
+    // Status and metadata
+    GetStatus(cfg *Config, envName string) string
+    GetExtensionEnvVars(imageName string) []string
 }
-{ print }
-' addt.sh > dist/addt-standalone.sh
 ```
 
-### Version Management
+### Docker Provider
 
-**Automatic version detection:**
-```bash
-# Query npm registry via HTTP (no npm CLI needed)
-NPM_LATEST=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code | grep -o '"stable":"[^"]*"' | cut -d'"' -f4)
-```
+The default provider that builds and runs Docker containers:
 
-**Version validation:**
-```bash
-# Check if version exists in registry
-NPM_DATA=$(curl -s https://registry.npmjs.org/@anthropic-ai/claude-code)
-echo "$NPM_DATA" | grep -q "\"$VERSION\":"
-```
+- **Image naming**: `addt:claude-2.1.17_codex-latest` (based on extensions and versions)
+- **Container naming**: `addt-YYYYMMDD-HHMMSS-PID` (ephemeral) or hash-based (persistent)
+- **Features**: SSH forwarding, GPG forwarding, Docker-in-Docker, port mapping, firewall
 
-**Image reuse logic:**
-1. Check if image with version label exists
-2. If yes, use existing image (skip rebuild)
-3. If no, build new image with version tag
+### Daytona Provider (Experimental)
 
-### Port Mapping System
+Cloud-based workspace provider using Daytona:
 
-**Automatic port allocation:**
-```bash
-# Check port availability using bash built-in
-is_port_available() {
-    local port=$1
-    (bash -c "exec 3<>/dev/tcp/localhost/$port" 2>/dev/null && exec 3>&-) && return 1 || return 0
-}
-
-# Find next available port
-find_available_port() {
-    local start_port=$1
-    local port=$start_port
-    while ! is_port_available "$port"; do
-        port=$((port + 1))
-    done
-    echo "$port"
-}
-```
-
-**Port mapping passed to Claude:**
-```bash
-# In docker-entrypoint.sh
-SYSTEM_PROMPT="Port mappings (container→host):
-- Container port 3000 → Host port 30000
-When telling the user URLs, use host ports."
-
-exec claude --append-system-prompt "$SYSTEM_PROMPT" "$@"
-```
+- Manages remote workspaces instead of local containers
+- See [docs/README-daytona.md](README-daytona.md) for details
 
 ## Docker Image Structure
 
-### Multi-stage Build Context
+### Base Image
 
-The Dockerfile uses build arguments for flexibility:
+Uses `node:${NODE_VERSION}-slim` (Debian-based) with:
+
+- Node.js (configurable version)
+- Go (latest or pinned)
+- UV (Python package manager)
+- Git, GitHub CLI, Ripgrep
+- Docker CLI and daemon (for DinD)
+
+### Non-Root User
+
+Container runs as a non-root user matching host UID/GID:
 
 ```dockerfile
-ARG NODE_VERSION=20
 ARG USER_ID=1000
 ARG GROUP_ID=1000
-ARG USERNAME=claude
-ARG CLAUDE_VERSION=latest
+ARG USERNAME=addt
+
+RUN useradd -m -u ${USER_ID} -g ${GROUP_ID} -s /bin/bash ${USERNAME}
 ```
 
-### User Management
+### Build Process
 
-```dockerfile
-# Create user with matching UID/GID
-RUN (groupadd -g ${GROUP_ID} ${USERNAME} 2>/dev/null || true) \
-    && useradd -m -u ${USER_ID} -g ${GROUP_ID} -s /bin/bash ${USERNAME} \
-    && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-```
+1. Base image with system packages
+2. Go and UV installation
+3. Extension scripts copied
+4. Extensions installed via `install.sh`
+5. Entrypoint and firewall scripts added
 
-### Entrypoint Wrapper
+### Runtime Flow
 
-`docker-entrypoint.sh` handles:
-1. Docker-in-Docker daemon startup (if enabled)
-2. Port mapping system prompt injection
-3. Forwarding to Claude Code CLI
-
-## File Structure
-
-```
-addt/
-├── addt.sh              # Main wrapper script (source)
-├── Dockerfile              # Container definition
-├── docker-entrypoint.sh    # Container entrypoint
-├── build.sh                # Standalone builder
-├── Makefile                # Build automation
-├── .dockerignore           # Build context exclusions
-├── .gitignore              # Git exclusions
-├── README.md               # User documentation
-├── README-development.md   # This file
-└── dist/
-    └── addt-standalone.sh  # Single-file distribution
-```
+1. `docker-entrypoint.sh` starts
+2. Extension `setup.sh` scripts run (once per session)
+3. Docker daemon started (if DinD mode)
+4. Firewall initialized (if enabled)
+5. Agent command executed with arguments
 
 ## Development Workflow
 
 ### Local Development
 
 ```bash
-# Make changes to addt.sh, Dockerfile, or docker-entrypoint.sh
-vim addt.sh
+# Make changes to Go code
+vim src/cmd/root.go
 
-# Test changes
-./addt.sh --version
+# Format and build
+make build
 
-# Rebuild standalone
-make standalone
+# Test locally
+./dist/addt --addt-version
+./dist/addt --addt-help
 
-# Test standalone
-./dist/addt-standalone.sh --version
+# Test with Docker
+./dist/addt shell -c "echo hello"
 ```
 
-### Force Rebuild
+### Testing Extensions
 
 ```bash
-# Remove image to force rebuild
-docker rmi addt:claude-2.1.27
+# Build image with specific extensions
+./dist/addt containers build --build-arg ADDT_EXTENSIONS=claude,codex
 
-# Or remove all addt images
-docker images | grep addt | awk '{print $3}' | xargs docker rmi
+# Verify installation
+./dist/addt shell -c "which claude codex"
 
-# Next run will rebuild
-./addt.sh --version
+# Check extension metadata
+./dist/addt shell -c "cat ~/.addt/extensions.json"
 ```
 
 ### Debug Mode
@@ -284,178 +365,98 @@ docker images | grep addt | awk '{print $3}' | xargs docker rmi
 # Enable logging
 export ADDT_LOG=true
 export ADDT_LOG_FILE="/tmp/addt-debug.log"
-./addt.sh
+./dist/addt "test prompt"
 
 # View logs
 tail -f /tmp/addt-debug.log
 ```
 
-### Shell Access
+### Force Rebuild
 
 ```bash
-# Open bash shell in container
-./addt.sh shell
+# Rebuild image from scratch
+./dist/addt --addt-rebuild
 
-# Run specific command
-./addt.sh shell -c "env | grep DCLAUDE"
-
-# Check mounted directories
-./addt.sh shell -c "ls -la ~ && ls -la /workspace"
+# Or remove image manually
+docker rmi addt:claude-stable
 ```
 
 ## Testing
 
-### Test Suite
+### Unit Tests
+
+```bash
+make test
+# Runs: cd src && go test -v ./...
+```
+
+### Integration Tests
 
 ```bash
 # Test basic functionality
-./addt.sh --version
+./dist/addt --addt-version
+./dist/addt --addt-list-extensions
+
+# Test container operations
+./dist/addt shell -c "env | grep ADDT"
+./dist/addt containers list
 
 # Test port mapping
-ADDT_PORTS="3000,8080" ./addt.sh --version
+ADDT_PORTS="3000,8080" ./dist/addt shell -c "echo \$ADDT_PORT_MAP"
 
 # Test SSH forwarding
-ADDT_SSH_FORWARD=agent ./addt.sh shell -c "ssh-add -l"
+ADDT_SSH_FORWARD=agent ./dist/addt shell -c "ssh-add -l"
 
-# Test Docker forwarding
-ADDT_DOCKER_FORWARD=isolated ./addt.sh shell -c "docker ps"
-
-# Test GPG forwarding
-ADDT_GPG_FORWARD=true ./addt.sh shell -c "gpg --list-keys"
+# Test Docker-in-Docker
+ADDT_DIND_MODE=isolated ./dist/addt shell -c "docker ps"
 ```
 
-### Version Tests
+### Testing Checklist
 
-```bash
-# Test invalid version
-ADDT_CLAUDE_VERSION=2.1.24 ./addt.sh --version
-# Should error: version does not exist
+Before submitting a PR:
 
-# Test specific version
-ADDT_CLAUDE_VERSION=2.1.29 ./addt.sh --version
-# Should build with 2.1.29
-
-# Test version reuse
-ADDT_CLAUDE_VERSION=2.1.29 ./addt.sh --version
-# Should reuse existing image (fast)
-```
-
-### Standalone Tests
-
-```bash
-# Build standalone
-make standalone
-
-# Test in clean directory
-cd /tmp
-/path/to/addt/dist/addt-standalone.sh --version
-
-# Test embedded Dockerfile
-./dist/addt-standalone.sh shell -c "ls -la .addt-*.tmp"
-```
-
-## Advanced Usage
-
-### Custom Dockerfile
-
-To modify the image, edit `Dockerfile`:
-
-```dockerfile
-# Add additional tools
-RUN apt-get update && apt-get install -y \
-    vim \
-    htop \
-    && apt-get clean
-
-# Install additional npm packages
-RUN npm install -g typescript prettier eslint
-```
-
-Then rebuild:
-```bash
-docker rmi addt:latest
-./addt.sh  # Auto-rebuilds
-```
-
-### Alpine-based Image
-
-For a smaller image, modify `Dockerfile` base:
-
-```dockerfile
-FROM node:${NODE_VERSION}-alpine
-RUN apk add --no-cache \
-    git \
-    curl \
-    bash \
-    # ... other packages
-```
-
-**Note:** Alpine uses `apk` instead of `apt-get` and may have compatibility issues with some npm packages.
-
-### Multi-Architecture Builds
-
-Build for multiple platforms:
-
-```bash
-docker buildx build \
-    --platform linux/amd64,linux/arm64 \
-    --build-arg CLAUDE_VERSION=2.1.27 \
-    -t addt:latest \
-    .
-```
-
-### Environment Variable Injection
-
-Pass custom environment variables:
-
-```bash
-export ADDT_ENV_VARS="ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY"
-export AWS_ACCESS_KEY_ID="your-key"
-export AWS_SECRET_ACCESS_KEY="your-secret"
-./addt.sh
-```
-
-Inside container, Claude can access:
-```bash
-echo $AWS_ACCESS_KEY_ID  # Available
-```
+- [ ] `make build` succeeds
+- [ ] `make test` passes
+- [ ] `./dist/addt --addt-version` works
+- [ ] Container can start: `./dist/addt shell -c "echo ok"`
+- [ ] Extensions install correctly
+- [ ] Documentation updated if needed
 
 ## Contributing
 
 ### Code Style
 
-- Use 4 spaces for indentation in shell scripts
-- Add comments for non-obvious logic
-- Keep functions focused and single-purpose
-- Use descriptive variable names
+- Go standard formatting (`go fmt`)
+- Meaningful variable names
+- Comments for non-obvious logic
+- Keep functions focused
 
 ### Commit Guidelines
 
-- Use conventional commits format
-- Include Claude Code attribution:
-  ```
-  feat: add port mapping support
+Use conventional commits:
 
-  Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-  ```
+```
+feat: add new extension support
+fix: correct port mapping on Linux
+docs: update development guide
+refactor: simplify provider interface
+```
+
+Include attribution:
+
+```
+feat: add gemini extension support
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
 
 ### Pull Request Process
 
-1. Test changes locally
-2. Update documentation (README.md and README-development.md)
-3. Rebuild standalone: `make standalone`
-4. Create PR with clear description
-5. Include test commands in PR description
-
-### Testing Checklist
-
-Before submitting PR:
-- [ ] `./addt.sh --version` works
-- [ ] `make standalone` succeeds
-- [ ] `./dist/addt-standalone.sh --version` works
-- [ ] Port mapping works (if modified)
-- [ ] Volume mounts work (test with `./addt.sh shell`)
-- [ ] Documentation updated
+1. Fork and create feature branch
+2. Make changes with tests
+3. Run `make build && make test`
+4. Update documentation
+5. Submit PR with clear description
 
 ## Debugging
 
@@ -463,56 +464,49 @@ Before submitting PR:
 
 **Build fails:**
 ```bash
-# Check Docker daemon
+# Check Go version
+go version
+
+# Clean and rebuild
+make clean && make build
+```
+
+**Container won't start:**
+```bash
+# Check Docker
 docker info
 
-# Check disk space
-df -h
+# Check image exists
+docker images | grep addt
 
-# Clean Docker cache
-docker system prune -a
+# Force rebuild
+./dist/addt --addt-rebuild
 ```
 
-**Volume mount issues:**
+**Extension not found:**
 ```bash
-# Check permissions
-ls -la ~/.claude
-ls -la ~/.gitconfig
+# Verify extension is embedded
+./dist/addt --addt-list-extensions
 
-# Test mount
-./addt.sh shell -c "ls -la ~"
+# Check config.yaml exists
+ls src/extensions/myextension/config.yaml
 ```
 
-**Port mapping issues:**
+**Permission issues:**
 ```bash
-# Check port availability
-bash -c "exec 3<>/dev/tcp/localhost/30000" && echo "Port busy" || echo "Port free"
-
-# Test with specific ports
-ADDT_PORTS="3000" ADDT_PORT_RANGE_START=40000 ./addt.sh --version
+# Check UID/GID matching
+id
+./dist/addt shell -c "id"
 ```
 
-### Verbose Mode
+### Verbose Output
 
 ```bash
-# Enable bash debugging
-bash -x ./addt.sh --version 2>&1 | tee debug.log
+# Enable Go race detection during development
+cd src && go build -race -o ../dist/addt .
 
-# Or modify script temporarily
-set -x  # Add to top of addt.sh
-```
-
-### Container Inspection
-
-```bash
-# List running containers
-docker ps -a | grep addt
-
-# Inspect container
-docker inspect addt-YYYYMMDD-HHMMSS-PID
-
-# View logs
-docker logs addt-YYYYMMDD-HHMMSS-PID
+# Add debug prints (temporary)
+fmt.Fprintf(os.Stderr, "DEBUG: %v\n", variable)
 ```
 
 ## License

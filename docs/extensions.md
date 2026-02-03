@@ -1,51 +1,61 @@
-# addtExtensions
+# addt Extensions
 
-Extensions allow you to add tools and AI agents to your addtcontainer image. The base image provides infrastructure (Node.js, Go, Python/UV, Git, GitHub CLI), and extensions add the actual tools.
+Extensions allow you to add tools and AI agents to your addt container image. The base image provides infrastructure (Node.js, Go, Python/UV, Git, GitHub CLI), and extensions add the actual tools.
 
 ## Available Extensions
 
 ### AI Coding Agents
 
-| Extension | Description | Entrypoint | Provider |
-|-----------|-------------|------------|----------|
-| `claude` | Claude Code - AI coding assistant | `claude` | Anthropic |
-| `codex` | OpenAI Codex CLI - AI coding assistant | `codex` | OpenAI |
-| `cursor` | Cursor CLI Agent - AI-powered code editor agent | `cursor` / `agent` | Cursor |
-| `amp` | Amp - AI coding agent | `amp` | Sourcegraph |
-| `gemini` | Gemini CLI - AI coding agent | `gemini` | Google |
-| `copilot` | GitHub Copilot CLI - AI coding assistant | `copilot` | GitHub |
+| Extension | Description | Entrypoint | Provider | API Key |
+|-----------|-------------|------------|----------|---------|
+| `claude` | Claude Code - AI coding assistant | `claude` | Anthropic | `ANTHROPIC_API_KEY` |
+| `codex` | OpenAI Codex CLI - AI coding assistant | `codex` | OpenAI | `OPENAI_API_KEY` |
+| `gemini` | Gemini CLI - AI coding agent | `gemini` | Google | `GEMINI_API_KEY`, `GOOGLE_API_KEY` |
+| `copilot` | GitHub Copilot CLI - AI coding assistant | `copilot` | GitHub | `GH_TOKEN`, `GITHUB_TOKEN` |
+| `amp` | Amp - AI coding agent | `amp` | Sourcegraph | - |
+| `cursor` | Cursor CLI Agent - AI-powered code editor agent | `cursor` | Cursor | - |
+| `kiro` | Kiro CLI - AI-powered development agent | `kiro-cli` | AWS | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+
+### Claude Ecosystem Extensions
+
+| Extension | Description | Entrypoint | Dependencies |
+|-----------|-------------|------------|--------------|
+| `claude-flow` | Multi-agent orchestration platform for Claude | `claude-flow` | claude |
+| `claude-sneakpeek` | Preview tool for Claude Code | `claudesp` | claude |
+| `openclaw` | Open source personal AI assistant | `openclaw` | claude |
+| `tessl` | Agent enablement platform - package manager for AI agent skills | `tessl` | claude |
+| `gastown` | Multi-agent orchestration for Claude Code | `gt` | claude, beads |
 
 ### Utility Extensions
 
 | Extension | Description | Entrypoint | Dependencies |
 |-----------|-------------|------------|--------------|
 | `beads` | Git-backed issue tracker for AI agents | `bd` | - |
-| `gastown` | Multi-agent orchestration for Claude Code | `gt` | claude, beads |
-| `tessl` | Agent enablement platform - package manager for AI agent skills | `tessl` | - |
+| `backlog-md` | Markdown-based backlog management for AI agents | `backlog` | - |
 
-**Note:** The `claude` extension is installed by default. When you build with other extensions like `gastown`, their dependencies (including `claude`) are automatically installed.
+**Note:** The `claude` extension is installed by default. When you build with extensions that have dependencies (like `gastown`), their dependencies are automatically installed.
 
 ## Using Extensions
 
 ### Building with Extensions
 
-Use the `containers build` command with `--build-arg` to include extensions:
+Use the `addt build` subcommand with `--build-arg` to include extensions:
 
 ```bash
 # Default build (installs claude extension)
-addtcontainers build
+claude addt build
 
 # Build with gastown (automatically includes claude and beads dependencies)
-addtcontainers build --build-arg ADDT_EXTENSIONS=gastown
+claude addt build --build-arg ADDT_EXTENSIONS=gastown
 
 # Build with multiple extensions
-addtcontainers build --build-arg ADDT_EXTENSIONS=claude,tessl
+claude addt build --build-arg ADDT_EXTENSIONS=claude,codex,gemini
 
 # Build minimal image with only tessl (no claude)
-addtcontainers build --build-arg ADDT_EXTENSIONS=tessl
+claude addt build --build-arg ADDT_EXTENSIONS=tessl
 
 # Via environment variable
-ADDT_EXTENSIONS=gastown addtcontainers build
+ADDT_EXTENSIONS=gastown claude addt build
 ```
 
 ### Image Naming Convention
@@ -54,10 +64,10 @@ Docker images are automatically named based on the installed extensions and thei
 
 ```bash
 # Single extension
-addt:claude-2.1.17
+addt:claude-stable
 
 # Multiple extensions (sorted alphabetically)
-addt:claude-2.1.17_codex-latest
+addt:claude-stable_codex-latest
 
 # Different combination = different image
 addt:gemini-latest_tessl-latest
@@ -69,13 +79,13 @@ This ensures that different extension combinations always get their own isolated
 
 Extensions can depend on other extensions. Dependencies are automatically resolved and installed in the correct order.
 
-For example, `gastown` depends on `beads`, so running:
+For example, `gastown` depends on `claude` and `beads`, so running:
 
 ```bash
-addtbuild --build-arg ADDT_EXTENSIONS=gastown
+claude addt build --build-arg ADDT_EXTENSIONS=gastown
 ```
 
-Will automatically install both `beads` and `gastown`.
+Will automatically install `claude`, `beads`, and `gastown`.
 
 ### Checking Installed Extensions
 
@@ -83,28 +93,31 @@ After building, you can verify installed extensions:
 
 ```bash
 # Check extension metadata
-addtshell -c "cat ~/.addt/extensions.json"
+claude addt shell -c "cat ~/.addt/extensions.json"
 
 # Check specific tools
-addtshell -c "which gt bd tessl"
+claude addt shell -c "which claude gt bd tessl"
+
+# List available extensions
+addt --addt-list-extensions
 ```
 
 ### Symlink-Based Extension Selection
 
-You can create symlinks to the `addt` binary with names matching your extensions. When invoked via a symlink, addtautomatically uses that extension:
+You can create symlinks to the `addt` binary with names matching your extensions. When invoked via a symlink, addt automatically uses that extension:
 
 ```bash
 # Create symlinks
-ln -s addtcodex
-ln -s addtgemini
-ln -s addtclaude-flow
+ln -s /usr/local/bin/addt ~/bin/codex
+ln -s /usr/local/bin/addt ~/bin/gemini
+ln -s /usr/local/bin/addt ~/bin/claude-flow
 
 # Now these are equivalent:
-./codex "help me with this code"           # Uses codex extension
-ADDT_EXTENSIONS=codex addt"..."     # Same result
+codex "help me with this code"           # Uses codex extension
+ADDT_EXTENSIONS=codex addt "..."         # Same result
 
-./gemini "explain this function"           # Uses gemini extension
-ADDT_EXTENSIONS=gemini addt"..."    # Same result
+gemini "explain this function"           # Uses gemini extension
+ADDT_EXTENSIONS=gemini addt "..."        # Same result
 ```
 
 **How it works:**
@@ -115,7 +128,7 @@ ADDT_EXTENSIONS=gemini addt"..."    # Same result
 This is useful for:
 - Creating dedicated commands for different AI agents
 - Simplifying workflows when you frequently use a specific agent
-- Installing multiple "binaries" from a single addtinstallation
+- Installing multiple "binaries" from a single addt installation
 
 ### Per-Extension Configuration
 
@@ -123,23 +136,23 @@ Each extension can be configured individually via environment variables:
 
 ```bash
 # Set version for a specific extension
-ADDT_CLAUDE_VERSION=2.0.0 addtcontainers build
-ADDT_CODEX_VERSION=0.1.0 addtcontainers build
+ADDT_CLAUDE_VERSION=2.0.0 claude addt build
+ADDT_CODEX_VERSION=0.1.0 claude addt build
 
 # Disable config directory mounting for an extension
-ADDT_CLAUDE_MOUNT_CONFIG=false addt
+ADDT_CLAUDE_AUTOMOUNT=false addt
 
 # Multiple extensions with specific versions
 ADDT_EXTENSIONS=claude,codex \
   ADDT_CLAUDE_VERSION=2.1.0 \
   ADDT_CODEX_VERSION=latest \
-  addtcontainers build
+  claude addt build
 ```
 
 | Variable Pattern | Description |
 |-----------------|-------------|
 | `ADDT_<EXT>_VERSION` | Version to install (e.g., `2.1.0`, `latest`, `stable`) |
-| `ADDT_<EXT>_MOUNT_CONFIG` | Mount extension config dirs (`true`/`false`) |
+| `ADDT_<EXT>_AUTOMOUNT` | Mount extension config dirs (`true`/`false`) |
 
 ### Automatic Environment Variable Forwarding
 
@@ -160,12 +173,19 @@ env_vars:
 env_vars:
   - GEMINI_API_KEY
   - GOOGLE_API_KEY
+
+# kiro extension
+env_vars:
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+  - AWS_SESSION_TOKEN
+  - AWS_REGION
 ```
 
 **How it works:**
 
 1. When you build an image, each extension's `env_vars` are collected into `~/.addt/extensions.json`
-2. At runtime, addtreads this metadata and automatically forwards listed variables from host to container
+2. At runtime, addt reads this metadata and automatically forwards listed variables from host to container
 3. Variables are only forwarded if they're set on the host (empty values are skipped)
 
 **Benefits:**
@@ -173,7 +193,7 @@ env_vars:
 - No need to remember which API keys each tool needs
 - Just set the variable on your host once, it's automatically available in containers
 - Different extensions in the same image can have different env vars
-- Users can still add additional variables via `ADDT_FORWARD_ENV`
+- Users can still add additional variables via `ADDT_ENV_VARS`
 
 **Example:**
 
@@ -183,23 +203,24 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
 
 # Build with both extensions
-addtcontainers build --build-arg ADDT_EXTENSIONS=claude,codex
+claude addt build --build-arg ADDT_EXTENSIONS=claude,codex
 
 # Run - both API keys are automatically forwarded
-addt"help me with this code"        # Uses ANTHROPIC_API_KEY
-ADDT_COMMAND=codex addt"..."     # Uses OPENAI_API_KEY
+addt "help me with this code"        # Uses ANTHROPIC_API_KEY
+ADDT_COMMAND=codex addt "..."        # Uses OPENAI_API_KEY
 ```
 
 ## Creating Extensions
 
-Extensions are stored in `src/assets/docker/extensions/` as directories containing:
+Extensions are stored in `src/extensions/` as directories containing:
 
 ```
-extensions/
+src/extensions/
 └── myextension/
     ├── config.yaml    # Extension metadata (required)
     ├── install.sh     # Installation script (optional, runs at build time)
-    └── setup.sh       # Setup script (optional, runs at container startup)
+    ├── setup.sh       # Setup script (optional, runs at container startup)
+    └── args.sh        # Argument transformation (optional, runs before command)
 ```
 
 **Note:** Only `config.yaml` is required. Extensions can be metadata-only (no install.sh or setup.sh) if they just need to define mounts or dependencies.
@@ -212,6 +233,8 @@ Defines extension metadata:
 name: myextension
 description: Short description of what the extension does
 entrypoint: mycommand
+default_version: latest
+auto_mount: true
 dependencies:
   - beads           # Other extensions this depends on
 env_vars:
@@ -219,9 +242,12 @@ env_vars:
   - MY_SECRET_TOKEN
 mounts:
   - source: ~/.myextension
-    target: /home/claude/.myextension
+    target: /home/addt/.myextension
   - source: ~/.config/myextension
-    target: /home/claude/.config/myextension
+    target: /home/addt/.config/myextension
+flags:
+  - flag: "--yolo"
+    description: "Bypass permission checks"
 ```
 
 | Field | Required | Description |
@@ -229,9 +255,12 @@ mounts:
 | `name` | Yes | Extension identifier (should match directory name) |
 | `description` | Yes | Brief description |
 | `entrypoint` | Yes | Main command provided by extension |
+| `default_version` | No | Default version to install (`latest`, `stable`, or specific) |
+| `auto_mount` | No | Whether to auto-mount config directories (default: true) |
 | `dependencies` | No | List of other extensions required |
 | `env_vars` | No | Environment variables to automatically forward from host |
 | `mounts` | No | Directories to mount from host to container |
+| `flags` | No | Extension-specific CLI flags |
 
 ### Extension Files
 
@@ -240,6 +269,7 @@ mounts:
 | `config.yaml` | Yes | Build time | Extension metadata and configuration |
 | `install.sh` | No | Build time | Installs packages and tools into the image |
 | `setup.sh` | No | Runtime | Runs at container startup for initialization |
+| `args.sh` | No | Runtime | Transforms CLI arguments before command execution |
 
 ### Mounts
 
@@ -311,12 +341,34 @@ fi
 
 Setup scripts run once per container session. In persistent mode, they only run on the first start (a marker file prevents re-running).
 
+### args.sh (Optional)
+
+The args transformation script runs before command execution. Use it to:
+
+- Transform flags (e.g., `--yolo` to agent-specific flags)
+- Add default arguments
+- Modify command behavior
+
+Example args script:
+
+```bash
+#!/bin/bash
+# Transform --yolo flag for this extension
+ARGS=("$@")
+for i in "${!ARGS[@]}"; do
+    if [[ "${ARGS[$i]}" == "--yolo" ]]; then
+        ARGS[$i]="--dangerously-skip-permissions"
+    fi
+done
+echo "${ARGS[@]}"
+```
+
 ### Testing Your Extension
 
-1. Create the extension directory and files
-2. Build addt: `make build`
-3. Build image with extension: `./dist/addtcontainers build --build-arg ADDT_EXTENSIONS=myextension`
-4. Verify: `./dist/addtshell -c "which mycommand"`
+1. Create the extension directory and files in `src/extensions/myextension/`
+2. Rebuild addt: `make build`
+3. Build image with extension: `./dist/addt addt build --build-arg ADDT_EXTENSIONS=myextension`
+4. Verify: `./dist/addt addt shell -c "which mycommand"`
 
 ## Extension Metadata
 
@@ -330,8 +382,8 @@ When extensions are installed, metadata is written to `~/.addt/extensions.json`:
       "description": "Claude Code - AI coding assistant by Anthropic",
       "entrypoint": "claude",
       "mounts": [
-        {"source": "~/.claude", "target": "/home/claude/.claude"},
-        {"source": "~/.claude.json", "target": "/home/claude/.claude.json"}
+        {"source": "~/.claude", "target": "/home/addt/.claude"},
+        {"source": "~/.claude.json", "target": "/home/addt/.claude.json"}
       ],
       "flags": [
         {"flag": "--yolo", "description": "Bypass permission checks"}
@@ -343,7 +395,7 @@ When extensions are installed, metadata is written to `~/.addt/extensions.json`:
       "description": "Multi-agent orchestration for Claude Code",
       "entrypoint": "gt",
       "mounts": [
-        {"source": "~/.gastown", "target": "/home/claude/.gastown"}
+        {"source": "~/.gastown", "target": "/home/addt/.gastown"}
       ],
       "env_vars": ["ANTHROPIC_API_KEY"]
     }
@@ -364,7 +416,7 @@ You can build images with different AI coding agents and switch between them:
 
 ```bash
 # Build with multiple AI agents
-addtcontainers build --build-arg ADDT_EXTENSIONS=claude,codex,gemini,copilot
+claude addt build --build-arg ADDT_EXTENSIONS=claude,codex,gemini,copilot
 
 # Run Claude (default)
 addt
@@ -383,20 +435,23 @@ ADDT_COMMAND=amp addt
 
 # Run Cursor Agent
 ADDT_COMMAND=cursor addt
+
+# Run AWS Kiro
+ADDT_COMMAND=kiro-cli addt
 ```
 
 **Using symlinks for dedicated agent commands:**
 
 ```bash
 # Create symlinks for each agent
-cd /usr/local/bin  # or wherever addtis installed
-ln -s addtcodex
-ln -s addtgemini
-ln -s addtcopilot
+cd /usr/local/bin  # or wherever addt is installed
+ln -s addt codex
+ln -s addt gemini
+ln -s addt copilot
 
 # Build images for each (first run will auto-build)
-codex containers build
-gemini containers build
+codex addt build
+gemini addt build
 
 # Now use them directly
 codex "refactor this function"
@@ -405,22 +460,22 @@ gemini "explain this code"
 
 Each symlink automatically builds and uses its own isolated image (`addt:codex-latest`, `addt:gemini-latest`, etc.).
 
-### Cursor Extension
+### Claude Ecosystem
 
-Cursor CLI provides an AI-powered code editor agent:
+Claude has several companion extensions:
 
 ```bash
-# Build with cursor only
-addtcontainers build --build-arg ADDT_EXTENSIONS=cursor
+# Build with Claude Flow for multi-agent orchestration
+claude addt build --build-arg ADDT_EXTENSIONS=claude-flow
+ADDT_COMMAND=claude-flow addt
 
-# Run cursor agent
-ADDT_COMMAND=cursor addt
-# or
-ADDT_COMMAND=agent addt
+# Build with OpenClaw (open source assistant)
+claude addt build --build-arg ADDT_EXTENSIONS=openclaw
+ADDT_COMMAND=openclaw addt
 
-# Or use symlink
-ln -s addtcursor
-./cursor "help me with this code"
+# Build with Claude Sneakpeek (preview tool)
+claude addt build --build-arg ADDT_EXTENSIONS=claude-sneakpeek
+ADDT_COMMAND=claudesp addt
 ```
 
 ### Gastown Extension
@@ -428,14 +483,14 @@ ln -s addtcursor
 Gastown provides multi-agent orchestration for Claude Code:
 
 ```bash
-# Build with gastown
-addtcontainers build --build-arg ADDT_EXTENSIONS=gastown
+# Build with gastown (includes claude and beads)
+claude addt build --build-arg ADDT_EXTENSIONS=gastown
 
 # Run gastown instead of claude
 ADDT_COMMAND=gt addt
 
 # Or use shell mode
-addtshell
+claude addt shell
 gt --help
 ```
 
@@ -445,13 +500,30 @@ Tessl is an agent enablement platform with a skills package manager:
 
 ```bash
 # Build with tessl
-addtcontainers build --build-arg ADDT_EXTENSIONS=tessl
+claude addt build --build-arg ADDT_EXTENSIONS=tessl
 
 # Use tessl
-addtshell
+claude addt shell
 tessl init           # Authenticate
 tessl skill search   # Find skills
 tessl mcp            # Start MCP server
+```
+
+### Kiro Extension (AWS)
+
+Kiro is AWS's AI-powered development agent:
+
+```bash
+# Build with kiro
+claude addt build --build-arg ADDT_EXTENSIONS=kiro
+
+# Set AWS credentials
+export AWS_ACCESS_KEY_ID="your-key"
+export AWS_SECRET_ACCESS_KEY="your-secret"
+export AWS_REGION="us-east-1"
+
+# Run kiro
+ADDT_COMMAND=kiro-cli addt
 ```
 
 ## Troubleshooting
@@ -467,4 +539,12 @@ If you see permission errors during installation:
 If an extension is not recognized:
 - Ensure the directory name matches the extension name in `config.yaml`
 - Check that `config.yaml` exists (install.sh and setup.sh are optional)
-- Rebuild addtwith `make build` to embed the new extension
+- Rebuild addt with `make build` to embed the new extension
+- Run `addt --addt-list-extensions` to see available extensions
+
+### API Key Issues
+
+If the agent can't authenticate:
+- Check the required environment variables in the extension table above
+- Verify the variable is set on your host: `echo $ANTHROPIC_API_KEY`
+- Check it's being forwarded: `claude addt shell -c "echo \$ANTHROPIC_API_KEY"`
