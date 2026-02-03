@@ -68,71 +68,7 @@ func handleSubcommand(subCmd string, subArgs []string, defaultNodeVersion, defau
 		HandleBuildCommand(prov, providerCfg, subArgs, forceNoCache)
 
 	case "shell":
-		// Check if extension is passed as first arg (addt shell claude)
-		if len(subArgs) > 0 && !strings.HasPrefix(subArgs[0], "-") {
-			cfg.Extensions = subArgs[0]
-			subArgs = subArgs[1:]
-		}
-		// Check if extension is specified
-		if cfg.Extensions == "" {
-			fmt.Println("Error: No extension specified")
-			fmt.Println()
-			fmt.Println("Usage: addt shell <extension>")
-			fmt.Println("       ADDT_EXTENSIONS=claude addt shell")
-			fmt.Println()
-			fmt.Println("Examples:")
-			fmt.Println("  addt shell claude")
-			fmt.Println("  addt shell codex")
-			os.Exit(1)
-		}
-		providerCfg := &provider.Config{
-			ExtensionVersions:  cfg.ExtensionVersions,
-			ExtensionAutomount: cfg.ExtensionAutomount,
-			NodeVersion:        cfg.NodeVersion,
-			GoVersion:          cfg.GoVersion,
-			UvVersion:          cfg.UvVersion,
-			EnvVars:            cfg.EnvVars,
-			GitHubDetect:       cfg.GitHubDetect,
-			Ports:              cfg.Ports,
-			PortRangeStart:     cfg.PortRangeStart,
-			SSHForward:         cfg.SSHForward,
-			GPGForward:         cfg.GPGForward,
-			DindMode:           cfg.DindMode,
-			EnvFile:            cfg.EnvFile,
-			LogEnabled:         cfg.LogEnabled,
-			LogFile:            cfg.LogFile,
-			ImageName:          cfg.ImageName,
-			Persistent:         cfg.Persistent,
-			WorkdirAutomount:   cfg.WorkdirAutomount,
-			Workdir:            cfg.Workdir,
-			FirewallEnabled:    cfg.FirewallEnabled,
-			FirewallMode:       cfg.FirewallMode,
-			Mode:               cfg.Mode,
-			Provider:           cfg.Provider,
-			Extensions:         cfg.Extensions,
-			Command:            cfg.Command,
-			CPUs:               cfg.CPUs,
-			Memory:             cfg.Memory,
-		}
-		prov, err := NewProvider(cfg.Provider, providerCfg)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		if err := prov.Initialize(providerCfg); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		providerCfg.ImageName = prov.DetermineImageName()
-		if err := prov.BuildIfNeeded(false, false); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		orch := core.NewOrchestrator(prov, providerCfg)
-		if err := orch.RunClaude(subArgs, true); err != nil {
-			os.Exit(1)
-		}
-		prov.Cleanup()
+		HandleShellCommand(subArgs, defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
 
 	case "containers":
 		providerCfg := &provider.Config{
