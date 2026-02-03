@@ -10,6 +10,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ExtensionSettings holds per-extension configuration settings
+type ExtensionSettings struct {
+	Version   string `yaml:"version,omitempty"`
+	Automount *bool  `yaml:"automount,omitempty"`
+}
+
 // GlobalConfig represents the persistent configuration stored in ~/.addt/config.yaml
 type GlobalConfig struct {
 	Dind             *bool  `yaml:"dind,omitempty"`
@@ -30,6 +36,9 @@ type GlobalConfig struct {
 	UvVersion        string `yaml:"uv_version,omitempty"`
 	Workdir          string `yaml:"workdir,omitempty"`
 	WorkdirAutomount *bool  `yaml:"workdir_automount,omitempty"`
+
+	// Per-extension configuration
+	Extensions map[string]*ExtensionSettings `yaml:"extensions,omitempty"`
 }
 
 // loadGlobalConfig loads the global config from ~/.addt/config.yaml
@@ -243,8 +252,21 @@ func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultUvVer
 	cfg.Extensions = os.Getenv("ADDT_EXTENSIONS")
 	cfg.Command = os.Getenv("ADDT_COMMAND")
 
-	// Load per-extension versions and mount configs from environment
-	// Pattern: ADDT_<EXT>_VERSION and ADDT_MOUNT_<EXT>_CONFIG
+	// Load per-extension config from config file first
+	// Precedence: config file < environment variables
+	if globalCfg.Extensions != nil {
+		for extName, extCfg := range globalCfg.Extensions {
+			if extCfg.Version != "" {
+				cfg.ExtensionVersions[extName] = extCfg.Version
+			}
+			if extCfg.Automount != nil {
+				cfg.ExtensionAutomount[extName] = *extCfg.Automount
+			}
+		}
+	}
+
+	// Load per-extension versions and mount configs from environment (overrides config file)
+	// Pattern: ADDT_<EXT>_VERSION and ADDT_<EXT>_AUTOMOUNT
 	for _, env := range os.Environ() {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {

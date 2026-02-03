@@ -20,15 +20,15 @@ Commands:
   addt containers [list|stop|rm]     Manage containers
   addt firewall [list|add|rm|reset]  Manage firewall
   addt extensions [list|info|new]    Manage extensions
-  addt config [list|get|set|unset]   Manage configuration
+  addt config global|extension       Manage configuration
   addt cli [update]                  Manage addt CLI
   addt version                       Show version info
 
 Examples:
   addt run claude "Fix the bug"
   addt extensions list
-  addt config list
-  addt config set docker_cpus 2
+  addt config global list
+  addt config extension claude set version 1.0.5
 `, version)
 }
 
@@ -46,7 +46,7 @@ Container management (via agent):
   <agent> addt containers [list|stop|rm]     Manage persistent containers
   <agent> addt firewall [list|add|rm|reset]  Manage network firewall
   <agent> addt extensions [list|info|new]    Manage extensions
-  <agent> addt config [list|get|set|unset]   Manage configuration
+  <agent> addt config global|extension       Manage configuration
   <agent> addt cli [update]                  Manage addt CLI
   <agent> addt version                       Show version info
 
@@ -110,9 +110,10 @@ Build Command:
 
 Configuration:
   Use 'addt config' to manage persistent settings:
-    addt config list               # Show all settings with source
-    addt config set docker_cpus 2  # Set CPU limit
-    addt config get docker_memory  # Get memory limit
+    addt config global list                      # Show all global settings
+    addt config global set docker_cpus 2         # Set CPU limit
+    addt config extension claude list            # Show claude settings
+    addt config extension claude set version 1.0.5  # Set claude version
 
 Examples:
   claude "Fix the bug in app.js"
@@ -120,7 +121,7 @@ Examples:
   claude --help                    # Shows agent's help
   claude addt build                # Build container image
   claude addt shell                # Open shell in container
-  claude addt config list          # Show configuration
+  claude addt config global list   # Show global configuration
 `)
 }
 
