@@ -108,13 +108,7 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 	dockerArgs = append(dockerArgs, p.HandleSSHForwarding(spec.SSHForward, ctx.homeDir, ctx.username)...)
 
 	// GPG forwarding
-	if spec.GPGForward {
-		gnupgDir := fmt.Sprintf("%s/.gnupg", ctx.homeDir)
-		if _, err := os.Stat(gnupgDir); err == nil {
-			dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/home/%s/.gnupg", gnupgDir, ctx.username))
-			dockerArgs = append(dockerArgs, "-e", "GPG_TTY=/dev/console")
-		}
-	}
+	dockerArgs = append(dockerArgs, p.HandleGPGForwarding(spec.GPGForward, ctx.homeDir, ctx.username)...)
 
 	// Firewall configuration
 	if p.config.FirewallEnabled {
