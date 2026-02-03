@@ -220,13 +220,13 @@ claude "Continue working"       # Reuses same container (instant!)
 | **NDDT_EXTENSIONS** | `claude` | Comma-separated list of extensions to install. Example: `claude,codex,gemini`. See [docs/extensions.md](docs/extensions.md) |
 | **NDDT_COMMAND** | *(auto)* | Command to run instead of default. Example: `codex`, `gemini`, `gt` |
 | **NDDT_<EXT>_VERSION** | `stable`/`latest` | Version for specific extension. Example: `NDDT_CLAUDE_VERSION=2.1.27`, `NDDT_CODEX_VERSION=latest` |
-| **NDDT_<EXT>_MOUNT_CONFIG** | `true` | Mount extension config dirs. Example: `NDDT_CLAUDE_MOUNT_CONFIG=false` |
-| **NDDT_NODE_VERSION** | `20` | Node.js version for the container. Use major version (`18`, `20`, `22`), `lts`, or `current` |
+| **NDDT_<EXT>_AUTOMOUNT** | `true` | Mount extension config dirs. Example: `NDDT_CLAUDE_AUTOMOUNT=false` |
+| **NDDT_NODE_VERSION** | `22` | Node.js version for the container. Use major version (`18`, `20`, `22`), `lts`, or `current` |
 | **NDDT_GO_VERSION** | `latest` | Go version for the container. Use `latest` for newest stable, or specific version like `1.23.5`, `1.25.6`, etc. |
 | **NDDT_UV_VERSION** | `latest` | UV (Python package manager) version. Use `latest` for newest stable, or specific version like `0.5.11`, `0.9.28`, etc. Supports `uv self update` inside containers. |
 | **NDDT_GPG_FORWARD** | `false` | Enable GPG commit signing. Set to `true` to mount `~/.gnupg` |
 | **NDDT_SSH_FORWARD** | `false` | Enable SSH forwarding. Use `agent` or `true` for agent forwarding (recommended - secure), or `keys` to mount entire `~/.ssh` directory (⚠️ exposes all private keys) |
-| **NDDT_DOCKER_FORWARD** | `false` | Enable Docker support. Use `isolated` or `true` for isolated environment (recommended), or `host` to access host Docker daemon |
+| **NDDT_DIND_MODE** | *(none)* | Docker-in-Docker mode. Use `isolated` for own Docker daemon (recommended), or `host` to access host Docker socket |
 | **NDDT_ENV_VARS** | `ANTHROPIC_API_KEY,GH_TOKEN` | Comma-separated list of environment variables to pass to container. Example: `ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY` |
 | **NDDT_ENV_FILE** | `.env` | Path to environment file. Example: `.env.production` or `/path/to/config.env` |
 | **NDDT_GITHUB_DETECT** | `false` | Auto-detect GitHub token from `gh` CLI. Set to `true` to use token from `gh auth login` |
@@ -235,8 +235,8 @@ claude "Continue working"       # Reuses same container (instant!)
 | **NDDT_LOG** | `false` | Enable command logging. Set to `true` to log all commands with timestamps, working directory, and container info |
 | **NDDT_LOG_FILE** | `nddt.log` | Log file location (only used when `NDDT_LOG=true`). Example: `/tmp/nddt.log` or `~/logs/nddt.log` |
 | **NDDT_PERSISTENT** | `false` | Enable persistent container mode. Set to `true` to keep containers running across sessions. Each directory gets its own persistent container with preserved state, Docker images, and installed packages |
-| **NDDT_MOUNT_WORKDIR** | `true` | Mount working directory to `/workspace` in container. Set to `false` to run without mounting the current directory (useful for isolated tasks) |
-| **NDDT_MOUNT_CLAUDE_CONFIG** | `true` | Mount `~/.claude` directory and `~/.claude.json` file (authentication and session history). Set to `false` to run without Claude config (requires `ANTHROPIC_API_KEY` environment variable) |
+| **NDDT_WORKDIR_AUTOMOUNT** | `true` | Mount working directory to `/workspace` in container. Set to `false` to run without mounting the current directory (useful for isolated tasks) |
+| **NDDT_CLAUDE_AUTOMOUNT** | `true` | Mount `~/.claude` directory and `~/.claude.json` file (authentication and session history). Set to `false` to run without Claude config (requires `ANTHROPIC_API_KEY` environment variable) |
 | **NDDT_FIREWALL** | `false` | Enable network firewall (whitelist-based). Set to `true` to restrict outbound network access to allowed domains. **Requires `--cap-add=NET_ADMIN`** (automatically added when enabled). Particularly useful in CI/CD environments |
 | **NDDT_FIREWALL_MODE** | `strict` | Firewall mode: `strict` (block non-whitelisted traffic), `permissive` (log but allow all traffic), or `off` (disable firewall). Default is `strict` when firewall is enabled |
 | **NDDT_MODE** | `container` | Execution mode: `container` (Docker-based, default) or `shell` (direct host execution - not yet implemented) |
@@ -251,7 +251,7 @@ claude "Create an Express app"
 
 # With SSH and Docker support
 export NDDT_SSH_FORWARD=agent
-export NDDT_DOCKER_FORWARD=isolated
+export NDDT_DIND_MODE=isolated
 claude
 
 # Pin to specific versions
@@ -283,8 +283,8 @@ claude
 ### Docker-in-Docker
 
 ```bash
-export NDDT_DOCKER_FORWARD=isolated   # Own Docker environment
-# export NDDT_DOCKER_FORWARD=host     # Access host Docker
+export NDDT_DIND_MODE=isolated   # Own Docker environment
+# export NDDT_DIND_MODE=host     # Access host Docker
 claude "Build a Docker image"
 ```
 
@@ -316,7 +316,7 @@ claude
 # Add to ~/.bashrc or ~/.zshrc
 alias claude-yolo='claude --yolo'
 
-alias claude-dev='NDDT_DOCKER_FORWARD=isolated NDDT_PORTS="3000,8080" claude'
+alias claude-dev='NDDT_DIND_MODE=isolated NDDT_PORTS="3000,8080" claude'
 alias claude-opus='claude --model opus'
 ```
 
