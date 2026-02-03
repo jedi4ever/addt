@@ -60,6 +60,8 @@ type Config struct {
 	ExtensionVersions  map[string]string // Per-extension versions (e.g., {"claude": "1.0.5", "codex": "latest"})
 	ExtensionAutomount map[string]bool   // Per-extension automount control (e.g., {"claude": true, "codex": false})
 	NoCache            bool              // Disable Docker cache for builds
+	CPUs               string            // CPU limit (e.g., "2", "0.5", "1.5")
+	Memory             string            // Memory limit (e.g., "512m", "2g", "4gb")
 }
 
 // RunSpec specifies how to run a container/workspace
@@ -76,6 +78,8 @@ type RunSpec struct {
 	SSHForward  string
 	GPGForward  bool
 	DindMode    string
+	CPUs        string // CPU limit (e.g., "2", "0.5")
+	Memory      string // Memory limit (e.g., "512m", "2g")
 }
 
 // Environment represents a container or workspace

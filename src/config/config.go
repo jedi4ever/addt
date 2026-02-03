@@ -33,6 +33,8 @@ type Config struct {
 	Command            string            // Command to run instead of claude (e.g., "gt" for gastown)
 	ExtensionVersions  map[string]string // Per-extension versions (e.g., {"claude": "1.0.5", "codex": "latest"})
 	ExtensionAutomount map[string]bool   // Per-extension automount control (e.g., {"claude": true, "codex": false})
+	CPUs               string            // CPU limit (e.g., "2", "0.5", "1.5")
+	Memory             string            // Memory limit (e.g., "512m", "2g", "4gb")
 }
 
 // LoadConfig loads configuration from environment variables
@@ -61,6 +63,8 @@ func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultUvVer
 		Command:            os.Getenv("ADDT_COMMAND"),
 		ExtensionVersions:  make(map[string]string),
 		ExtensionAutomount: make(map[string]bool),
+		CPUs:               os.Getenv("ADDT_CPUS"),   // CPU limit (e.g., "2", "0.5")
+		Memory:             os.Getenv("ADDT_MEMORY"), // Memory limit (e.g., "512m", "2g")
 	}
 
 	// Load per-extension versions and mount configs from environment

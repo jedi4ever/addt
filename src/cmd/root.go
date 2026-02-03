@@ -111,6 +111,8 @@ func handleSubcommand(subCmd string, subArgs []string, defaultNodeVersion, defau
 			Provider:           cfg.Provider,
 			Extensions:         cfg.Extensions,
 			Command:            cfg.Command,
+			CPUs:               cfg.CPUs,
+			Memory:             cfg.Memory,
 		}
 		prov, err := NewProvider(cfg.Provider, providerCfg)
 		if err != nil {
@@ -397,6 +399,8 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		Provider:           cfg.Provider,
 		Extensions:         cfg.Extensions,
 		Command:            cfg.Command,
+		CPUs:               cfg.CPUs,
+		Memory:             cfg.Memory,
 	}
 
 	// Create provider

@@ -84,6 +84,8 @@ Environment Variables:
   ADDT_MODE                Execution mode: container or shell (default: container)
   ADDT_EXTENSIONS          Extensions to install at build time (e.g., claude,codex,gemini)
   ADDT_COMMAND             Command to run instead of claude (e.g., codex, gemini)
+  ADDT_CPUS                CPU limit for container (e.g., "2", "0.5", "1.5")
+  ADDT_MEMORY              Memory limit for container (e.g., "512m", "2g", "4gb")
 
 Per-Extension Configuration:
   ADDT_<EXT>_VERSION       Version for extension (e.g., ADDT_CLAUDE_VERSION=1.0.5)

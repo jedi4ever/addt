@@ -70,6 +70,8 @@ func (o *Orchestrator) buildRunSpec(name string, args []string, openShell bool) 
 		SSHForward:  o.config.SSHForward,
 		GPGForward:  o.config.GPGForward,
 		DindMode:    o.config.DindMode,
+		CPUs:        o.config.CPUs,
+		Memory:      o.config.Memory,
 	}
 
 	// Special handling for shell mode with args

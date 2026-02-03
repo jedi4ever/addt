@@ -270,6 +270,14 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", k, v))
 	}
 
+	// Add resource limits
+	if spec.CPUs != "" {
+		dockerArgs = append(dockerArgs, "--cpus", spec.CPUs)
+	}
+	if spec.Memory != "" {
+		dockerArgs = append(dockerArgs, "--memory", spec.Memory)
+	}
+
 	return dockerArgs
 }
 
