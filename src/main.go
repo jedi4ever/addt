@@ -6,7 +6,7 @@ import (
 )
 
 // Version can be overridden at build time with -ldflags "-X main.Version=x.y.z"
-var Version = "0.0.1"
+var Version = "0.0.2"
 
 const (
 	DefaultNodeVersion    = "22"

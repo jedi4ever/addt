@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2025-02-03
+
+### Fixed
+- Auto-detect command from `ADDT_EXTENSIONS` when `ADDT_COMMAND` is not set
+- Running `ADDT_EXTENSIONS=codex addt` now correctly runs codex instead of defaulting to claude
+
 ## [0.0.1] - 2025-02-02
 
 ### Added
