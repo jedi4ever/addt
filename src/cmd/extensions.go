@@ -38,9 +38,7 @@ func PrintVersion(version, defaultNodeVersion, defaultGoVersion, defaultUvVersio
 	if extName == "" {
 		extName = os.Getenv("ADDT_COMMAND")
 	}
-	if extName == "" {
-		extName = "claude" // default
-	}
+	// No default - extension must be explicitly set via symlink or env
 	// Take first extension if comma-separated
 	if idx := strings.Index(extName, ","); idx != -1 {
 		extName = extName[:idx]

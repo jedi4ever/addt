@@ -57,8 +57,8 @@ func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultUvVer
 		FirewallMode:       getEnvOrDefault("ADDT_FIREWALL_MODE", "strict"),
 		Mode:               getEnvOrDefault("ADDT_MODE", "container"),
 		Provider:           getEnvOrDefault("ADDT_PROVIDER", "docker"),
-		Extensions:         getEnvOrDefault("ADDT_EXTENSIONS", "claude"),
-		Command:            os.Getenv("ADDT_COMMAND"), // Empty means use default "claude"
+		Extensions:         os.Getenv("ADDT_EXTENSIONS"), // No default - must be set via symlink or env
+		Command:            os.Getenv("ADDT_COMMAND"),
 		ExtensionVersions:  make(map[string]string),
 		ExtensionAutomount: make(map[string]bool),
 	}

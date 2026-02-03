@@ -7,9 +7,34 @@ import (
 	"github.com/jedi4ever/addt/provider/docker"
 )
 
-// PrintHelp displays usage information
+// PrintHelp displays usage information for plain addt (no extension)
 func PrintHelp(version string) {
-	PrintHelpWithFlags(version, "", "")
+	fmt.Printf(`addt - Run AI coding agents in containerized environments
+
+Version: %s
+
+Usage:
+  addt run <extension> [args...]     Run a specific extension
+  addt build [--build-arg ...]       Build the container image
+  addt shell                         Open bash shell in container
+  addt containers [list|stop|rm]     Manage containers
+  addt firewall [list|add|rm|reset]  Manage firewall
+
+Examples:
+  addt run claude "Fix the bug"
+  addt run codex --help
+  addt build --build-arg ADDT_EXTENSIONS=claude,codex
+
+Or create symlinks for direct access:
+  ln -s /usr/local/bin/addt ~/bin/claude      # Run as: claude "prompt"
+  ln -s /usr/local/bin/addt ~/bin/addt-claude # Run as: addt-claude "prompt"
+
+Flags:
+  --addt-version                     Show addt version
+  --addt-list-extensions             List available extensions
+  --addt-update                      Check for updates
+  --addt-help                        Show this help
+`, version)
 }
 
 // PrintHelpWithFlags displays usage information with extension-specific flags
@@ -18,13 +43,13 @@ func PrintHelpWithFlags(version, imageName, command string) {
 
 Version: %s
 
-Usage: addt [options] [prompt]
+Usage: <agent> [options] [prompt]
 
-addt subcommands (container management):
-  addt build [--build-arg ...]       Build the container image
-  addt shell                         Open bash shell in container
-  addt containers [list|stop|rm]     Manage persistent containers
-  addt firewall [list|add|rm|reset]  Manage network firewall
+Container management (via agent):
+  <agent> addt build [--build-arg ...]       Build the container image
+  <agent> addt shell                         Open bash shell in container
+  <agent> addt containers [list|stop|rm]     Manage persistent containers
+  <agent> addt firewall [list|add|rm|reset]  Manage network firewall
 
 Flags:
   --addt-version                     Show addt version
