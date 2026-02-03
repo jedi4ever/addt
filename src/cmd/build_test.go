@@ -14,21 +14,21 @@ type mockProvider struct {
 	imageNameCalled bool
 }
 
-func (m *mockProvider) Initialize(cfg *provider.Config) error      { return nil }
-func (m *mockProvider) Run(spec *provider.RunSpec) error           { return nil }
-func (m *mockProvider) Shell(spec *provider.RunSpec) error         { return nil }
-func (m *mockProvider) Cleanup() error                             { return nil }
-func (m *mockProvider) Exists(name string) bool                    { return false }
-func (m *mockProvider) IsRunning(name string) bool                 { return false }
-func (m *mockProvider) Start(name string) error                    { return nil }
-func (m *mockProvider) Stop(name string) error                     { return nil }
-func (m *mockProvider) Remove(name string) error                   { return nil }
-func (m *mockProvider) List() ([]provider.Environment, error)      { return nil, nil }
-func (m *mockProvider) GeneratePersistentName() string             { return "test-persistent" }
-func (m *mockProvider) GenerateEphemeralName() string              { return "test-ephemeral" }
+func (m *mockProvider) Initialize(cfg *provider.Config) error              { return nil }
+func (m *mockProvider) Run(spec *provider.RunSpec) error                   { return nil }
+func (m *mockProvider) Shell(spec *provider.RunSpec) error                 { return nil }
+func (m *mockProvider) Cleanup() error                                     { return nil }
+func (m *mockProvider) Exists(name string) bool                            { return false }
+func (m *mockProvider) IsRunning(name string) bool                         { return false }
+func (m *mockProvider) Start(name string) error                            { return nil }
+func (m *mockProvider) Stop(name string) error                             { return nil }
+func (m *mockProvider) Remove(name string) error                           { return nil }
+func (m *mockProvider) List() ([]provider.Environment, error)              { return nil, nil }
+func (m *mockProvider) GeneratePersistentName() string                     { return "test-persistent" }
+func (m *mockProvider) GenerateEphemeralName() string                      { return "test-ephemeral" }
 func (m *mockProvider) GetStatus(cfg *provider.Config, name string) string { return "test" }
-func (m *mockProvider) GetName() string                            { return "mock" }
-func (m *mockProvider) GetExtensionEnvVars(imageName string) []string { return nil }
+func (m *mockProvider) GetName() string                                    { return "mock" }
+func (m *mockProvider) GetExtensionEnvVars(imageName string) []string      { return nil }
 
 func (m *mockProvider) DetermineImageName() string {
 	m.imageNameCalled = true

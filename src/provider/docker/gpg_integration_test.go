@@ -41,9 +41,9 @@ func TestGPGForwarding_Integration_Enabled(t *testing.T) {
 
 	// Create some test GPG files
 	testFiles := map[string]string{
-		"pubring.kbx":  "mock pubring data",
-		"trustdb.gpg":  "mock trustdb data",
-		"gpg.conf":     "# GPG config\nkeyserver hkps://keys.openpgp.org\n",
+		"pubring.kbx":    "mock pubring data",
+		"trustdb.gpg":    "mock trustdb data",
+		"gpg.conf":       "# GPG config\nkeyserver hkps://keys.openpgp.org\n",
 		"gpg-agent.conf": "# GPG agent config\n",
 	}
 

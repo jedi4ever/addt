@@ -363,18 +363,18 @@ func TestLoadConfig_FullPrecedenceChain(t *testing.T) {
 	// This tests that each level correctly applies only to the keys it sets
 
 	writeGlobalConfig(t, globalDir, &GlobalConfig{
-		NodeVersion:    "18",          // Will be overridden by project
-		GoVersion:      "1.22",        // Will be overridden by env
-		UvVersion:      "0.2.0",       // Only set here, should persist
-		PortRangeStart: &portStart,    // Will be overridden by project
-		Persistent:     &trueVal,      // Only set here
+		NodeVersion:    "18",       // Will be overridden by project
+		GoVersion:      "1.22",     // Will be overridden by env
+		UvVersion:      "0.2.0",    // Only set here, should persist
+		PortRangeStart: &portStart, // Will be overridden by project
+		Persistent:     &trueVal,   // Only set here
 	})
 
 	projectPort := 36000
 	writeProjectConfig(t, projectDir, &GlobalConfig{
-		NodeVersion:    "22",          // Overrides global
-		PortRangeStart: &projectPort,  // Overrides global
-		FirewallMode:   "permissive",  // Only set here
+		NodeVersion:    "22",         // Overrides global
+		PortRangeStart: &projectPort, // Overrides global
+		FirewallMode:   "permissive", // Only set here
 	})
 
 	os.Setenv("ADDT_GO_VERSION", "1.23")

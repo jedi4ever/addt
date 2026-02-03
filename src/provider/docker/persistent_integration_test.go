@@ -273,8 +273,8 @@ func TestPersistent_Integration_ListContainers(t *testing.T) {
 
 func TestPersistent_Integration_IsPersistentContainer(t *testing.T) {
 	testCases := []struct {
-		name       string
-		want       bool
+		name string
+		want bool
 	}{
 		{"addt-persistent-myproject-abc123", true},
 		{"addt-persistent-test-xyz", true},
