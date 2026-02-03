@@ -28,14 +28,22 @@ func TestSystemPrompt_Integration_PortMapGeneration(t *testing.T) {
 
 	portMap := "3000:30000,8080:30001"
 
+	// Pre-pull alpine to avoid pull messages in output
+	exec.Command("docker", "pull", "alpine:latest").Run()
+
 	cmd := exec.Command("docker", "run", "--rm",
 		"-e", "ADDT_PORT_MAP="+portMap,
 		"alpine:latest",
 		"printenv", "ADDT_PORT_MAP")
 
-	output, err := cmd.CombinedOutput()
+	// Use Output() instead of CombinedOutput() to avoid stderr (like Docker pull messages)
+	output, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("Failed to run container: %v\nOutput: %s", err, string(output))
+		// Get stderr for debugging
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			t.Fatalf("Failed to run container: %v\nStderr: %s", err, string(exitErr.Stderr))
+		}
+		t.Fatalf("Failed to run container: %v", err)
 	}
 
 	if strings.TrimSpace(string(output)) != portMap {
