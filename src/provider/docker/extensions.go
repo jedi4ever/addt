@@ -6,50 +6,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/jedi4ever/addt/extensions"
 )
 
-// ExtensionMount represents a mount point for an extension
-type ExtensionMount struct {
-	Source string `json:"source"`
-	Target string `json:"target"`
-}
-
-// ExtensionFlag represents a CLI flag for an extension
-type ExtensionFlag struct {
-	Flag        string `json:"flag"`
-	Description string `json:"description"`
-}
-
-// ExtensionMetadata represents metadata for an installed extension
-type ExtensionMetadata struct {
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	Entrypoint  string           `json:"entrypoint"`
-	AutoMount   *bool            `json:"auto_mount,omitempty"` // nil or true = auto mount, false = only if explicitly enabled
-	Mounts      []ExtensionMount `json:"mounts"`
-	Flags       []ExtensionFlag  `json:"flags"`
-	EnvVars     []string         `json:"env_vars"` // Environment variables needed by this extension
-}
-
-// ExtensionsConfig represents the extensions.json file structure
-type ExtensionsConfig struct {
-	Extensions map[string]ExtensionMetadata `json:"extensions"`
-}
-
-// ExtensionMountWithName includes the extension name for mount filtering
-type ExtensionMountWithName struct {
-	Source        string
-	Target        string
-	ExtensionName string
-	AutoMount     *bool // from extension level, not mount level
-}
-
 // GetExtensionMounts reads extension metadata from image and returns all mounts
-func (p *DockerProvider) GetExtensionMounts(imageName string) []ExtensionMount {
+func (p *DockerProvider) GetExtensionMounts(imageName string) []extensions.ExtensionMount {
 	mountsWithNames := p.GetExtensionMountsWithNames(imageName)
-	var mounts []ExtensionMount
+	var mounts []extensions.ExtensionMount
 	for _, m := range mountsWithNames {
-		mounts = append(mounts, ExtensionMount{
+		mounts = append(mounts, extensions.ExtensionMount{
 			Source: m.Source,
 			Target: m.Target,
 		})
@@ -58,8 +24,8 @@ func (p *DockerProvider) GetExtensionMounts(imageName string) []ExtensionMount {
 }
 
 // GetExtensionMountsWithNames reads extension metadata and returns mounts with extension names
-func (p *DockerProvider) GetExtensionMountsWithNames(imageName string) []ExtensionMountWithName {
-	var mounts []ExtensionMountWithName
+func (p *DockerProvider) GetExtensionMountsWithNames(imageName string) []extensions.ExtensionMountWithName {
+	var mounts []extensions.ExtensionMountWithName
 
 	// Read extensions.json from the image
 	cmd := exec.Command("docker", "run", "--rm", "--entrypoint", "cat", imageName,
@@ -72,7 +38,7 @@ func (p *DockerProvider) GetExtensionMountsWithNames(imageName string) []Extensi
 	}
 
 	// Parse the JSON
-	var config ExtensionsConfig
+	var config extensions.ExtensionsJSONConfig
 	if err := json.Unmarshal(output, &config); err != nil {
 		return mounts
 	}
@@ -80,7 +46,7 @@ func (p *DockerProvider) GetExtensionMountsWithNames(imageName string) []Extensi
 	// Collect all mounts from all extensions, with extension name and auto_mount
 	for extName, ext := range config.Extensions {
 		for _, mount := range ext.Mounts {
-			mounts = append(mounts, ExtensionMountWithName{
+			mounts = append(mounts, extensions.ExtensionMountWithName{
 				Source:        mount.Source,
 				Target:        mount.Target,
 				ExtensionName: extName,
@@ -142,7 +108,7 @@ func (p *DockerProvider) AddExtensionMounts(dockerArgs []string, imageName, home
 }
 
 // GetExtensionMetadata reads all extension metadata from the image
-func (p *DockerProvider) GetExtensionMetadata(imageName string) map[string]ExtensionMetadata {
+func (p *DockerProvider) GetExtensionMetadata(imageName string) map[string]extensions.ExtensionMetadata {
 	// Read extensions.json from the image
 	cmd := exec.Command("docker", "run", "--rm", "--entrypoint", "cat", imageName,
 		"/home/addt/.addt/extensions.json")
@@ -153,7 +119,7 @@ func (p *DockerProvider) GetExtensionMetadata(imageName string) map[string]Exten
 		return nil
 	}
 
-	var config ExtensionsConfig
+	var config extensions.ExtensionsJSONConfig
 	if err := json.Unmarshal(output, &config); err != nil {
 		return nil
 	}
@@ -162,7 +128,7 @@ func (p *DockerProvider) GetExtensionMetadata(imageName string) map[string]Exten
 }
 
 // GetExtensionFlags returns flags for a specific extension by entrypoint command
-func (p *DockerProvider) GetExtensionFlags(imageName, command string) []ExtensionFlag {
+func (p *DockerProvider) GetExtensionFlags(imageName, command string) []extensions.ExtensionFlag {
 	metadata := p.GetExtensionMetadata(imageName)
 	if metadata == nil {
 		return nil

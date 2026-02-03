@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jedi4ever/addt/config"
+	"github.com/jedi4ever/addt/extensions"
 )
 
 // configKeyInfo holds metadata about a config key
@@ -846,7 +847,7 @@ func listExtensionConfig(extName string) {
 	}
 
 	// Get extension defaults from extension's config.yaml
-	var extDefaults *ExtensionConfig
+	var extDefaults *extensions.ExtensionConfig
 	exts, err := getExtensions()
 	if err == nil {
 		for _, ext := range exts {

@@ -13,32 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ExtensionMount represents a mount configuration
-type ExtensionMount struct {
-	Source string `yaml:"source"`
-	Target string `yaml:"target"`
-}
-
-// ExtensionFlag represents a flag configuration
-type ExtensionFlag struct {
-	Flag        string `yaml:"flag"`
-	Description string `yaml:"description"`
-}
-
-// ExtensionConfig represents the config.yaml structure
-type ExtensionConfig struct {
-	Name           string           `yaml:"name"`
-	Description    string           `yaml:"description"`
-	Entrypoint     string           `yaml:"entrypoint"`
-	DefaultVersion string           `yaml:"default_version"`
-	AutoMount      bool             `yaml:"auto_mount"`
-	Dependencies   []string         `yaml:"dependencies"`
-	EnvVars        []string         `yaml:"env_vars"`
-	Mounts         []ExtensionMount `yaml:"mounts"`
-	Flags          []ExtensionFlag  `yaml:"flags"`
-	IsLocal        bool             `yaml:"-"` // Not from YAML, indicates local extension
-}
-
 // PrintVersion prints addt version and loaded extension version
 func PrintVersion(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion string) {
 	fmt.Printf("addt %s\n", version)
@@ -224,8 +198,8 @@ func GetEntrypointForExtension(extName string) string {
 }
 
 // getExtensions reads all extension configs from embedded filesystem and local ~/.addt/extensions/
-func getExtensions() ([]ExtensionConfig, error) {
-	configMap := make(map[string]ExtensionConfig)
+func getExtensions() ([]extensions.ExtensionConfig, error) {
+	configMap := make(map[string]extensions.ExtensionConfig)
 
 	// First, read embedded extensions
 	entries, err := fs.ReadDir(extensions.FS, ".")
@@ -244,7 +218,7 @@ func getExtensions() ([]ExtensionConfig, error) {
 			continue // Skip directories without config.yaml
 		}
 
-		var cfg ExtensionConfig
+		var cfg extensions.ExtensionConfig
 		if err := yaml.Unmarshal(data, &cfg); err != nil {
 			continue // Skip invalid configs
 		}
@@ -268,7 +242,7 @@ func getExtensions() ([]ExtensionConfig, error) {
 					continue // Skip directories without config.yaml
 				}
 
-				var cfg ExtensionConfig
+				var cfg extensions.ExtensionConfig
 				if err := yaml.Unmarshal(data, &cfg); err != nil {
 					continue // Skip invalid configs
 				}
@@ -280,7 +254,7 @@ func getExtensions() ([]ExtensionConfig, error) {
 	}
 
 	// Convert map to slice
-	var configs []ExtensionConfig
+	var configs []extensions.ExtensionConfig
 	for _, cfg := range configMap {
 		configs = append(configs, cfg)
 	}
