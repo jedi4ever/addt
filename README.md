@@ -118,6 +118,12 @@ brew tap jedi4ever/tap
 brew install addt
 ```
 
+### Homebrew
+
+```bash
+mise use -g github:jedi4ever/addt
+```
+
 ### Verify Installation
 
 ```bash
