@@ -247,9 +247,10 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 				fmt.Println("Usage: addt extensions <command>")
 				fmt.Println()
 				fmt.Println("Commands:")
-				fmt.Println("  list              List available extensions")
-				fmt.Println("  info <name>       Show extension details")
-				fmt.Println("  new <name>        Create a new local extension")
+				fmt.Println("  list                       List available extensions")
+				fmt.Println("  info <name>                Show extension details")
+				fmt.Println("  new <name>                 Create a new local extension")
+				fmt.Println("  config <name> <subcommand> Configure extension settings")
 				return
 			}
 			switch args[1] {
@@ -267,6 +268,28 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 					os.Exit(1)
 				}
 				CreateExtension(args[2])
+			case "config":
+				// addt extensions config <name> [subcommand] - delegates to config extension
+				if len(args) < 3 || args[2] == "--help" || args[2] == "-h" {
+					fmt.Println("Usage: addt extensions config <name> <command>")
+					fmt.Println()
+					fmt.Println("Commands:")
+					fmt.Println("  list              List extension configuration")
+					fmt.Println("  get <key>         Get a configuration value")
+					fmt.Println("  set <key> <value> Set a configuration value")
+					fmt.Println("  unset <key>       Remove a configuration value")
+					fmt.Println()
+					fmt.Println("Available keys:")
+					fmt.Println("  version     Extension version (e.g., \"1.0.5\", \"latest\", \"stable\")")
+					fmt.Println("  automount   Auto-mount extension config directories (true/false)")
+					fmt.Println()
+					fmt.Println("Examples:")
+					fmt.Println("  addt extensions config claude list")
+					fmt.Println("  addt extensions config claude set version 1.0.5")
+					return
+				}
+				// Delegate to HandleConfigCommand with "extension" prefix
+				HandleConfigCommand(append([]string{"extension"}, args[2:]...))
 			default:
 				fmt.Printf("Unknown extensions command: %s\n", args[1])
 				os.Exit(1)
@@ -323,9 +346,10 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 					fmt.Println("Usage: <agent> addt extensions <command>")
 					fmt.Println()
 					fmt.Println("Commands:")
-					fmt.Println("  list              List available extensions")
-					fmt.Println("  info <name>       Show extension details")
-					fmt.Println("  new <name>        Create a new local extension")
+					fmt.Println("  list                       List available extensions")
+					fmt.Println("  info <name>                Show extension details")
+					fmt.Println("  new <name>                 Create a new local extension")
+					fmt.Println("  config <name> <subcommand> Configure extension settings")
 					return
 				}
 				switch subArgs[0] {
@@ -343,6 +367,26 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 						os.Exit(1)
 					}
 					CreateExtension(subArgs[1])
+				case "config":
+					if len(subArgs) < 2 || subArgs[1] == "--help" || subArgs[1] == "-h" {
+						fmt.Println("Usage: <agent> addt extensions config <name> <command>")
+						fmt.Println()
+						fmt.Println("Commands:")
+						fmt.Println("  list              List extension configuration")
+						fmt.Println("  get <key>         Get a configuration value")
+						fmt.Println("  set <key> <value> Set a configuration value")
+						fmt.Println("  unset <key>       Remove a configuration value")
+						fmt.Println()
+						fmt.Println("Available keys:")
+						fmt.Println("  version     Extension version (e.g., \"1.0.5\", \"latest\", \"stable\")")
+						fmt.Println("  automount   Auto-mount extension config directories (true/false)")
+						fmt.Println()
+						fmt.Println("Examples:")
+						fmt.Println("  claude addt extensions config claude list")
+						fmt.Println("  claude addt extensions config claude set version 1.0.5")
+						return
+					}
+					HandleConfigCommand(append([]string{"extension"}, subArgs[1:]...))
 				default:
 					fmt.Printf("Unknown extensions command: %s\n", subArgs[0])
 					os.Exit(1)
