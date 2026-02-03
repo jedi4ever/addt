@@ -99,7 +99,7 @@ claude addt shell -c "cat ~/.addt/extensions.json"
 claude addt shell -c "which claude gt bd tessl"
 
 # List available extensions
-addt --addt-list-extensions
+addt extensions list
 ```
 
 ### Symlink-Based Extension Selection
@@ -132,7 +132,23 @@ This is useful for:
 
 ### Per-Extension Configuration
 
-Each extension can be configured individually via environment variables:
+Each extension can be configured via config file or environment variables:
+
+**Using config file (recommended for persistent settings):**
+
+```bash
+# Set version for a specific extension
+addt config extension claude set version 2.0.0
+addt config extension codex set version 0.1.0
+
+# Disable config directory mounting
+addt config extension claude set automount false
+
+# View extension settings
+addt config extension claude list
+```
+
+**Using environment variables (override config file):**
 
 ```bash
 # Set version for a specific extension
@@ -149,10 +165,12 @@ ADDT_EXTENSIONS=claude,codex \
   claude addt build
 ```
 
-| Variable Pattern | Description |
-|-----------------|-------------|
-| `ADDT_<EXT>_VERSION` | Version to install (e.g., `2.1.0`, `latest`, `stable`) |
-| `ADDT_<EXT>_AUTOMOUNT` | Mount extension config dirs (`true`/`false`) |
+| Config Key | Env Variable Pattern | Description |
+|------------|---------------------|-------------|
+| `version` | `ADDT_<EXT>_VERSION` | Version to install (e.g., `2.1.0`, `latest`, `stable`) |
+| `automount` | `ADDT_<EXT>_AUTOMOUNT` | Mount extension config dirs (`true`/`false`) |
+
+**Configuration precedence:** Environment variables > Config file > Defaults
 
 ### Automatic Environment Variable Forwarding
 
@@ -210,9 +228,57 @@ addt "help me with this code"        # Uses ANTHROPIC_API_KEY
 ADDT_COMMAND=codex addt "..."        # Uses OPENAI_API_KEY
 ```
 
+## Local Extensions
+
+You can create custom extensions in `~/.addt/extensions/` without modifying the addt source code. Local extensions override built-in extensions with the same name.
+
+### Creating a Local Extension
+
+Use the `addt extensions new` command to scaffold a new extension:
+
+```bash
+# Create a new extension
+addt extensions new myagent
+
+# This creates:
+# ~/.addt/extensions/myagent/
+#   ├── config.yaml    # Extension metadata (required)
+#   ├── install.sh     # Installation script (runs at build time)
+#   └── setup.sh       # Setup script (runs at container startup)
+```
+
+After editing the files, build and run your extension:
+
+```bash
+# Build image with your extension
+addt build myagent
+
+# Run your extension
+addt run myagent "Hello!"
+
+# Or create a symlink for direct access
+ln -s /usr/local/bin/addt ~/bin/myagent
+myagent "Hello!"
+```
+
+### Local Extension Priority
+
+When an extension exists in both `~/.addt/extensions/` and the built-in extensions:
+- Local extension takes priority
+- Allows customizing built-in extensions without forking
+
+```bash
+# List extensions (shows source column)
+addt extensions list
+
+#   Name     Entrypoint   Version  Source    Description
+#   myagent  myagent      latest   local     My custom agent
+#   claude   claude       stable   built-in  Claude Code - AI coding assistant
+```
+
 ## Creating Extensions
 
-Extensions are stored in `src/extensions/` as directories containing:
+Extensions are stored in `src/extensions/` (built-in) or `~/.addt/extensions/` (local) as directories containing:
 
 ```
 src/extensions/
@@ -539,8 +605,9 @@ If you see permission errors during installation:
 If an extension is not recognized:
 - Ensure the directory name matches the extension name in `config.yaml`
 - Check that `config.yaml` exists (install.sh and setup.sh are optional)
-- Rebuild addt with `make build` to embed the new extension
-- Run `addt --addt-list-extensions` to see available extensions
+- For built-in extensions: Rebuild addt with `make build` to embed the new extension
+- For local extensions: Ensure the extension is in `~/.addt/extensions/<name>/`
+- Run `addt extensions list` to see available extensions and their source
 
 ### API Key Issues
 

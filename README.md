@@ -205,6 +205,14 @@ addt firewall reset                # Reset to defaults
 # Extension management
 addt extensions list               # List available extensions
 addt extensions info <name>        # Show extension details
+addt extensions new <name>         # Create a new local extension
+
+# Configuration management
+addt config global list            # List all global settings
+addt config global set <key> <val> # Set a global config value
+addt config extension <name> list  # List extension settings
+addt config extension <name> set version 1.0.5  # Set extension version
+addt config path                   # Show config file path
 
 # CLI management
 addt cli update                    # Check for and install updates
@@ -251,8 +259,12 @@ claude "Continue working"       # Reuses same container (instant!)
 | **ADDT_GO_VERSION** | `latest` | Go version for the container. Use `latest` for newest stable, or specific version like `1.23.5`, `1.25.6`, etc. |
 | **ADDT_UV_VERSION** | `latest` | UV (Python package manager) version. Use `latest` for newest stable, or specific version like `0.5.11`, `0.9.28`, etc. Supports `uv self update` inside containers. |
 | **ADDT_GPG_FORWARD** | `false` | Enable GPG commit signing. Set to `true` to mount `~/.gnupg` |
-| **ADDT_SSH_FORWARD** | `false` | Enable SSH forwarding. Use `agent` or `true` for agent forwarding (recommended - secure), or `keys` to mount entire `~/.ssh` directory (exposes all private keys) |
-| **ADDT_DIND_MODE** | *(none)* | Docker-in-Docker mode. Use `isolated` for own Docker daemon (recommended), or `host` to access host Docker socket |
+| **ADDT_SSH_FORWARD** | `agent` | SSH forwarding mode. Use `agent` for agent forwarding (recommended - secure), or `keys` to mount entire `~/.ssh` directory (exposes all private keys) |
+| **ADDT_DIND** | `false` | Enable Docker-in-Docker. Set to `true` to allow running Docker commands inside the container |
+| **ADDT_DIND_MODE** | `isolated` | Docker-in-Docker mode. Use `isolated` for own Docker daemon (recommended), or `host` to access host Docker socket |
+| **ADDT_DOCKER_CPUS** | *(none)* | CPU limit for container. Example: `2`, `0.5`, `1.5` |
+| **ADDT_DOCKER_MEMORY** | *(none)* | Memory limit for container. Example: `512m`, `2g`, `4gb` |
+| **ADDT_WORKDIR** | `.` | Override working directory. Default is current directory |
 | **ADDT_ENV_VARS** | `ANTHROPIC_API_KEY,GH_TOKEN` | Comma-separated list of environment variables to pass to container. Example: `ANTHROPIC_API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY` |
 | **ADDT_ENV_FILE** | `.env` | Path to environment file. Example: `.env.production` or `/path/to/config.env` |
 | **ADDT_GITHUB_DETECT** | `false` | Auto-detect GitHub token from `gh` CLI. Set to `true` to use token from `gh auth login` |
@@ -268,6 +280,33 @@ claude "Continue working"       # Reuses same container (instant!)
 | **ADDT_MODE** | `container` | Execution mode: `container` (Docker-based, default) or `shell` (direct host execution - not yet implemented) |
 | **ADDT_PROVIDER** | `docker` | Provider type: `docker` (default) or `daytona` (experimental, see [docs/README-daytona.md](docs/README-daytona.md)) |
 
+### Persistent Configuration
+
+Use `addt config` to manage settings that persist across sessions:
+
+```bash
+# Global settings
+addt config global list                      # Show all settings with source
+addt config global set docker_cpus 2         # Limit container to 2 CPUs
+addt config global set docker_memory 4g      # Limit container memory
+addt config global set dind true             # Enable Docker-in-Docker
+addt config global unset docker_cpus         # Remove setting (use default)
+
+# Per-extension settings
+addt config extension claude list            # Show claude settings
+addt config extension claude set version 1.0.5  # Pin claude version
+addt config extension claude set automount false # Disable config mounting
+addt config extension codex set version latest
+
+# View config file
+addt config path                             # Shows ~/.addt/config.yaml
+```
+
+**Configuration precedence** (highest to lowest):
+1. Environment variables (e.g., `ADDT_DOCKER_CPUS`)
+2. Config file (`~/.addt/config.yaml`)
+3. Default values
+
 ### Quick Examples
 
 ```bash
@@ -277,12 +316,17 @@ addt run claude "Create an Express app"
 
 # With SSH and Docker support
 export ADDT_SSH_FORWARD=agent
-export ADDT_DIND_MODE=isolated
+export ADDT_DIND=true
 addt run claude
 
 # Pin to specific versions
 export ADDT_CLAUDE_VERSION=2.1.27
 export ADDT_NODE_VERSION=18
+addt run claude
+
+# Limit container resources
+export ADDT_DOCKER_CPUS=2
+export ADDT_DOCKER_MEMORY=4g
 addt run claude
 ```
 
@@ -349,6 +393,27 @@ alias claude-opus='addt run claude --model opus'
 ```
 
 **YOLO mode** (`--yolo`) bypasses all permission checks. Only use in trusted environments.
+
+### Local Extensions
+
+Create custom extensions in `~/.addt/extensions/`:
+
+```bash
+# Scaffold a new extension
+addt extensions new myagent
+
+# This creates:
+# ~/.addt/extensions/myagent/
+#   ├── config.yaml    # Extension metadata
+#   ├── install.sh     # Build-time installation
+#   └── setup.sh       # Runtime initialization
+
+# Edit the files, then build
+addt build myagent
+addt run myagent "Hello!"
+```
+
+Local extensions override built-in extensions with the same name. See [docs/extensions.md](docs/extensions.md) for creating extensions.
 
 ## Troubleshooting
 
