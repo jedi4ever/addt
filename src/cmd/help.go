@@ -27,8 +27,8 @@ Commands:
 Examples:
   addt run claude "Fix the bug"
   addt extensions list
-  addt extensions info claude
-  addt cli update
+  addt config list
+  addt config set docker_cpus 2
 `, version)
 }
 
@@ -45,7 +45,8 @@ Container management (via agent):
   <agent> addt shell                         Open bash shell in container
   <agent> addt containers [list|stop|rm]     Manage persistent containers
   <agent> addt firewall [list|add|rm|reset]  Manage network firewall
-  <agent> addt extensions [list|info]        Manage extensions
+  <agent> addt extensions [list|info|new]    Manage extensions
+  <agent> addt config [list|get|set|unset]   Manage configuration
   <agent> addt cli [update]                  Manage addt CLI
   <agent> addt version                       Show version info
 
@@ -63,30 +64,39 @@ Container management (via agent):
 
 	fmt.Print(`
 Environment Variables:
-  ADDT_PROVIDER            Provider type: docker or daytona (default: docker)
-  ADDT_NODE_VERSION        Node.js version (default: 22)
-  ADDT_GO_VERSION          Go version (default: latest)
-  ADDT_UV_VERSION          UV Python package manager version (default: latest)
-  ADDT_ENV_VARS            Comma-separated env vars to pass (default: ANTHROPIC_API_KEY,GH_TOKEN)
-  ADDT_GITHUB_DETECT       Auto-detect GitHub token from gh CLI (default: false)
-  ADDT_PORTS               Comma-separated container ports to expose
-  ADDT_PORT_RANGE_START    Starting port for auto allocation (default: 30000)
-  ADDT_SSH_FORWARD         SSH forwarding mode: agent, keys, or empty
-  ADDT_GPG_FORWARD         Enable GPG forwarding (true/false)
-  ADDT_DIND_MODE           Docker-in-Docker mode: host, isolated (default: none)
-  ADDT_ENV_FILE            Path to .env file (default: .env)
-  ADDT_LOG                 Enable command logging (default: false)
-  ADDT_LOG_FILE            Log file path
-  ADDT_PERSISTENT          Enable persistent container mode (true/false)
-  ADDT_WORKDIR             Override working directory (default: current directory)
-  ADDT_WORKDIR_AUTOMOUNT   Auto-mount working directory to /workspace (default: true)
-  ADDT_FIREWALL            Enable network firewall (default: false, requires --cap-add=NET_ADMIN)
-  ADDT_FIREWALL_MODE       Firewall mode: strict, permissive, off (default: strict)
-  ADDT_MODE                Execution mode: container or shell (default: container)
-  ADDT_EXTENSIONS          Extensions to install at build time (e.g., claude,codex,gemini)
-  ADDT_COMMAND             Command to run instead of claude (e.g., codex, gemini)
-  ADDT_DOCKER_CPUS         CPU limit for container (e.g., "2", "0.5", "1.5")
-  ADDT_DOCKER_MEMORY       Memory limit for container (e.g., "512m", "2g", "4gb")
+  Container Resources:
+    ADDT_DOCKER_CPUS       CPU limit (e.g., "2", "0.5")
+    ADDT_DOCKER_MEMORY     Memory limit (e.g., "512m", "2g")
+    ADDT_PERSISTENT        Persistent container mode (default: false)
+    ADDT_WORKDIR           Override working directory (default: .)
+    ADDT_WORKDIR_AUTOMOUNT Auto-mount workdir to /workspace (default: true)
+
+  Docker-in-Docker:
+    ADDT_DIND              Enable Docker-in-Docker (default: false)
+    ADDT_DIND_MODE         DinD mode: host or isolated (default: isolated)
+
+  Security/Network:
+    ADDT_FIREWALL          Enable network firewall (default: false)
+    ADDT_FIREWALL_MODE     Firewall mode: strict, permissive, off (default: strict)
+    ADDT_SSH_FORWARD       SSH forwarding: agent or keys (default: agent)
+    ADDT_GPG_FORWARD       Enable GPG forwarding (default: false)
+
+  Tool Versions:
+    ADDT_NODE_VERSION      Node.js version (default: 22)
+    ADDT_GO_VERSION        Go version (default: latest)
+    ADDT_UV_VERSION        UV Python version (default: latest)
+
+  Other:
+    ADDT_PROVIDER          Provider: docker or daytona (default: docker)
+    ADDT_GITHUB_DETECT     Auto-detect GitHub token from gh CLI (default: false)
+    ADDT_PORTS             Comma-separated container ports to expose
+    ADDT_PORT_RANGE_START  Starting port for allocation (default: 30000)
+    ADDT_ENV_VARS          Env vars to pass (default: ANTHROPIC_API_KEY,GH_TOKEN)
+    ADDT_ENV_FILE          Path to .env file (default: .env)
+    ADDT_LOG               Enable command logging (default: false)
+    ADDT_LOG_FILE          Log file path (default: addt.log)
+    ADDT_EXTENSIONS        Extensions to install (e.g., claude,codex)
+    ADDT_COMMAND           Command to run (e.g., codex, gemini)
 
 Per-Extension Configuration:
   ADDT_<EXT>_VERSION       Version for extension (e.g., ADDT_CLAUDE_VERSION=1.0.5)
@@ -98,19 +108,19 @@ Build Command:
                               Build the container image with optional build args
                               Example: addt containers build --build-arg ADDT_EXTENSIONS=gastown
 
+Configuration:
+  Use 'addt config' to manage persistent settings:
+    addt config list               # Show all settings with source
+    addt config set docker_cpus 2  # Set CPU limit
+    addt config get docker_memory  # Get memory limit
+
 Examples:
   claude "Fix the bug in app.js"
   claude --yolo "Refactor this entire codebase"
   claude --help                    # Shows agent's help
-  claude --addt-help               # Shows addt help
-  claude --addt-list-extensions    # List available extensions
   claude addt build                # Build container image
   claude addt shell                # Open shell in container
-
-Multiple agents via symlinks (avoids overriding real installs):
-  mkdir -p ~/bin && ln -s /usr/local/bin/addt ~/bin/claude
-  ln -s /usr/local/bin/addt ~/bin/codex
-  ln -s /usr/local/bin/addt ~/bin/addt-claude   # Also supports addt-<extension> naming
+  claude addt config list          # Show configuration
 `)
 }
 
