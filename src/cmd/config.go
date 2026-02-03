@@ -296,6 +296,22 @@ func handleExtensionConfig(args []string) {
 	}
 
 	extName := args[0]
+
+	// Check if first arg is a subcommand (user forgot extension name)
+	if extName == "list" || extName == "get" || extName == "set" || extName == "unset" {
+		fmt.Println("Error: extension name required")
+		fmt.Println()
+		printExtensionConfigHelp()
+		os.Exit(1)
+	}
+
+	// Validate that the extension exists
+	if !extensionExists(extName) {
+		fmt.Printf("Error: extension '%s' does not exist\n", extName)
+		fmt.Println("Run 'addt extensions list' to see available extensions")
+		os.Exit(1)
+	}
+
 	if len(args) < 2 {
 		// Default to list for extension
 		listExtensionConfig(extName)
@@ -328,6 +344,20 @@ func handleExtensionConfig(args []string) {
 		printExtensionConfigHelp()
 		os.Exit(1)
 	}
+}
+
+// extensionExists checks if an extension with the given name exists
+func extensionExists(name string) bool {
+	exts, err := getExtensions()
+	if err != nil {
+		return false
+	}
+	for _, ext := range exts {
+		if ext.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func printConfigHelp() {
