@@ -1,6 +1,6 @@
 //go:build integration
 
-package ports
+package core
 
 import (
 	"fmt"

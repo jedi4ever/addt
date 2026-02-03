@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jedi4ever/addt/internal/terminal"
 	"github.com/jedi4ever/addt/provider"
+	"github.com/jedi4ever/addt/util/terminal"
 )
 
 // BuildEnvironment creates the environment variables map for the container

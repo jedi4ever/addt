@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/jedi4ever/addt/cmd"
-	"github.com/jedi4ever/addt/internal/util"
+	"github.com/jedi4ever/addt/util"
 )
 
 // Version can be overridden at build time with -ldflags "-X main.Version=x.y.z"

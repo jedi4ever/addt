@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jedi4ever/addt/internal/util"
+	"github.com/jedi4ever/addt/util"
 )
 
 // HandleSSHForwarding configures SSH forwarding based on config.

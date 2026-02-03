@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jedi4ever/addt/internal/terminal"
 	"github.com/jedi4ever/addt/provider"
+	"github.com/jedi4ever/addt/util/terminal"
 )
 
 // BuildRunOptions creates a RunSpec from the configuration
