@@ -20,7 +20,7 @@ Commands:
   addt containers [list|stop|rm]     Manage containers
   addt firewall [list|add|rm|reset]  Manage firewall
   addt extensions [list|info|new]    Manage extensions
-  addt config global|extension       Manage configuration
+  addt config [global|project|extension]  Manage configuration
   addt cli [update]                  Manage addt CLI
   addt version                       Show version info
 
@@ -46,7 +46,7 @@ Container management (via agent):
   <agent> addt containers [list|stop|rm]     Manage persistent containers
   <agent> addt firewall [list|add|rm|reset]  Manage network firewall
   <agent> addt extensions [list|info|new]    Manage extensions
-  <agent> addt config global|extension       Manage configuration
+  <agent> addt config [global|project|extension]  Manage configuration
   <agent> addt cli [update]                  Manage addt CLI
   <agent> addt version                       Show version info
 
@@ -88,6 +88,7 @@ Environment Variables:
 
   Other:
     ADDT_PROVIDER          Provider: docker or daytona (default: docker)
+    ADDT_CONFIG_DIR        Global config directory (default: ~/.addt)
     ADDT_GITHUB_DETECT     Auto-detect GitHub token from gh CLI (default: false)
     ADDT_PORTS             Comma-separated container ports to expose
     ADDT_PORT_RANGE_START  Starting port for allocation (default: 30000)
@@ -110,10 +111,12 @@ Build Command:
 
 Configuration:
   Use 'addt config' to manage persistent settings:
-    addt config global list                      # Show all global settings
-    addt config global set docker_cpus 2         # Set CPU limit
-    addt config extension claude list            # Show claude settings
-    addt config extension claude set version 1.0.5  # Set claude version
+    addt config global list                         # Show all global settings
+    addt config global set docker_cpus 2            # Set CPU limit
+    addt config project set persistent true         # Set project-level config
+    addt config extension claude set version 1.0.5  # Set extension version
+
+  Precedence: env vars > project (.addt.yaml) > global (~/.addt/config.yaml) > defaults
 
 Examples:
   claude "Fix the bug in app.js"

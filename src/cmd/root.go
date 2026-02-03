@@ -308,7 +308,8 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 				fmt.Println("  shell                     Open bash shell in container")
 				fmt.Println("  containers <subcommand>   Manage containers (list, stop, rm, clean)")
 				fmt.Println("  firewall <subcommand>     Manage firewall (list, add, remove, reset)")
-				fmt.Println("  extensions <subcommand>   Manage extensions (list, info)")
+				fmt.Println("  extensions <subcommand>   Manage extensions (list, info, new)")
+				fmt.Println("  config <subcommand>       Manage config (global, project, extension)")
 				fmt.Println("  cli <subcommand>          Manage addt CLI (update)")
 				fmt.Println("  version                   Show version info")
 				return
