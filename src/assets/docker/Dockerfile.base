@@ -5,7 +5,7 @@ FROM node:${NODE_VERSION}-slim
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 ARG USERNAME=addt
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.23.5
 ARG UV_VERSION=0.5.11
 
 # Install dependencies, GitHub CLI, Docker CLI, and Docker daemon (for DinD)

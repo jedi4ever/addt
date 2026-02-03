@@ -283,7 +283,7 @@ func TestSSHForwarding_Integration_FullProviderWithSSH(t *testing.T) {
 		Extensions:  "claude",
 		SSHForward:  "keys",
 		NodeVersion: "22",
-		GoVersion:   "1.23",
+		GoVersion:   "1.23.5",
 		UvVersion:   "0.4.17",
 	}
 

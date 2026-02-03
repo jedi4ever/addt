@@ -63,7 +63,7 @@ func ensureTestImage(t *testing.T, imageName, extension string) {
 	}
 
 	// Build the image
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = extension
 
 	providerCfg := &provider.Config{
@@ -234,7 +234,7 @@ func TestShellCommand_Integration_ProviderInitialization(t *testing.T) {
 
 	testImageName := "addt-test-shell-init"
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude"
 
 	providerCfg := &provider.Config{

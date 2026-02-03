@@ -71,7 +71,7 @@ func ensureRunTestImage(t *testing.T, imageName, extension string) {
 		return // Image exists
 	}
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = extension
 
 	providerCfg := &provider.Config{
@@ -228,7 +228,7 @@ func TestRunCommand_Integration_ExtensionWithArgs(t *testing.T) {
 func TestRunCommand_Integration_ProviderSetup(t *testing.T) {
 	checkDockerForRun(t)
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude"
 
 	providerCfg := &provider.Config{
@@ -263,7 +263,7 @@ func TestRunCommand_Integration_MultipleExtensions(t *testing.T) {
 
 	testImageName := "addt-test-run-multi"
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude,codex"
 
 	providerCfg := &provider.Config{

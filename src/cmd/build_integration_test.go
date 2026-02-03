@@ -62,7 +62,7 @@ func TestBuildCommand_Integration_Claude(t *testing.T) {
 	defer removeImage(testImageName)
 
 	// Load config with defaults
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude"
 
 	// Create provider config
@@ -105,7 +105,7 @@ func TestBuildCommand_Integration_WithNoCache(t *testing.T) {
 	removeImage(testImageName)
 	defer removeImage(testImageName)
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude"
 
 	providerCfg := &provider.Config{
@@ -178,7 +178,7 @@ func TestBuildCommand_Integration_ExtensionVersion(t *testing.T) {
 	removeImage(testImageName)
 	defer removeImage(testImageName)
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude"
 
 	// Set a specific version
@@ -227,7 +227,7 @@ func TestBuildCommand_Integration_MultipleExtensions(t *testing.T) {
 	removeImage(testImageName)
 	defer removeImage(testImageName)
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude,codex"
 
 	providerCfg := &provider.Config{
@@ -260,7 +260,7 @@ func TestBuildCommand_Integration_MultipleExtensions(t *testing.T) {
 func TestBuildCommand_Integration_InvalidExtension(t *testing.T) {
 	checkDocker(t)
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "nonexistent-extension-xyz"
 
 	providerCfg := &provider.Config{
@@ -291,7 +291,7 @@ func TestBuildCommand_Integration_InvalidExtension(t *testing.T) {
 func TestBuildCommand_Integration_ImageNameFormat(t *testing.T) {
 	checkDocker(t)
 
-	cfg := config.LoadConfig("22", "1.23", "0.4.17", 49152)
+	cfg := config.LoadConfig("22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "claude"
 
 	providerCfg := &provider.Config{

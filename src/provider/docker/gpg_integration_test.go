@@ -172,7 +172,7 @@ func TestGPGForwarding_Integration_FullProviderWithGPG(t *testing.T) {
 		Extensions:  "claude",
 		GPGForward:  true,
 		NodeVersion: "22",
-		GoVersion:   "1.23",
+		GoVersion:   "1.23.5",
 		UvVersion:   "0.4.17",
 	}
 
