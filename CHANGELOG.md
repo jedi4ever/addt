@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-02-04
+
+### Fixed
+- Preserve OAuth credentials when `automount` is enabled for Claude extension
+- setup.sh now detects existing Claude config and preserves authentication
+- Only adds `/workspace` trust to existing config instead of overwriting
+
+### Added
+- Docker-based integration tests for Claude extension setup.sh behavior
+
 ## [0.0.7] - 2026-02-03
 
 ### Added
