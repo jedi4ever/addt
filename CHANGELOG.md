@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Firewall command with global/project/extension scopes
+- Layered firewall rule evaluation (defaults → extension → global → project)
+- Project-level rules can override global rules
+- Per-extension firewall configuration
+- `addt firewall global|project|extension` subcommands
+- `CheckDomain()` function for programmatic firewall checks
+
+### Changed
+- Firewall rules now stored in config files (`~/.addt/config.yaml`, `.addt.yaml`)
+- Moved firewall code to dedicated `cmd/firewall/` package
+
 ## [0.0.5] - 2025-02-03
 
 ### Added
