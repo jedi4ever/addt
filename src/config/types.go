@@ -54,10 +54,14 @@ type Config struct {
 	Persistent         bool              // Enable persistent container mode
 	WorkdirAutomount   bool              // Auto-mount working directory
 	Workdir            string            // Override working directory (default: current directory)
-	FirewallEnabled    bool              // Enable network firewall
-	FirewallMode       string            // Firewall mode: strict, permissive, off
-	FirewallAllowed    []string          // Allowed domains (merged from global + project)
-	FirewallDenied     []string          // Denied domains (merged from global + project, takes priority)
+	FirewallEnabled          bool     // Enable network firewall
+	FirewallMode             string   // Firewall mode: strict, permissive, off
+	GlobalFirewallAllowed    []string // Global allowed domains
+	GlobalFirewallDenied     []string // Global denied domains
+	ProjectFirewallAllowed   []string // Project allowed domains
+	ProjectFirewallDenied    []string // Project denied domains
+	ExtensionFirewallAllowed []string // Extension allowed domains
+	ExtensionFirewallDenied  []string // Extension denied domains
 	Mode               string            // container or shell
 	Provider           string            // Provider type: docker or daytona
 	Extensions         string            // Comma-separated list of extensions to install (e.g., "claude,codex")

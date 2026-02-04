@@ -82,9 +82,13 @@ Examples:
   addt firewall extension codex allow api.openai.com
   addt firewall extension claude list
 
-Rule Merging:
-  When running, rules are merged: global + project + extension-specific
-  Denied domains always take priority over allowed.
+Rule Evaluation (layered override, most specific wins):
+  Defaults → Extension → Global → Project
+
+  Each layer checks deny first, then allow. First match wins.
+  Project rules override global, global overrides extension, etc.
+
+  Example: Defaults allow npm, global denies it, project re-allows it.
 
 Firewall Modes (set via 'addt config'):
   strict      - Block all except allowed (default)

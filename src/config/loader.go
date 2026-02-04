@@ -170,12 +170,13 @@ func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultUvVer
 		cfg.FirewallMode = v
 	}
 
-	// Firewall allowed: merge global + project (project extends global)
-	// Defaults are handled by firewall.go when no domains are configured
-	cfg.FirewallAllowed = mergeStringSlices(globalCfg.FirewallAllowed, projectCfg.FirewallAllowed)
-
-	// Firewall denied: merge global + project (project extends global)
-	cfg.FirewallDenied = mergeStringSlices(globalCfg.FirewallDenied, projectCfg.FirewallDenied)
+	// Firewall rules: keep each layer separate for layered override evaluation
+	// Order: Defaults → Extension → Global → Project (project wins)
+	cfg.GlobalFirewallAllowed = globalCfg.FirewallAllowed
+	cfg.GlobalFirewallDenied = globalCfg.FirewallDenied
+	cfg.ProjectFirewallAllowed = projectCfg.FirewallAllowed
+	cfg.ProjectFirewallDenied = projectCfg.FirewallDenied
+	// Extension firewall rules are loaded below after determining the extension
 
 	// GitHub detect: default (false) -> global -> project -> env
 	cfg.GitHubDetect = false
@@ -244,6 +245,19 @@ func LoadConfig(defaultNodeVersion string, defaultGoVersion string, defaultUvVer
 			if extCfg.Automount != nil {
 				cfg.ExtensionAutomount[extName] = *extCfg.Automount
 			}
+		}
+	}
+
+	// Load extension-specific firewall rules based on ADDT_EXTENSIONS
+	// Extension firewall rules are stored in global config under extensions.<name>
+	currentExt := os.Getenv("ADDT_EXTENSIONS")
+	if currentExt != "" {
+		// Use first extension if multiple specified
+		extName := strings.Split(currentExt, ",")[0]
+		if globalCfg.Extensions != nil && globalCfg.Extensions[extName] != nil {
+			extCfg := globalCfg.Extensions[extName]
+			cfg.ExtensionFirewallAllowed = extCfg.FirewallAllowed
+			cfg.ExtensionFirewallDenied = extCfg.FirewallDenied
 		}
 	}
 
