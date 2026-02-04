@@ -95,9 +95,21 @@ export OPENAI_API_KEY="sk-..."
 export GEMINI_API_KEY="..."
 ```
 
-**Claude with Max subscription:** If you use Claude Max (not API), run `claude login` on your host machine. The claude extension mounts `~/.claude` and `~/.claude.json` into the container - no API key needed.
+**Claude with API key:** When `ANTHROPIC_API_KEY` is set, the container auto-configures Claude Code to skip onboarding and trust the workspace - no interactive prompts.
 
-**Session resumption:** Claude can resume previous sessions using `--continue` or `--resume`. Your session history in `~/.claude` is mounted into the container.
+**Claude with a subscription:** If you use Claude with a subscription (OAuth, not API), you need to:
+1. Run `claude login` on your host machine first
+2. Enable auto-mount to share your Claude config with the container:
+
+```bash
+addt config extension claude set automount true
+```
+
+This mounts `~/.claude` and `~/.claude.json` into the container.
+
+⚠️ **Version caveat:** Auto-mount shares your local Claude config with the container. If the Claude Code version in the container differs from your local version, you may see config conflicts or unexpected behavior. Use version pinning (`ADDT_CLAUDE_VERSION`) to match versions if needed.
+
+**Session resumption:** With auto-mount enabled, Claude can resume previous sessions using `--continue` or `--resume`. Your session history in `~/.claude` is mounted into the container.
 
 **Your code:** Your current directory is automatically mounted at `/workspace` in the container. The agent can read and edit your files directly.
 
