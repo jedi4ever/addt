@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-02-04
+
+### Fixed
+- Don't modify mounted Claude config when automount is enabled
+- Existing authentication (OAuth, API key) is now completely preserved
+- Removes unintended modification of user's host config via jq
+
 ## [0.0.8] - 2026-02-04
 
 ### Fixed
