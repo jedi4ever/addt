@@ -160,16 +160,7 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		Command:            cfg.Command,
 		CPUs:               cfg.CPUs,
 		Memory:             cfg.Memory,
-		Security: provider.SecurityConfig{
-			PidsLimit:       cfg.Security.PidsLimit,
-			UlimitNofile:    cfg.Security.UlimitNofile,
-			UlimitNproc:     cfg.Security.UlimitNproc,
-			NoNewPrivileges: cfg.Security.NoNewPrivileges,
-			CapDrop:         cfg.Security.CapDrop,
-			CapAdd:          cfg.Security.CapAdd,
-			ReadOnlyRootfs:  cfg.Security.ReadOnlyRootfs,
-			SeccompProfile:  cfg.Security.SeccompProfile,
-		},
+		Security: cfg.Security,
 	}
 
 	// Create provider

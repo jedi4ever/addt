@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/jedi4ever/addt/config/security"
 )
 
 // LoadConfig loads configuration with precedence: defaults < global config < project config < env vars
@@ -311,101 +313,8 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.EnvVars[i] = strings.TrimSpace(cfg.EnvVars[i])
 	}
 
-	// Security settings with defaults
-	cfg.Security = SecurityConfig{
-		PidsLimit:       200,
-		UlimitNofile:    "4096:8192",
-		UlimitNproc:     "256:512",
-		NoNewPrivileges: true,
-		CapDrop:         []string{"ALL"},
-		CapAdd:          []string{"CHOWN", "SETUID", "SETGID"},
-		ReadOnlyRootfs:  false,
-		SeccompProfile:  "",
-	}
-
-	// Apply global security config
-	if globalCfg.Security != nil {
-		if globalCfg.Security.PidsLimit != nil {
-			cfg.Security.PidsLimit = *globalCfg.Security.PidsLimit
-		}
-		if globalCfg.Security.UlimitNofile != "" {
-			cfg.Security.UlimitNofile = globalCfg.Security.UlimitNofile
-		}
-		if globalCfg.Security.UlimitNproc != "" {
-			cfg.Security.UlimitNproc = globalCfg.Security.UlimitNproc
-		}
-		if globalCfg.Security.NoNewPrivileges != nil {
-			cfg.Security.NoNewPrivileges = *globalCfg.Security.NoNewPrivileges
-		}
-		if len(globalCfg.Security.CapDrop) > 0 {
-			cfg.Security.CapDrop = globalCfg.Security.CapDrop
-		}
-		if len(globalCfg.Security.CapAdd) > 0 {
-			cfg.Security.CapAdd = globalCfg.Security.CapAdd
-		}
-		if globalCfg.Security.ReadOnlyRootfs != nil {
-			cfg.Security.ReadOnlyRootfs = *globalCfg.Security.ReadOnlyRootfs
-		}
-		if globalCfg.Security.SeccompProfile != "" {
-			cfg.Security.SeccompProfile = globalCfg.Security.SeccompProfile
-		}
-	}
-
-	// Apply project security config (overrides global)
-	if projectCfg.Security != nil {
-		if projectCfg.Security.PidsLimit != nil {
-			cfg.Security.PidsLimit = *projectCfg.Security.PidsLimit
-		}
-		if projectCfg.Security.UlimitNofile != "" {
-			cfg.Security.UlimitNofile = projectCfg.Security.UlimitNofile
-		}
-		if projectCfg.Security.UlimitNproc != "" {
-			cfg.Security.UlimitNproc = projectCfg.Security.UlimitNproc
-		}
-		if projectCfg.Security.NoNewPrivileges != nil {
-			cfg.Security.NoNewPrivileges = *projectCfg.Security.NoNewPrivileges
-		}
-		if len(projectCfg.Security.CapDrop) > 0 {
-			cfg.Security.CapDrop = projectCfg.Security.CapDrop
-		}
-		if len(projectCfg.Security.CapAdd) > 0 {
-			cfg.Security.CapAdd = projectCfg.Security.CapAdd
-		}
-		if projectCfg.Security.ReadOnlyRootfs != nil {
-			cfg.Security.ReadOnlyRootfs = *projectCfg.Security.ReadOnlyRootfs
-		}
-		if projectCfg.Security.SeccompProfile != "" {
-			cfg.Security.SeccompProfile = projectCfg.Security.SeccompProfile
-		}
-	}
-
-	// Environment variable overrides for security
-	if v := os.Getenv("ADDT_SECURITY_PIDS_LIMIT"); v != "" {
-		if pids, err := strconv.Atoi(v); err == nil {
-			cfg.Security.PidsLimit = pids
-		}
-	}
-	if v := os.Getenv("ADDT_SECURITY_ULIMIT_NOFILE"); v != "" {
-		cfg.Security.UlimitNofile = v
-	}
-	if v := os.Getenv("ADDT_SECURITY_ULIMIT_NPROC"); v != "" {
-		cfg.Security.UlimitNproc = v
-	}
-	if v := os.Getenv("ADDT_SECURITY_NO_NEW_PRIVILEGES"); v != "" {
-		cfg.Security.NoNewPrivileges = v != "false"
-	}
-	if v := os.Getenv("ADDT_SECURITY_CAP_DROP"); v != "" {
-		cfg.Security.CapDrop = strings.Split(v, ",")
-	}
-	if v := os.Getenv("ADDT_SECURITY_CAP_ADD"); v != "" {
-		cfg.Security.CapAdd = strings.Split(v, ",")
-	}
-	if v := os.Getenv("ADDT_SECURITY_READ_ONLY_ROOTFS"); v != "" {
-		cfg.Security.ReadOnlyRootfs = v == "true"
-	}
-	if v := os.Getenv("ADDT_SECURITY_SECCOMP_PROFILE"); v != "" {
-		cfg.Security.SeccompProfile = v
-	}
+	// Load security configuration using the security package
+	cfg.Security = security.LoadConfig(globalCfg.Security, projectCfg.Security)
 
 	return cfg
 }

@@ -1,5 +1,7 @@
 package provider
 
+import "github.com/jedi4ever/addt/config/security"
+
 // Provider is the interface for container runtime providers (Docker, Daytona, etc.)
 type Provider interface {
 	// Core lifecycle
@@ -65,19 +67,7 @@ type Config struct {
 	Memory             string            // Memory limit (e.g., "512m", "2g", "4gb")
 
 	// Security settings
-	Security SecurityConfig
-}
-
-// SecurityConfig holds container security configuration
-type SecurityConfig struct {
-	PidsLimit        int      // Max number of processes (default: 200)
-	UlimitNofile     string   // File descriptor limit "soft:hard" (default: "4096:8192")
-	UlimitNproc      string   // Process limit "soft:hard" (default: "256:512")
-	NoNewPrivileges  bool     // Prevent privilege escalation (default: true)
-	CapDrop          []string // Capabilities to drop (default: [ALL])
-	CapAdd           []string // Capabilities to add back (default: [CHOWN, SETUID, SETGID])
-	ReadOnlyRootfs   bool     // Read-only root filesystem (default: false)
-	SeccompProfile   string   // Seccomp profile (default: "")
+	Security security.Config
 }
 
 // RunSpec specifies how to run a container/workspace
