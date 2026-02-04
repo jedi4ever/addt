@@ -71,9 +71,15 @@ addt config extension claude set version 1.0.5
 export ADDT_CLAUDE_VERSION=1.0.5
 ```
 
-### Disable Config Mounting
+### Config Mounting & Session Resumption
 
-By default, extension config directories (like `~/.claude`) are mounted. To disable:
+By default, extension config directories (like `~/.claude` and `~/.claude.json`) are mounted from your host into the container. This enables:
+
+- **Session resumption** - Use `--continue` or `--resume` to pick up where you left off, even though each container run is ephemeral
+- **Persistent settings** - Your agent configuration persists across runs
+- **No re-authentication** - Login once on host, works in every container
+
+To disable auto-mounting (full isolation):
 
 ```bash
 addt config extension claude set automount false
