@@ -134,9 +134,9 @@ func (p *DockerProvider) GetExtensionFlags(imageName, command string) []extensio
 		return nil
 	}
 
-	// Find extension by entrypoint
+	// Find extension by entrypoint command (first element of entrypoint array)
 	for _, ext := range metadata {
-		if ext.Entrypoint == command {
+		if ext.Entrypoint.Command() == command {
 			return ext.Flags
 		}
 	}

@@ -170,11 +170,23 @@ mounts:
     target: /home/addt/.myagent
 ```
 
+**Entrypoint with arguments:**
+
+```yaml
+# Simple command
+entrypoint: claude
+
+# Command with arguments (array format)
+entrypoint:
+  - bash
+  - -i
+```
+
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Extension identifier |
 | `description` | Yes | Brief description |
-| `entrypoint` | Yes | Command to run |
+| `entrypoint` | Yes | Command to run (string or array) |
 | `default_version` | No | Default version (`latest`, `stable`, or specific) |
 | `dependencies` | No | Required extensions |
 | `env_vars` | No | Environment variables to forward |

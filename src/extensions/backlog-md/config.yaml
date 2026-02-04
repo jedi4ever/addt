@@ -1,6 +1,8 @@
 name: backlog-md
 description: Backlog.md - Markdown-based backlog management for AI agents
-entrypoint: backlog
+entrypoint:
+  - bash
+  - -i
 default_version: latest
 dependencies: []
 mounts:

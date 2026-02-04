@@ -84,12 +84,28 @@ fi
 # Ensure ~/.local/bin and ~/go/bin are in PATH (for extensions installed there)
 export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
 
-# Determine which command to run
+# Determine which command to run (entrypoint can be array: ["bash", "-i"])
+ADDT_CMD=""
+ADDT_CMD_ARGS=()
+
 if [ -n "$ADDT_COMMAND" ]; then
     ADDT_CMD="$ADDT_COMMAND"
 elif [ -f "$EXTENSIONS_JSON" ]; then
     # Auto-detect from first installed extension
-    ADDT_CMD=$(grep -oE '"entrypoint":[[:space:]]*"[^"]+' "$EXTENSIONS_JSON" | head -1 | sed 's/.*"entrypoint":[[:space:]]*"//' | tr -d '"')
+    # Entrypoint is now a JSON array, e.g., ["bash","-i"] or ["claude"]
+    entrypoint_json=$(grep -oE '"entrypoint":[[:space:]]*\[[^]]*\]' "$EXTENSIONS_JSON" | head -1 | sed 's/.*"entrypoint":[[:space:]]*//')
+
+    if [ -n "$entrypoint_json" ]; then
+        # Parse JSON array: ["cmd", "arg1", "arg2"] -> cmd and args
+        # Remove brackets and quotes, split by comma
+        entrypoint_clean=$(echo "$entrypoint_json" | tr -d '[]"' | sed 's/,/ /g')
+        read -ra entrypoint_parts <<< "$entrypoint_clean"
+
+        if [ ${#entrypoint_parts[@]} -gt 0 ]; then
+            ADDT_CMD="${entrypoint_parts[0]}"
+            ADDT_CMD_ARGS=("${entrypoint_parts[@]:1}")
+        fi
+    fi
 fi
 
 # Fallback to claude if still not set
@@ -102,7 +118,16 @@ ARGS_SCRIPT=""
 # Look for args.sh in the extension matching the command
 for ext_dir in "$EXTENSIONS_DIR"/*/; do
     if [ -f "$ext_dir/config.yaml" ]; then
-        entrypoint=$(grep "^entrypoint:" "$ext_dir/config.yaml" 2>/dev/null | sed 's/^entrypoint:[[:space:]]*//' | tr -d '"')
+        # Get entrypoint command (first element if array)
+        ep_line=$(grep "^entrypoint:" "$ext_dir/config.yaml" 2>/dev/null)
+        if [[ "$ep_line" =~ \[ ]]; then
+            # Array format - extract first element
+            entrypoint=$(echo "$ep_line" | sed 's/^entrypoint:[[:space:]]*//' | tr -d '[]"' | cut -d',' -f1 | xargs)
+        else
+            # String format
+            entrypoint=$(echo "$ep_line" | sed 's/^entrypoint:[[:space:]]*//' | tr -d '"')
+        fi
+
         if [ "$entrypoint" = "$ADDT_CMD" ] && [ -f "$ext_dir/args.sh" ]; then
             ARGS_SCRIPT="$ext_dir/args.sh"
             break
@@ -114,8 +139,8 @@ done
 if [ -n "$ARGS_SCRIPT" ] && [ -f "$ARGS_SCRIPT" ]; then
     # Run args.sh and read transformed args (one per line)
     mapfile -t TRANSFORMED_ARGS < <(bash "$ARGS_SCRIPT" "$@")
-    exec "$ADDT_CMD" "${TRANSFORMED_ARGS[@]}"
+    exec "$ADDT_CMD" "${ADDT_CMD_ARGS[@]}" "${TRANSFORMED_ARGS[@]}"
 else
     # No args.sh - pass args directly
-    exec "$ADDT_CMD" "$@"
+    exec "$ADDT_CMD" "${ADDT_CMD_ARGS[@]}" "$@"
 fi

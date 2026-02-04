@@ -43,6 +43,72 @@ yaml_get() {
     grep "^${key}:" "$file" 2>/dev/null | sed "s/^${key}:[[:space:]]*//" | tr -d '"' || echo ""
 }
 
+# Parse entrypoint which can be either a string or array
+# Returns JSON array format: ["cmd"] or ["cmd", "arg1", "arg2"]
+yaml_get_entrypoint_json() {
+    local file="$1"
+    local line=$(grep "^entrypoint:" "$file" 2>/dev/null)
+
+    if [ -z "$line" ]; then
+        echo '[""]'
+        return
+    fi
+
+    # Check if it's an inline array: entrypoint: ["bash", "-i"]
+    if [[ "$line" =~ \[.*\] ]]; then
+        # Extract the array part and output as-is (already JSON)
+        echo "$line" | sed 's/^entrypoint:[[:space:]]*//'
+        return
+    fi
+
+    # Check if it's a simple string: entrypoint: bash
+    local value=$(echo "$line" | sed 's/^entrypoint:[[:space:]]*//' | tr -d '"')
+    if [ -n "$value" ]; then
+        printf '["%s"]' "$value"
+        return
+    fi
+
+    # Check for multi-line array format
+    local in_entrypoint=false
+    local items=()
+
+    while IFS= read -r l; do
+        if [[ "$l" =~ ^entrypoint: ]]; then
+            in_entrypoint=true
+            continue
+        fi
+        if $in_entrypoint; then
+            # Stop if we hit another top-level key
+            if [[ "$l" =~ ^[a-z] ]] && [[ ! "$l" =~ ^[[:space:]] ]]; then
+                break
+            fi
+            # Extract item (- item format)
+            if [[ "$l" =~ ^[[:space:]]*-[[:space:]]*(.+) ]]; then
+                item="${BASH_REMATCH[1]}"
+                item=$(echo "$item" | tr -d '"' | tr -d "'")
+                items+=("$item")
+            fi
+        fi
+    done < "$file"
+
+    # Build JSON array
+    if [ ${#items[@]} -gt 0 ]; then
+        local first=true
+        echo -n "["
+        for item in "${items[@]}"; do
+            if [ "$first" = true ]; then
+                first=false
+            else
+                echo -n ","
+            fi
+            printf '"%s"' "$item"
+        done
+        echo -n "]"
+    else
+        echo '[""]'
+    fi
+}
+
 # Get version for an extension (override > default from yaml > "latest")
 get_extension_version() {
     local ext="$1"
@@ -327,7 +393,7 @@ echo "Extensions: Writing metadata to $METADATA_FILE"
         config="$EXTENSIONS_DIR/$ext/config.yaml"
         name=$(yaml_get "$config" "name")
         description=$(yaml_get "$config" "description")
-        entrypoint=$(yaml_get "$config" "entrypoint")
+        entrypoint=$(yaml_get_entrypoint_json "$config")
         auto_mount=$(yaml_get "$config" "auto_mount")
         mounts=$(yaml_get_mounts_json "$config")
         flags=$(yaml_get_flags_json "$config")
@@ -335,11 +401,12 @@ echo "Extensions: Writing metadata to $METADATA_FILE"
 
         [ "$first" = true ] && first=false || echo ","
         # Build JSON with optional auto_mount field
+        # Note: entrypoint is already JSON array format
         if [ -n "$auto_mount" ]; then
-            printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","auto_mount":%s,"mounts":%s,"flags":%s,"env_vars":%s}' \
+            printf '"%s":{"name":"%s","description":"%s","entrypoint":%s,"auto_mount":%s,"mounts":%s,"flags":%s,"env_vars":%s}' \
                 "$ext" "$name" "$description" "$entrypoint" "$auto_mount" "$mounts" "$flags" "$env_vars"
         else
-            printf '"%s":{"name":"%s","description":"%s","entrypoint":"%s","mounts":%s,"flags":%s,"env_vars":%s}' \
+            printf '"%s":{"name":"%s","description":"%s","entrypoint":%s,"mounts":%s,"flags":%s,"env_vars":%s}' \
                 "$ext" "$name" "$description" "$entrypoint" "$mounts" "$flags" "$env_vars"
         fi
     done

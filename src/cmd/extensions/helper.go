@@ -14,8 +14,8 @@ func GetEntrypoint(extName string) string {
 
 	for _, ext := range exts {
 		if ext.Name == extName {
-			if ext.Entrypoint != "" {
-				return ext.Entrypoint
+			if cmd := ext.Entrypoint.Command(); cmd != "" {
+				return cmd
 			}
 			return extName
 		}
