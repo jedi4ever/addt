@@ -94,9 +94,11 @@ export GEMINI_API_KEY="..."
 
 **Claude with Max subscription:** If you use Claude Max (not API), run `claude login` on your host machine. Your `~/.claude` config is auto-mounted into the container - no API key needed.
 
-**For GitHub access:**
+**Your code:** Your current directory is automatically mounted at `/workspace` in the container. The agent can read and edit your files directly.
+
+**For GitHub operations:** If the agent needs to create PRs, push commits, or access private repos, pass your GitHub token:
 ```bash
-export GH_TOKEN="ghp_..."  # For private repos, PRs, etc.
+export GH_TOKEN="ghp_..."
 ```
 
 ---
