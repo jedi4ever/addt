@@ -14,6 +14,8 @@ Technical documentation for developers and contributors.
 - [Testing](#testing)
 - [Contributing](#contributing)
 
+---
+
 ## Architecture
 
 addt is written in Go and uses a provider-based architecture to support multiple container runtimes.
@@ -24,13 +26,13 @@ addt is written in Go and uses a provider-based architecture to support multiple
 ┌─────────────────────────────────────────────────────────────┐
 │                      CLI (cmd/root.go)                      │
 │  - Parses arguments and flags                               │
-│  - Handles --addt-* special flags                           │
+│  - Routes to subcommands (run, build, shell, etc.)          │
 │  - Detects binary name for symlink-based extension selection│
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  Orchestrator (core/)                       │
+│                     Runner (core/)                          │
 │  - Coordinates provider operations                          │
 │  - Builds RunSpec from configuration                        │
 │  - Handles port mapping, volumes, environment               │
@@ -50,12 +52,19 @@ addt is written in Go and uses a provider-based architecture to support multiple
 
 ### Key Components
 
-1. **CLI Layer** (`cmd/`) - Command parsing, flag handling, subcommands
-2. **Core Layer** (`core/`) - Business logic orchestration
-3. **Provider Layer** (`provider/`) - Container runtime abstraction
-4. **Config Layer** (`config/`) - Environment variable and configuration loading
-5. **Extensions** (`extensions/`) - Embedded AI agent definitions
-6. **Assets** (`assets/`) - Docker files, scripts, and resources
+| Layer | Directory | Purpose |
+|-------|-----------|---------|
+| CLI | `cmd/` | Command parsing, subcommands, flag handling |
+| Config | `cmd/config/` | Configuration subcommands (global, project, extension) |
+| Extensions | `cmd/extensions/` | Extension management (list, info, new, clone, remove) |
+| Firewall | `cmd/firewall/` | Network firewall rules (global, project, extension) |
+| Core | `core/` | Business logic, runner, port mapping, volumes |
+| Config | `config/` | Configuration loading and types |
+| Provider | `provider/` | Container runtime abstraction |
+| Extensions | `extensions/` | Embedded AI agent definitions |
+| Assets | `assets/` | Docker files, scripts, resources |
+
+---
 
 ## Project Structure
 
@@ -64,68 +73,121 @@ addt/
 ├── src/
 │   ├── main.go                    # Entry point
 │   ├── go.mod                     # Go module definition
+│   │
 │   ├── cmd/                       # CLI commands
-│   │   ├── root.go                # Main CLI logic
-│   │   ├── commands.go            # Subcommand handlers
-│   │   ├── extensions.go          # Extension listing
-│   │   ├── factory.go             # Provider factory
-│   │   ├── firewall.go            # Firewall commands
-│   │   └── help.go                # Help text generation
-│   ├── config/                    # Configuration
-│   │   ├── config.go              # Config loading
+│   │   ├── root.go                # Main CLI routing
+│   │   ├── run.go                 # `addt run` command
+│   │   ├── build.go               # `addt build` command
+│   │   ├── shell.go               # `addt shell` command
+│   │   ├── containers.go          # `addt containers` command
+│   │   ├── help.go                # Help text generation
+│   │   ├── version.go             # Version display
+│   │   ├── provider_factory.go    # Provider instantiation
+│   │   │
+│   │   ├── config/                # Configuration subcommands
+│   │   │   ├── handler.go         # `addt config` routing
+│   │   │   ├── global.go          # Global config commands
+│   │   │   ├── project.go         # Project config commands
+│   │   │   ├── extension.go       # Extension config commands
+│   │   │   └── keys.go            # Valid config keys
+│   │   │
+│   │   ├── extensions/            # Extension management
+│   │   │   ├── handler.go         # `addt extensions` routing
+│   │   │   ├── list.go            # List available extensions
+│   │   │   ├── info.go            # Show extension details
+│   │   │   ├── new.go             # Create new extension
+│   │   │   ├── clone.go           # Clone built-in extension
+│   │   │   ├── remove.go          # Remove local extension
+│   │   │   └── helper.go          # Utility functions
+│   │   │
+│   │   └── firewall/              # Firewall commands
+│   │       ├── firewall.go        # `addt firewall` routing
+│   │       ├── global.go          # Global firewall rules
+│   │       ├── project.go         # Project firewall rules
+│   │       ├── extension.go       # Extension firewall rules
+│   │       ├── check.go           # Domain checking logic
+│   │       └── helpers.go         # Utility functions
+│   │
+│   ├── config/                    # Configuration loading
+│   │   ├── types.go               # Config struct definitions
+│   │   ├── loader.go              # LoadConfig, precedence logic
+│   │   ├── file.go                # Config file I/O
 │   │   ├── env.go                 # Environment file parsing
 │   │   └── github.go              # GitHub token detection
+│   │
 │   ├── core/                      # Business logic
-│   │   ├── orchestrator.go        # Main orchestrator
-│   │   └── version.go             # Version utilities
+│   │   ├── runner.go              # Main runner orchestration
+│   │   ├── ports.go               # Port availability checking
+│   │   ├── ports_prompt.go        # Interactive port selection
+│   │   ├── volumes.go             # Volume mounting logic
+│   │   ├── env.go                 # Environment variable handling
+│   │   ├── options.go             # RunSpec building
+│   │   ├── status.go              # Status display
+│   │   ├── logging.go             # Command logging
+│   │   └── npm.go                 # NPM registry detection
+│   │
 │   ├── provider/                  # Provider implementations
 │   │   ├── provider.go            # Provider interface
+│   │   │
 │   │   ├── docker/                # Docker provider
-│   │   │   ├── docker.go          # Main Docker implementation
-│   │   │   ├── images.go          # Image management
-│   │   │   ├── extensions.go      # Extension metadata reading
-│   │   │   ├── forwarding.go      # SSH/GPG forwarding
+│   │   │   ├── docker.go          # Provider struct, Initialize
+│   │   │   ├── docker_exec.go     # Run, Shell, argument building
+│   │   │   ├── docker_build.go    # BuildIfNeeded, image naming
+│   │   │   ├── docker_status.go   # GetStatus, status display
+│   │   │   ├── images.go          # Image existence, inspection
+│   │   │   ├── images_build.go    # BuildBaseImage, BuildExtensionImage
+│   │   │   ├── extensions.go      # Extension metadata from images
+│   │   │   ├── persistent.go      # Persistent container mode
+│   │   │   ├── ssh.go             # SSH agent forwarding
+│   │   │   ├── gpg.go             # GPG key forwarding
+│   │   │   ├── dind.go            # Docker-in-Docker support
 │   │   │   └── version.go         # Version detection
+│   │   │
 │   │   └── daytona/               # Daytona provider (experimental)
 │   │       └── daytona.go
+│   │
 │   ├── extensions/                # Embedded extensions
 │   │   ├── embed.go               # Go embed directive
+│   │   ├── loader.go              # Extension loading logic
+│   │   ├── types.go               # ExtensionConfig struct
 │   │   ├── claude/                # Claude Code extension
-│   │   │   ├── config.yaml        # Extension metadata
-│   │   │   ├── install.sh         # Build-time installation
-│   │   │   ├── setup.sh           # Runtime setup
-│   │   │   └── args.sh            # Argument transformation
 │   │   ├── codex/                 # OpenAI Codex extension
 │   │   ├── gemini/                # Google Gemini extension
 │   │   ├── copilot/               # GitHub Copilot extension
 │   │   ├── amp/                   # Sourcegraph Amp extension
 │   │   ├── cursor/                # Cursor extension
+│   │   ├── kiro/                  # AWS Kiro extension
 │   │   ├── gastown/               # Multi-agent orchestration
 │   │   ├── beads/                 # Git-backed issue tracker
 │   │   └── ...                    # Other extensions
+│   │
 │   ├── assets/                    # Embedded assets
 │   │   ├── embed.go               # Go embed directive
 │   │   └── docker/                # Docker-specific assets
-│   │       ├── Dockerfile         # Main Dockerfile
+│   │       ├── Dockerfile.base    # Base image Dockerfile
+│   │       ├── Dockerfile         # Extension image Dockerfile
 │   │       ├── docker-entrypoint.sh
 │   │       ├── init-firewall.sh
 │   │       └── install.sh         # Extension installer
-│   └── internal/                  # Internal utilities
-│       ├── ports/                 # Port availability checking
-│       ├── terminal/              # Terminal detection
-│       ├── update/                # Self-update functionality
-│       └── util/                  # General utilities
+│   │
+│   └── util/                      # Utilities
+│       ├── cleanup.go             # Signal handling, cleanup
+│       ├── files.go               # File operations
+│       └── terminal/              # Terminal detection
+│           ├── terminal.go
+│           ├── terminal_unix.go
+│           └── terminal_windows.go
+│
 ├── dist/                          # Build output
 ├── docs/                          # Documentation
-├── legacy/                        # Old shell-based implementation
 ├── Makefile                       # Build automation
 ├── VERSION                        # Version file
 └── CHANGELOG.md                   # Release notes
 ```
 
-## Build System
+---
 
-addt uses a standard Go build system with Make for automation.
+## Build System
 
 ### Prerequisites
 
@@ -139,7 +201,7 @@ addt uses a standard Go build system with Make for automation.
 # Format code and build for current platform
 make build
 
-# Build for all platforms (darwin/amd64, darwin/arm64, linux/amd64, linux/arm64)
+# Build for all platforms
 make dist
 
 # Install to /usr/local/bin
@@ -150,14 +212,9 @@ make test
 
 # Clean build artifacts
 make clean
-
-# Create a release (updates VERSION, creates git tag)
-make release
 ```
 
 ### Cross-Platform Builds
-
-The `make dist` command builds binaries for all supported platforms:
 
 ```bash
 make dist
@@ -170,27 +227,25 @@ make dist
 
 ### Embedding Assets
 
-Go's `embed` directive is used to include assets in the binary:
+Go's `embed` directive includes assets in the binary:
 
 ```go
 // src/assets/embed.go
 //go:embed docker/*
-var DockerAssets embed.FS
+var FS embed.FS
 
 // src/extensions/embed.go
-//go:embed */config.yaml */install.sh */setup.sh */args.sh
-var ExtensionAssets embed.FS
+//go:embed */*
+var FS embed.FS
 ```
 
-This allows the binary to be distributed as a single file with all Docker files and extension definitions included.
+---
 
 ## Extension System
 
 Extensions add AI agents and tools to the container image.
 
 ### Extension Structure
-
-Each extension is a directory containing:
 
 ```
 extensions/myextension/
@@ -201,8 +256,6 @@ extensions/myextension/
 ```
 
 ### config.yaml
-
-Defines extension metadata:
 
 ```yaml
 name: claude
@@ -216,8 +269,6 @@ env_vars:
 mounts:
   - source: ~/.claude
     target: /home/addt/.claude
-  - source: ~/.claude.json
-    target: /home/addt/.claude.json
 flags:
   - flag: "--yolo"
     description: "Bypass permission checks"
@@ -229,186 +280,183 @@ flags:
 |--------|------|---------|
 | `install.sh` | Docker build | Install packages, tools, dependencies |
 | `setup.sh` | Container start | Initialize runtime environment |
-| `args.sh` | Before execution | Transform CLI arguments (e.g., `--yolo` expansion) |
+| `args.sh` | Before execution | Transform CLI arguments |
 
-### Adding a New Extension
+### Extension Commands
 
-1. Create directory: `src/extensions/myextension/`
-2. Add `config.yaml` with metadata
-3. Add `install.sh` if packages need to be installed
-4. Add `setup.sh` if runtime initialization is needed
-5. Rebuild: `make build`
-6. Test: `./dist/addt containers build --build-arg ADDT_EXTENSIONS=myextension`
+```bash
+# List available extensions
+addt extensions list
+
+# Show extension details
+addt extensions info claude
+
+# Create new extension from scratch
+addt extensions new myagent
+
+# Clone built-in extension for customization
+addt extensions clone claude
+addt extensions clone claude my-claude  # with different name
+
+# Remove local extension
+addt extensions remove myagent
+```
+
+### Local Extensions
+
+Local extensions in `~/.addt/extensions/` override built-in ones:
+
+```bash
+# Clone and customize
+addt extensions clone claude
+vim ~/.addt/extensions/claude/install.sh
+addt build claude --force
+```
+
+---
 
 ## Provider Architecture
-
-The provider interface abstracts container runtime operations.
 
 ### Provider Interface
 
 ```go
 type Provider interface {
-    // Core lifecycle
+    // Lifecycle
     Initialize(cfg *Config) error
-    Run(spec *RunSpec) error
-    Shell(spec *RunSpec) error
+    Run(args []string) error
+    Shell(args []string) error
     Cleanup() error
 
-    // Environment management
+    // Container management
     Exists(name string) bool
     IsRunning(name string) bool
     Start(name string) error
     Stop(name string) error
     Remove(name string) error
-    List() ([]Environment, error)
+    List() ([]Container, error)
 
-    // Image/workspace management
-    BuildIfNeeded(rebuild bool) error
+    // Image management
+    BuildIfNeeded(rebuild, rebuildBase bool) error
     DetermineImageName() string
 
-    // Status and metadata
-    GetStatus(cfg *Config, envName string) string
+    // Metadata
+    GetStatus(envName string) string
+    GetExtensionMounts(imageName string) []ExtensionMountWithName
     GetExtensionEnvVars(imageName string) []string
 }
 ```
 
 ### Docker Provider
 
-The default provider that builds and runs Docker containers:
+Default provider with two-stage image building:
 
-- **Image naming**: `addt:claude-2.1.17_codex-latest` (based on extensions and versions)
-- **Container naming**: `addt-YYYYMMDD-HHMMSS-PID` (ephemeral) or hash-based (persistent)
-- **Features**: SSH forwarding, GPG forwarding, Docker-in-Docker, port mapping, firewall
+- **Base image**: `addt-base:node22-uid501` (Node, Go, UV, system packages)
+- **Extension image**: `addt:claude-stable` (built FROM base)
+
+Features: SSH forwarding, GPG forwarding, Docker-in-Docker, port mapping, firewall
 
 ### Daytona Provider (Experimental)
 
-Cloud-based workspace provider using Daytona:
+Cloud-based workspace provider. See [README-daytona.md](README-daytona.md).
 
-- Manages remote workspaces instead of local containers
-- See [docs/README-daytona.md](README-daytona.md) for details
+---
 
 ## Docker Image Structure
 
-### Base Image
+### Two-Stage Build
 
-Uses `node:${NODE_VERSION}-slim` (Debian-based) with:
+1. **Base image** (`addt-base:nodeXX-uidXXX`)
+   - Node.js, Go, UV (Python)
+   - Git, GitHub CLI, Ripgrep
+   - Docker CLI and daemon
+   - Cached for fast rebuilds
 
-- Node.js (configurable version)
-- Go (latest or pinned)
-- UV (Python package manager)
-- Git, GitHub CLI, Ripgrep
-- Docker CLI and daemon (for DinD)
+2. **Extension image** (`addt:extension-version`)
+   - Built FROM base image
+   - Extension install scripts run
+   - Takes ~10-30 seconds
 
 ### Non-Root User
 
-Container runs as a non-root user matching host UID/GID:
+Container runs as non-root user matching host UID/GID:
 
 ```dockerfile
 ARG USER_ID=1000
 ARG GROUP_ID=1000
-ARG USERNAME=addt
-
-RUN useradd -m -u ${USER_ID} -g ${GROUP_ID} -s /bin/bash ${USERNAME}
+RUN useradd -m -u ${USER_ID} -s /bin/bash addt
 ```
-
-### Build Process
-
-1. Base image with system packages
-2. Go and UV installation
-3. Extension scripts copied
-4. Extensions installed via `install.sh`
-5. Entrypoint and firewall scripts added
 
 ### Runtime Flow
 
 1. `docker-entrypoint.sh` starts
-2. Extension `setup.sh` scripts run (once per session)
+2. Extension `setup.sh` scripts run
 3. Docker daemon started (if DinD mode)
 4. Firewall initialized (if enabled)
-5. Agent command executed with arguments
+5. Agent command executed
+
+---
 
 ## Development Workflow
 
 ### Local Development
 
 ```bash
-# Make changes to Go code
+# Make changes
 vim src/cmd/root.go
 
 # Format and build
 make build
 
 # Test locally
-./dist/addt --addt-version
-./dist/addt --addt-help
+./dist/addt version
+./dist/addt extensions list
 
 # Test with Docker
-./dist/addt shell -c "echo hello"
+./dist/addt build claude
+./dist/addt run claude --help
 ```
 
 ### Testing Extensions
 
 ```bash
-# Build image with specific extensions
-./dist/addt containers build --build-arg ADDT_EXTENSIONS=claude,codex
+# Build with specific extensions
+./dist/addt build claude,codex
 
 # Verify installation
-./dist/addt shell -c "which claude codex"
+./dist/addt shell claude -c "which claude"
 
 # Check extension metadata
-./dist/addt shell -c "cat ~/.addt/extensions.json"
-```
-
-### Debug Mode
-
-```bash
-# Enable logging
-export ADDT_LOG=true
-export ADDT_LOG_FILE="/tmp/addt-debug.log"
-./dist/addt "test prompt"
-
-# View logs
-tail -f /tmp/addt-debug.log
+./dist/addt extensions info claude
 ```
 
 ### Force Rebuild
 
 ```bash
-# Rebuild image from scratch
-./dist/addt --addt-rebuild
+# Rebuild extension image only
+./dist/addt build claude --force
 
-# Or remove image manually
-docker rmi addt:claude-stable
+# Rebuild base image too
+./dist/addt build claude --addt-rebuild-base
 ```
+
+---
 
 ## Testing
 
-### Unit Tests
+### Run Tests
 
 ```bash
+# All tests
 make test
-# Runs: cd src && go test -v ./...
-```
 
-### Integration Tests
+# Specific package
+cd src && go test ./cmd/...
 
-```bash
-# Test basic functionality
-./dist/addt --addt-version
-./dist/addt --addt-list-extensions
+# With verbose output
+cd src && go test -v ./...
 
-# Test container operations
-./dist/addt shell -c "env | grep ADDT"
-./dist/addt containers list
-
-# Test port mapping
-ADDT_PORTS="3000,8080" ./dist/addt shell -c "echo \$ADDT_PORT_MAP"
-
-# Test SSH forwarding
-ADDT_SSH_FORWARD=agent ./dist/addt shell -c "ssh-add -l"
-
-# Test Docker-in-Docker
-ADDT_DIND_MODE=isolated ./dist/addt shell -c "docker ps"
+# Integration tests (require Docker)
+cd src && go test -v -tags=integration ./...
 ```
 
 ### Testing Checklist
@@ -417,37 +465,31 @@ Before submitting a PR:
 
 - [ ] `make build` succeeds
 - [ ] `make test` passes
-- [ ] `./dist/addt --addt-version` works
-- [ ] Container can start: `./dist/addt shell -c "echo ok"`
+- [ ] `./dist/addt version` works
+- [ ] Container starts: `./dist/addt shell claude -c "echo ok"`
 - [ ] Extensions install correctly
-- [ ] Documentation updated if needed
+- [ ] Documentation updated
+
+---
 
 ## Contributing
 
 ### Code Style
 
 - Go standard formatting (`go fmt`)
+- Files under 200 lines (split if larger)
 - Meaningful variable names
 - Comments for non-obvious logic
-- Keep functions focused
 
 ### Commit Guidelines
-
-Use conventional commits:
 
 ```
 feat: add new extension support
 fix: correct port mapping on Linux
 docs: update development guide
-refactor: simplify provider interface
-```
+refactor: split large file into modules
 
-Include attribution:
-
-```
-feat: add gemini extension support
-
-Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ### Pull Request Process
@@ -458,56 +500,41 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 4. Update documentation
 5. Submit PR with clear description
 
+---
+
 ## Debugging
 
 ### Common Issues
 
 **Build fails:**
 ```bash
-# Check Go version
-go version
-
-# Clean and rebuild
+go version        # Check Go 1.21+
 make clean && make build
 ```
 
 **Container won't start:**
 ```bash
-# Check Docker
-docker info
-
-# Check image exists
+docker info       # Check Docker running
 docker images | grep addt
-
-# Force rebuild
-./dist/addt --addt-rebuild
+./dist/addt build claude --force
 ```
 
 **Extension not found:**
 ```bash
-# Verify extension is embedded
-./dist/addt --addt-list-extensions
-
-# Check config.yaml exists
+./dist/addt extensions list
 ls src/extensions/myextension/config.yaml
 ```
 
-**Permission issues:**
-```bash
-# Check UID/GID matching
-id
-./dist/addt shell -c "id"
-```
-
-### Verbose Output
+### Debug Mode
 
 ```bash
-# Enable Go race detection during development
-cd src && go build -race -o ../dist/addt .
-
-# Add debug prints (temporary)
-fmt.Fprintf(os.Stderr, "DEBUG: %v\n", variable)
+export ADDT_LOG=true
+export ADDT_LOG_FILE="/tmp/addt.log"
+./dist/addt run claude "test"
+tail -f /tmp/addt.log
 ```
+
+---
 
 ## License
 
