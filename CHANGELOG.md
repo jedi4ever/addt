@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.6] - 2025-02-03
+## [0.0.7] - 2026-02-03
+
+### Added
+- Auto-configure Claude Code for headless operation when `ANTHROPIC_API_KEY` is set
+- Auto-trust API key (using last 20 characters)
+- Pre-trust `/workspace` directory to skip trust prompts
+- Include addt version in Docker image names for automatic rebuilds
+- Firewall network behavior integration tests
+
+### Changed
+- Claude extension `auto_mount` now defaults to `false` (opt-in for session persistence)
+- Moved firewall config tests from integration to unit tests
+- Updated README: document `automount` setting for subscription users
+- Added version conflict warning for auto-mount mode
+
+## [0.0.6] - 2026-02-03
 
 ### Added
 - Firewall command with global/project/extension scopes
@@ -25,12 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructured README for progressive disclosure (quick start first)
 - Improved documentation with clearer configuration examples
 
-## [0.0.5] - 2025-02-03
+## [0.0.5] - 2026-02-03
 
 ### Added
 - Support for `addt-<extension>` symlink naming (e.g., `addt-claude`, `addt-codex`)
 
-## [0.0.4] - 2025-02-03
+## [0.0.4] - 2026-02-03
 
 ### Added
 - Two-stage Docker build for faster extension builds
@@ -42,19 +57,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--addt-rebuild` now only rebuilds extension layer (uses cached base)
 - Dockerfile split into `Dockerfile.base` and `Dockerfile`
 
-## [0.0.3] - 2025-02-03
+## [0.0.3] - 2026-02-03
 
 ### Fixed
 - Look up actual entrypoint from extension config instead of using extension name
 - Fixes extensions where name differs from entrypoint: kiro→kiro-cli, beads→bd, gastown→gt, etc.
 
-## [0.0.2] - 2025-02-03
+## [0.0.2] - 2026-02-03
 
 ### Fixed
 - Auto-detect command from `ADDT_EXTENSIONS` when `ADDT_COMMAND` is not set
 - Running `ADDT_EXTENSIONS=codex addt` now correctly runs codex instead of defaulting to claude
 
-## [0.0.1] - 2025-02-02
+## [0.0.1] - 2026-02-02
 
 ### Added
 - Initial alpha release of addt (AI Don't Do That)
