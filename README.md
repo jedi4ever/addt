@@ -146,7 +146,7 @@ addt run claude "Clone the private repo and create a PR"
 ### SSH Keys (git over SSH)
 
 ```bash
-export ADDT_SSH_FORWARD=agent
+export ADDT_SSH_FORWARD=keys
 addt run claude "Clone git@github.com:org/private-repo.git"
 ```
 
