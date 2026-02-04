@@ -151,6 +151,7 @@ addt run claude "Clone the private repo and create a PR"
 Or auto-detect from `gh auth login`:
 ```bash
 export ADDT_GITHUB_DETECT=true
+addt run claude "Clone git@github.com:org/private-repo.git"
 ```
 
 ### SSH Keys (git over SSH)
@@ -184,21 +185,30 @@ addt run claude "Only allowed domains are accessible"
 
 ## Configuration
 
-Settings can be configured via environment variables, project config, or global config.
+There are three ways to configure addt:
 
-### Quick Config
+| Method | Location | Use case |
+|--------|----------|----------|
+| **Environment variable** | Shell | Quick overrides, CI/CD |
+| **Project config** | `.addt.yaml` in project | Team-shared settings, per-project defaults |
+| **Global config** | `~/.addt/config.yaml` | Personal defaults across all projects |
+
+**Precedence** (highest to lowest): Environment → Project → Global → Defaults
+
+### Example: Setting memory limit
 
 ```bash
-# Global settings (all projects)
-addt config global set persistent true
+# Environment variable (highest priority)
+export ADDT_DOCKER_MEMORY=4g
+
+# Project config (.addt.yaml)
+addt config project set docker_memory 4g
+
+# Global config (~/.addt/config.yaml)
 addt config global set docker_memory 4g
-
-# Project settings (this directory only)
-addt config project set firewall true
-
-# Per-extension
-addt config extension claude set version 1.0.5
 ```
+
+All three set the same thing. Environment wins if multiple are set.
 
 ### Project Config File
 
@@ -209,6 +219,22 @@ persistent: true
 docker_cpus: "2"
 docker_memory: "4g"
 firewall: true
+```
+
+### Config Commands
+
+```bash
+# Global settings (all projects)
+addt config global list
+addt config global set docker_memory 4g
+addt config global unset docker_memory
+
+# Project settings (this directory only)
+addt config project list
+addt config project set firewall true
+
+# Per-extension
+addt config extension claude set version 1.0.5
 ```
 
 ### Common Environment Variables
