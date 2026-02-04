@@ -1,6 +1,6 @@
 //go:build integration
 
-package docker
+package firewall
 
 import (
 	"os/exec"
@@ -10,10 +10,11 @@ import (
 	"github.com/jedi4ever/addt/assets"
 	"github.com/jedi4ever/addt/extensions"
 	"github.com/jedi4ever/addt/provider"
+	"github.com/jedi4ever/addt/provider/docker"
 )
 
 // checkDockerForFirewall verifies Docker is available
-func checkDockerForFirewall(t *testing.T) {
+func checkDockerForFirewallIntegration(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker not found in PATH, skipping integration test")
@@ -25,9 +26,9 @@ func checkDockerForFirewall(t *testing.T) {
 }
 
 // createFirewallTestProvider creates a provider for firewall tests
-func createFirewallTestProvider(t *testing.T, cfg *provider.Config) *DockerProvider {
+func createFirewallTestProvider(t *testing.T, cfg *provider.Config) provider.Provider {
 	t.Helper()
-	prov, err := NewDockerProvider(
+	prov, err := docker.NewDockerProvider(
 		cfg,
 		assets.DockerDockerfile,
 		assets.DockerDockerfileBase,
@@ -39,7 +40,7 @@ func createFirewallTestProvider(t *testing.T, cfg *provider.Config) *DockerProvi
 	if err != nil {
 		t.Fatalf("Failed to create Docker provider: %v", err)
 	}
-	return prov.(*DockerProvider)
+	return prov
 }
 
 // ensureFirewallTestImage builds the test image if needed
@@ -70,8 +71,8 @@ func ensureFirewallTestImage(t *testing.T, imageName string) {
 	}
 }
 
-func TestFirewall_Integration_AllowedDomainAccessible(t *testing.T) {
-	checkDockerForFirewall(t)
+func TestFirewallNetwork_Integration_AllowedDomainAccessible(t *testing.T) {
+	checkDockerForFirewallIntegration(t)
 
 	testImageName := "addt-test-firewall-integration"
 	ensureFirewallTestImage(t, testImageName)
@@ -112,8 +113,8 @@ func TestFirewall_Integration_AllowedDomainAccessible(t *testing.T) {
 	}
 }
 
-func TestFirewall_Integration_BlockedDomainRejected(t *testing.T) {
-	checkDockerForFirewall(t)
+func TestFirewallNetwork_Integration_BlockedDomainRejected(t *testing.T) {
+	checkDockerForFirewallIntegration(t)
 
 	testImageName := "addt-test-firewall-integration"
 	ensureFirewallTestImage(t, testImageName)
@@ -145,8 +146,8 @@ func TestFirewall_Integration_BlockedDomainRejected(t *testing.T) {
 	}
 }
 
-func TestFirewall_Integration_PermissiveModeLogs(t *testing.T) {
-	checkDockerForFirewall(t)
+func TestFirewallNetwork_Integration_PermissiveModeLogs(t *testing.T) {
+	checkDockerForFirewallIntegration(t)
 
 	testImageName := "addt-test-firewall-integration"
 	ensureFirewallTestImage(t, testImageName)
@@ -180,8 +181,8 @@ func TestFirewall_Integration_PermissiveModeLogs(t *testing.T) {
 	}
 }
 
-func TestFirewall_Integration_DisabledMode(t *testing.T) {
-	checkDockerForFirewall(t)
+func TestFirewallNetwork_Integration_DisabledMode(t *testing.T) {
+	checkDockerForFirewallIntegration(t)
 
 	testImageName := "addt-test-firewall-integration"
 	ensureFirewallTestImage(t, testImageName)
@@ -219,8 +220,8 @@ func TestFirewall_Integration_DisabledMode(t *testing.T) {
 	}
 }
 
-func TestFirewall_Integration_CustomAllowedDomain(t *testing.T) {
-	checkDockerForFirewall(t)
+func TestFirewallNetwork_Integration_CustomAllowedDomain(t *testing.T) {
+	checkDockerForFirewallIntegration(t)
 
 	testImageName := "addt-test-firewall-integration"
 	ensureFirewallTestImage(t, testImageName)
@@ -256,4 +257,3 @@ func TestFirewall_Integration_CustomAllowedDomain(t *testing.T) {
 		t.Log("Custom domain was added and resolved")
 	}
 }
-
