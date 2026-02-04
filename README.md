@@ -128,20 +128,11 @@ addt-claude "Fix the bug"
 
 You can also symlink directly to the agent name (e.g., `claude`), but the prefix avoids confusion with the real CLI if installed.
 
-### Persistent Mode (faster startup)
-
-Keep containers running between sessions:
-```bash
-export ADDT_PERSISTENT=true
-claude "Start a feature"     # Creates container
-claude "Continue working"    # Reuses container (instant!)
-```
-
 ### Web Development (port mapping)
 
 ```bash
-export ADDT_PORTS="3000,8080"
-addt run claude "Create an Express server on port 3000"
+export ADDT_PORTS="8080"
+addt run claude "Create an Express server on port 8080"
 # Agent tells you: "Visit http://localhost:30000"
 ```
 
@@ -197,6 +188,15 @@ See [Full Reference](#environment-variables-reference) for all options.
 ---
 
 ## Advanced Features
+
+### Persistent Mode
+
+By default, containers are ephemeral (destroyed after each run). For faster startup, keep them running:
+```bash
+export ADDT_PERSISTENT=true
+claude "Start a feature"     # Creates container
+claude "Continue working"    # Reuses container (instant!)
+```
 
 ### SSH Forwarding
 
