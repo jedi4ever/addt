@@ -161,7 +161,7 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		Command:            cfg.Command,
 		CPUs:               cfg.CPUs,
 		Memory:             cfg.Memory,
-		Security: cfg.Security,
+		Security:           cfg.Security,
 	}
 
 	// Create provider

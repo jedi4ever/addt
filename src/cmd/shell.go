@@ -73,7 +73,7 @@ func HandleShellCommand(args []string, version, defaultNodeVersion, defaultGoVer
 		Command:            cfg.Command,
 		CPUs:               cfg.CPUs,
 		Memory:             cfg.Memory,
-		Security: cfg.Security,
+		Security:           cfg.Security,
 	}
 
 	// Create and initialize provider
