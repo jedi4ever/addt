@@ -1,6 +1,8 @@
 # addt - AI Don't Do That
 
-**Run AI coding agents safely in Docker containers.** Your code stays isolated - no surprises on your host machine.
+**Run AI coding agents safely in containers.** Your code stays isolated - no surprises on your host machine.
+
+Supports **Docker** and **Podman** as container runtimes.
 
 ```bash
 # Install (macOS)
@@ -57,7 +59,13 @@ chmod +x addt && sudo mv addt /usr/local/bin/
 
 **Verify:** `addt version`
 
-**Requires:** [Docker](https://docs.docker.com/get-docker/) running locally.
+**Requires:** [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/getting-started/installation) installed.
+
+**Using Podman instead of Docker:**
+```bash
+export ADDT_PROVIDER=podman
+addt run claude "Fix the bug"
+```
 
 ---
 
@@ -283,12 +291,14 @@ export ADDT_SSH_FORWARD=agent   # Forward SSH agent (secure)
 addt run claude "Clone the private repo"
 ```
 
-### Docker-in-Docker
+### Docker-in-Docker / Podman-in-Podman
 
 ```bash
 export ADDT_DIND=true
 addt run claude "Build a Docker image for this app"
 ```
+
+With Podman, this enables nested Podman containers (Podman-in-Podman).
 
 ### GPG Signing
 
@@ -321,6 +331,8 @@ addt firewall project allow registry.npmjs.org
 ```
 
 Rule evaluation: `Defaults → Extension → Global → Project` (most specific wins)
+
+**Podman firewall:** When using Podman with firewall enabled, addt automatically uses the `pasta` network backend for efficient network namespace handling. The firewall works with both nftables (preferred) and iptables.
 
 ### Resource Limits
 
@@ -470,6 +482,7 @@ addt cli update                   # Update addt
 ### Container Behavior
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `ADDT_PROVIDER` | docker | Container runtime: `docker`, `podman`, or `daytona` |
 | `ADDT_PERSISTENT` | false | Keep container running |
 | `ADDT_PORTS` | - | Ports to expose: `3000,8080` |
 | `ADDT_DOCKER_CPUS` | - | CPU limit: `2` |
@@ -562,4 +575,5 @@ MIT - See LICENSE file.
 
 - [Claude Code](https://github.com/anthropics/claude-code)
 - [Docker](https://docs.docker.com/get-docker/)
+- [Podman](https://podman.io/getting-started/installation)
 - [GitHub Tokens](https://github.com/settings/tokens)

@@ -21,6 +21,23 @@ var DockerInitFirewall []byte
 //go:embed docker/install.sh
 var DockerInstallSh []byte
 
+// Podman provider assets
+//
+//go:embed podman/Dockerfile
+var PodmanDockerfile []byte
+
+//go:embed podman/Dockerfile.base
+var PodmanDockerfileBase []byte
+
+//go:embed podman/podman-entrypoint.sh
+var PodmanEntrypoint []byte
+
+//go:embed podman/init-firewall.sh
+var PodmanInitFirewall []byte
+
+//go:embed podman/install.sh
+var PodmanInstallSh []byte
+
 // Daytona provider assets
 //
 //go:embed daytona/Dockerfile
