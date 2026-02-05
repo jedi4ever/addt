@@ -151,8 +151,8 @@ func checkPodman() DoctorCheck {
 		return check
 	}
 
-	// Get podman version
-	cmd := exec.Command(podmanPath, "version", "--format", "{{.Version}}")
+	// Get podman version (use --version flag which works without daemon)
+	cmd := exec.Command(podmanPath, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		check.Status = "warn"
@@ -161,7 +161,9 @@ func checkPodman() DoctorCheck {
 		return check
 	}
 
+	// Parse "podman version X.Y.Z" -> "X.Y.Z"
 	version := strings.TrimSpace(string(output))
+	version = strings.TrimPrefix(version, "podman version ")
 	source := "system"
 	if config.IsPodmanBundled() && podmanPath == config.GetBundledPodmanPath() {
 		source = "bundled"

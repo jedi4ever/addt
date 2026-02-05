@@ -107,12 +107,15 @@ func getPodmanVersion() string {
 	if podmanPath == "" {
 		return "unknown"
 	}
-	cmd := exec.Command(podmanPath, "version", "--format", "{{.Version}}")
+	// Use --version flag which works without daemon connection
+	cmd := exec.Command(podmanPath, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return "unknown"
 	}
-	return strings.TrimSpace(string(output))
+	// Parse "podman version X.Y.Z" -> "X.Y.Z"
+	version := strings.TrimSpace(string(output))
+	return strings.TrimPrefix(version, "podman version ")
 }
 
 func hasPasta() bool {

@@ -177,6 +177,7 @@ func extractTarGz(src, destDir string) error {
 	defer gzr.Close()
 
 	tr := tar.NewReader(gzr)
+	extracted := false
 
 	for {
 		header, err := tr.Next()
@@ -187,25 +188,35 @@ func extractTarGz(src, destDir string) error {
 			return err
 		}
 
-		// Only extract files named "podman" or "podman-remote"
+		// Look for podman binary (various naming conventions)
 		name := filepath.Base(header.Name)
-		if name != "podman" && name != "podman-remote" {
+		isPodmanBinary := strings.HasPrefix(name, "podman") &&
+			!strings.HasSuffix(name, ".md") &&
+			!strings.HasSuffix(name, ".txt") &&
+			!strings.HasSuffix(name, ".1") &&
+			header.Typeflag == tar.TypeReg
+
+		if !isPodmanBinary {
 			continue
 		}
 
 		target := filepath.Join(destDir, "podman")
 
-		if header.Typeflag == tar.TypeReg {
-			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(outFile, tr); err != nil {
-				outFile.Close()
-				return err
-			}
-			outFile.Close()
+		outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+		if err != nil {
+			return err
 		}
+		if _, err := io.Copy(outFile, tr); err != nil {
+			outFile.Close()
+			return err
+		}
+		outFile.Close()
+		extracted = true
+		break // Only need to extract one binary
+	}
+
+	if !extracted {
+		return fmt.Errorf("podman binary not found in archive")
 	}
 
 	return nil
