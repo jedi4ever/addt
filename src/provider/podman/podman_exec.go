@@ -110,6 +110,9 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	// GPG forwarding
 	podmanArgs = append(podmanArgs, p.HandleGPGForwarding(spec.GPGForward, ctx.homeDir, ctx.username, spec.GPGAllowedKeyIDs)...)
 
+	// Tmux forwarding
+	podmanArgs = append(podmanArgs, p.HandleTmuxForwarding(spec.TmuxForward)...)
+
 	// Firewall configuration with pasta network backend
 	if p.config.FirewallEnabled {
 		// Use pasta network backend for better firewall support in rootless mode

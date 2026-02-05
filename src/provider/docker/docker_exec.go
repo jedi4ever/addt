@@ -113,6 +113,9 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 	// GPG forwarding
 	dockerArgs = append(dockerArgs, p.HandleGPGForwarding(spec.GPGForward, ctx.homeDir, ctx.username, spec.GPGAllowedKeyIDs)...)
 
+	// Tmux forwarding
+	dockerArgs = append(dockerArgs, p.HandleTmuxForwarding(spec.TmuxForward)...)
+
 	// Firewall configuration
 	if p.config.FirewallEnabled {
 		// Requires NET_ADMIN capability for iptables

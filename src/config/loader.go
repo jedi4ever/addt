@@ -92,6 +92,18 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.SSHAllowedKeys = strings.Split(v, ",")
 	}
 
+	// Tmux forward: default (false) -> global -> project -> env
+	cfg.TmuxForward = false
+	if globalCfg.TmuxForward != nil {
+		cfg.TmuxForward = *globalCfg.TmuxForward
+	}
+	if projectCfg.TmuxForward != nil {
+		cfg.TmuxForward = *projectCfg.TmuxForward
+	}
+	if v := os.Getenv("ADDT_TMUX_FORWARD"); v != "" {
+		cfg.TmuxForward = v == "true"
+	}
+
 	// GPG forward: default (off) -> global -> project -> env
 	cfg.GPGForward = ""
 	if globalCfg.GPGForward != "" {

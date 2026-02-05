@@ -46,6 +46,7 @@ type Config struct {
 	PortRangeStart     int
 	SSHForward         string
 	SSHAllowedKeys     []string
+	TmuxForward        bool
 	GPGForward         string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs   []string // GPG key IDs (fingerprints) that are allowed
 	DindMode           string
@@ -86,6 +87,7 @@ type RunSpec struct {
 	Env              map[string]string
 	SSHForward       string
 	SSHAllowedKeys   []string
+	TmuxForward      bool
 	GPGForward       string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs []string // GPG key IDs that are allowed
 	DindMode         string

@@ -31,6 +31,7 @@ type GlobalConfig struct {
 	PortRangeStart   *int     `yaml:"port_range_start,omitempty"`
 	SSHForward       string   `yaml:"ssh_forward,omitempty"`
 	SSHAllowedKeys   []string `yaml:"ssh_allowed_keys,omitempty"`
+	TmuxForward      *bool    `yaml:"tmux_forward,omitempty"`
 	UvVersion        string   `yaml:"uv_version,omitempty"`
 	Workdir          string   `yaml:"workdir,omitempty"`
 	WorkdirAutomount *bool    `yaml:"workdir_automount,omitempty"`
@@ -55,6 +56,7 @@ type Config struct {
 	PortRangeStart           int
 	SSHForward               string
 	SSHAllowedKeys           []string
+	TmuxForward              bool
 	GPGForward               string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs         []string // GPG key IDs allowed for signing
 	DindMode                 string
