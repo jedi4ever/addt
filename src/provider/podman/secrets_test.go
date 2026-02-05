@@ -8,11 +8,11 @@ func TestFilterSecretEnvVars(t *testing.T) {
 	p := &PodmanProvider{}
 
 	env := map[string]string{
-		"ANTHROPIC_API_KEY":   "secret123",
-		"GH_TOKEN":            "ghp_xxx",
-		"PATH":                "/usr/bin",
-		"OPENAI_API_KEY":      "sk-xxx",
-		"NON_SECRET_VAR":      "value",
+		"ANTHROPIC_API_KEY": "secret123",
+		"GH_TOKEN":          "ghp_xxx",
+		"PATH":              "/usr/bin",
+		"OPENAI_API_KEY":    "sk-xxx",
+		"NON_SECRET_VAR":    "value",
 	}
 
 	secretVars := []string{"ANTHROPIC_API_KEY", "GH_TOKEN", "OPENAI_API_KEY"}
