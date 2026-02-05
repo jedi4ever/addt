@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jedi4ever/addt/provider"
+	"github.com/jedi4ever/addt/util"
 )
 
 // Container lifecycle management for persistent and ephemeral containers
@@ -38,23 +39,19 @@ func (p *PodmanProvider) IsRunning(name string) bool {
 // Start starts a stopped container
 func (p *PodmanProvider) Start(name string) error {
 	cmd := exec.Command("podman", "start", name)
-	return cmd.Run()
+	return util.SimpleSpinnerRun(fmt.Sprintf("Starting container %s", name), cmd)
 }
 
 // Stop stops a running container
 func (p *PodmanProvider) Stop(name string) error {
 	cmd := exec.Command("podman", "stop", name)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return util.SimpleSpinnerRun(fmt.Sprintf("Stopping container %s", name), cmd)
 }
 
 // Remove removes a container
 func (p *PodmanProvider) Remove(name string) error {
 	cmd := exec.Command("podman", "rm", "-f", name)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return util.SimpleSpinnerRun(fmt.Sprintf("Removing container %s", name), cmd)
 }
 
 // List lists all persistent addt containers

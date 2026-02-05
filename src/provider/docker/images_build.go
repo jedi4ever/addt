@@ -10,14 +10,19 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jedi4ever/addt/extensions"
+	"github.com/jedi4ever/addt/util"
 )
 
 // BuildBaseImage builds the base Docker image (contains Node, Go, UV, system packages)
 func (p *DockerProvider) BuildBaseImage() error {
 	baseImageName := p.GetBaseImageName()
-	fmt.Printf("Building base image %s...\n", baseImageName)
+	startTime := time.Now()
+
+	util.PrintBuildStart(baseImageName)
+	util.PrintInfo("This may take a few minutes on first build...")
 
 	// Create temp directory for build context
 	buildDir, err := os.MkdirTemp("", "addt-base-build-*")
@@ -66,15 +71,15 @@ func (p *DockerProvider) BuildBaseImage() error {
 		buildDir,
 	}
 
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
+	// Run build with progress indication
+	if err := util.RunBuildCommand("docker", args); err != nil {
+		util.PrintError(fmt.Sprintf("Failed to build base image: %v", err))
 		return fmt.Errorf("failed to build base Docker image: %w", err)
 	}
 
-	fmt.Printf("✓ Base image built: %s\n\n", baseImageName)
+	elapsed := time.Since(startTime)
+	util.PrintBuildComplete(baseImageName, elapsed)
+	fmt.Println()
 	return nil
 }
 
@@ -86,7 +91,7 @@ func (p *DockerProvider) EnsureBaseImage(forceRebuild bool) error {
 		return p.BuildBaseImage()
 	}
 
-	fmt.Printf("✓ Using cached base image: %s\n", baseImageName)
+	util.PrintCacheHit(baseImageName)
 	return nil
 }
 
@@ -98,7 +103,10 @@ func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byt
 	}
 
 	baseImageName := p.GetBaseImageName()
-	fmt.Printf("Building %s (from %s)...\n", p.config.ImageName, baseImageName)
+	startTime := time.Now()
+
+	util.PrintBuildStart(p.config.ImageName)
+	util.PrintInfo(fmt.Sprintf("Building from base: %s", baseImageName))
 
 	// Create temp directory for build context with embedded files
 	buildDir, err := os.MkdirTemp("", "addt-build-*")
@@ -196,17 +204,16 @@ func (p *DockerProvider) BuildImage(embeddedDockerfile, embeddedEntrypoint []byt
 		scriptDir,
 	)
 
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
+	// Run build with progress indication
+	if err := util.RunBuildCommand("docker", args); err != nil {
+		util.PrintError(fmt.Sprintf("Failed to build image: %v", err))
 		return fmt.Errorf("failed to build Docker image: %w", err)
 	}
 
-	fmt.Println("\n✓ Image built successfully!")
+	elapsed := time.Since(startTime)
+	util.PrintBuildComplete(p.config.ImageName, elapsed)
 	fmt.Println()
-	fmt.Println("Detecting tool versions...")
+	util.PrintInfo("Detecting tool versions...")
 
 	// Get versions from the built image
 	versions := p.detectToolVersions(p.config.ImageName)
@@ -249,7 +256,11 @@ func (p *DockerProvider) detectToolVersions(imageName string) map[string]string 
 		"node":   {"node", "--version"},
 	}
 
+	spinner := util.NewSpinner("Detecting versions...")
+	spinner.Start()
+
 	for name, cmdArgs := range tools {
+		spinner.UpdateMessage(fmt.Sprintf("Detecting %s version...", name))
 		args := append([]string{"run", "--rm", "--entrypoint", cmdArgs[0], imageName}, cmdArgs[1:]...)
 		cmd := exec.Command("docker", args...)
 		output, err := cmd.Output()
@@ -260,6 +271,7 @@ func (p *DockerProvider) detectToolVersions(imageName string) map[string]string 
 		}
 	}
 
+	spinner.Stop()
 	return versions
 }
 
