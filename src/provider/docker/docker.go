@@ -15,6 +15,7 @@ type DockerProvider struct {
 	config                 *provider.Config
 	tempDirs               []string
 	sshProxy               *security.SSHProxyAgent
+	gpgProxy               *security.GPGProxyAgent
 	embeddedDockerfile     []byte
 	embeddedDockerfileBase []byte
 	embeddedEntrypoint     []byte
@@ -68,12 +69,18 @@ func (p *DockerProvider) CheckPrerequisites() error {
 // and name generation (GenerateContainerName, GenerateEphemeralName, GeneratePersistentName)
 // are defined in persistent.go
 
-// Cleanup removes temporary directories and stops SSH proxy
+// Cleanup removes temporary directories and stops proxies
 func (p *DockerProvider) Cleanup() error {
 	// Stop SSH proxy if running
 	if p.sshProxy != nil {
 		p.sshProxy.Stop()
 		p.sshProxy = nil
+	}
+
+	// Stop GPG proxy if running
+	if p.gpgProxy != nil {
+		p.gpgProxy.Stop()
+		p.gpgProxy = nil
 	}
 
 	for _, dir := range p.tempDirs {

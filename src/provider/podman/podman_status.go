@@ -44,8 +44,8 @@ func (p *PodmanProvider) GetStatus(cfg *provider.Config, envName string) string 
 		parts = append(parts, "SSH:keys")
 	}
 
-	if cfg.GPGForward {
-		parts = append(parts, "GPG")
+	if cfg.GPGForward != "" && cfg.GPGForward != "off" && cfg.GPGForward != "false" {
+		parts = append(parts, fmt.Sprintf("GPG:%s", cfg.GPGForward))
 	}
 
 	switch cfg.DindMode {

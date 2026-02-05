@@ -46,7 +46,8 @@ type Config struct {
 	PortRangeStart     int
 	SSHForward         string
 	SSHAllowedKeys     []string
-	GPGForward         bool
+	GPGForward         string   // "proxy", "agent", "keys", or "off"
+	GPGAllowedKeyIDs   []string // GPG key IDs (fingerprints) that are allowed
 	DindMode           string
 	EnvFile            string
 	LogEnabled         bool
@@ -83,10 +84,11 @@ type RunSpec struct {
 	Volumes        []VolumeMount
 	Ports          []PortMapping
 	Env            map[string]string
-	SSHForward     string
-	SSHAllowedKeys []string
-	GPGForward     bool
-	DindMode       string
+	SSHForward       string
+	SSHAllowedKeys   []string
+	GPGForward       string   // "proxy", "agent", "keys", or "off"
+	GPGAllowedKeyIDs []string // GPG key IDs that are allowed
+	DindMode         string
 	CPUs           string // CPU limit (e.g., "2", "0.5")
 	Memory         string // Memory limit (e.g., "512m", "2g")
 }

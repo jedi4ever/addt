@@ -207,9 +207,9 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 	case "go_version":
 		return cfg.GoVersion
 	case "gpg_forward":
-		if cfg.GPGForward != nil {
-			return fmt.Sprintf("%v", *cfg.GPGForward)
-		}
+		return cfg.GPGForward
+	case "gpg_allowed_key_ids":
+		return strings.Join(cfg.GPGAllowedKeyIDs, ",")
 	case "log":
 		if cfg.Log != nil {
 			return fmt.Sprintf("%v", *cfg.Log)
@@ -326,8 +326,13 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 	case "go_version":
 		cfg.GoVersion = value
 	case "gpg_forward":
-		b := value == "true"
-		cfg.GPGForward = &b
+		cfg.GPGForward = value
+	case "gpg_allowed_key_ids":
+		if value == "" {
+			cfg.GPGAllowedKeyIDs = nil
+		} else {
+			cfg.GPGAllowedKeyIDs = strings.Split(value, ",")
+		}
 	case "log":
 		b := value == "true"
 		cfg.Log = &b
@@ -439,7 +444,9 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 	case "go_version":
 		cfg.GoVersion = ""
 	case "gpg_forward":
-		cfg.GPGForward = nil
+		cfg.GPGForward = ""
+	case "gpg_allowed_key_ids":
+		cfg.GPGAllowedKeyIDs = nil
 	case "log":
 		cfg.Log = nil
 	case "log_file":

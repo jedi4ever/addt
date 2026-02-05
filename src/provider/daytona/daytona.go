@@ -191,7 +191,7 @@ func (p *DaytonaProvider) Run(spec *provider.RunSpec) error {
 		}
 
 		// Add GPG_TTY if GPG forwarding is enabled
-		if spec.GPGForward {
+		if spec.GPGForward != "" && spec.GPGForward != "off" && spec.GPGForward != "false" {
 			createArgs = append(createArgs, "--env", "GPG_TTY=/dev/console")
 		}
 
@@ -307,7 +307,7 @@ func (p *DaytonaProvider) Shell(spec *provider.RunSpec) error {
 		}
 
 		// Add GPG_TTY if GPG forwarding is enabled
-		if spec.GPGForward {
+		if spec.GPGForward != "" && spec.GPGForward != "off" && spec.GPGForward != "false" {
 			createArgs = append(createArgs, "--env", "GPG_TTY=/dev/console")
 		}
 
@@ -382,8 +382,8 @@ func (p *DaytonaProvider) GetStatus(cfg *provider.Config, envName string) string
 	}
 
 	// GPG forwarding status
-	if cfg.GPGForward {
-		status += " | GPG:✓"
+	if cfg.GPGForward != "" && cfg.GPGForward != "off" && cfg.GPGForward != "false" {
+		status += fmt.Sprintf(" | GPG:%s", cfg.GPGForward)
 	} else {
 		status += " | GPG:-"
 	}

@@ -18,20 +18,22 @@ func BuildRunOptions(p provider.Provider, cfg *provider.Config, name string, arg
 
 	// Build the run spec
 	spec := &provider.RunSpec{
-		Name:        name,
-		ImageName:   cfg.ImageName,
-		Args:        args,
-		WorkDir:     cwd,
-		Interactive: terminal.IsTerminal(),
-		Persistent:  cfg.Persistent,
-		Volumes:     BuildVolumes(cfg, cwd),
-		Ports:       BuildPorts(cfg),
-		Env:         BuildEnvironment(p, cfg),
-		SSHForward:  cfg.SSHForward,
-		GPGForward:  cfg.GPGForward,
-		DindMode:    cfg.DindMode,
-		CPUs:        cfg.CPUs,
-		Memory:      cfg.Memory,
+		Name:             name,
+		ImageName:        cfg.ImageName,
+		Args:             args,
+		WorkDir:          cwd,
+		Interactive:      terminal.IsTerminal(),
+		Persistent:       cfg.Persistent,
+		Volumes:          BuildVolumes(cfg, cwd),
+		Ports:            BuildPorts(cfg),
+		Env:              BuildEnvironment(p, cfg),
+		SSHForward:       cfg.SSHForward,
+		SSHAllowedKeys:   cfg.SSHAllowedKeys,
+		GPGForward:       cfg.GPGForward,
+		GPGAllowedKeyIDs: cfg.GPGAllowedKeyIDs,
+		DindMode:         cfg.DindMode,
+		CPUs:             cfg.CPUs,
+		Memory:           cfg.Memory,
 	}
 
 	// Handle args based on mode

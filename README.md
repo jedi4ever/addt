@@ -332,10 +332,27 @@ With Podman, this enables nested Podman containers (Podman-in-Podman).
 
 ### GPG Signing
 
+GPG forwarding supports multiple modes for different security levels:
+
 ```bash
-export ADDT_GPG_FORWARD=true
+# Agent mode - forward gpg-agent socket (most secure for signing)
+export ADDT_GPG_FORWARD=agent
 addt run claude "Create a signed commit"
+
+# Proxy mode - filter which keys can sign
+export ADDT_GPG_FORWARD=proxy
+export ADDT_GPG_ALLOWED_KEY_IDS="ABC123,DEF456"
+addt run claude "Sign with specific key only"
+
+# Keys mode - mount ~/.gnupg read-only (legacy)
+export ADDT_GPG_FORWARD=keys
+addt run claude "Access GPG config"
 ```
+
+**GPG mode benefits:**
+- `agent`: Forward gpg-agent socket, private keys stay on host
+- `proxy`: Filter which key IDs can sign operations
+- `keys`: Mount entire ~/.gnupg read-only (backward compatible with `true`)
 
 ### Network Firewall
 
@@ -530,7 +547,8 @@ addt cli update                   # Update addt
 |----------|---------|-------------|
 | `ADDT_SSH_FORWARD` | proxy | SSH mode: `proxy`, `agent`, `keys`, or `off` |
 | `ADDT_SSH_ALLOWED_KEYS` | - | Filter SSH keys by comment: `github,work` |
-| `ADDT_GPG_FORWARD` | false | Mount GPG keys |
+| `ADDT_GPG_FORWARD` | - | GPG mode: `proxy`, `agent`, `keys`, or `off` |
+| `ADDT_GPG_ALLOWED_KEY_IDS` | - | Filter GPG keys by ID: `ABC123,DEF456` |
 | `ADDT_DIND` | false | Enable Docker-in-Docker |
 | `ADDT_DIND_MODE` | isolated | DinD mode: `isolated` or `host` |
 | `ADDT_GITHUB_DETECT` | false | Auto-detect GH token from `gh` CLI |

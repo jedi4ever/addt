@@ -22,7 +22,8 @@ type GlobalConfig struct {
 	FirewallDenied   []string `yaml:"firewall_denied,omitempty"`
 	GitHubDetect     *bool    `yaml:"github_detect,omitempty"`
 	GoVersion        string   `yaml:"go_version,omitempty"`
-	GPGForward       *bool    `yaml:"gpg_forward,omitempty"`
+	GPGForward       string   `yaml:"gpg_forward,omitempty"`       // "proxy", "agent", "keys", or "off"
+	GPGAllowedKeyIDs []string `yaml:"gpg_allowed_key_ids,omitempty"` // GPG key IDs allowed
 	Log              *bool    `yaml:"log,omitempty"`
 	LogFile          string   `yaml:"log_file,omitempty"`
 	NodeVersion      string   `yaml:"node_version,omitempty"`
@@ -54,7 +55,8 @@ type Config struct {
 	PortRangeStart           int
 	SSHForward               string
 	SSHAllowedKeys           []string
-	GPGForward               bool
+	GPGForward               string   // "proxy", "agent", "keys", or "off"
+	GPGAllowedKeyIDs         []string // GPG key IDs allowed for signing
 	DindMode                 string
 	EnvFile                  string
 	LogEnabled               bool

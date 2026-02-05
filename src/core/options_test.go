@@ -90,7 +90,7 @@ func TestBuildRunOptions_SSHAndGPG(t *testing.T) {
 	cfg := &provider.Config{
 		ImageName:        "test-image",
 		SSHForward:       "keys",
-		GPGForward:       true,
+		GPGForward:       "keys",
 		WorkdirAutomount: true,
 		PortRangeStart:   30000,
 	}
@@ -101,8 +101,8 @@ func TestBuildRunOptions_SSHAndGPG(t *testing.T) {
 		t.Errorf("SSHForward = %q, want 'keys'", opts.SSHForward)
 	}
 
-	if !opts.GPGForward {
-		t.Error("GPGForward should be true")
+	if opts.GPGForward != "keys" {
+		t.Errorf("GPGForward = %q, want 'keys'", opts.GPGForward)
 	}
 }
 

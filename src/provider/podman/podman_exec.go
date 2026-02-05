@@ -108,7 +108,7 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	podmanArgs = append(podmanArgs, p.HandleSSHForwarding(spec.SSHForward, ctx.homeDir, ctx.username, spec.SSHAllowedKeys)...)
 
 	// GPG forwarding
-	podmanArgs = append(podmanArgs, p.HandleGPGForwarding(spec.GPGForward, ctx.homeDir, ctx.username)...)
+	podmanArgs = append(podmanArgs, p.HandleGPGForwarding(spec.GPGForward, ctx.homeDir, ctx.username, spec.GPGAllowedKeyIDs)...)
 
 	// Firewall configuration with pasta network backend
 	if p.config.FirewallEnabled {

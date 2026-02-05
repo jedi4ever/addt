@@ -92,16 +92,32 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.SSHAllowedKeys = strings.Split(v, ",")
 	}
 
-	// GPG forward: default (false) -> global -> project -> env
-	cfg.GPGForward = false
-	if globalCfg.GPGForward != nil {
-		cfg.GPGForward = *globalCfg.GPGForward
+	// GPG forward: default (off) -> global -> project -> env
+	cfg.GPGForward = ""
+	if globalCfg.GPGForward != "" {
+		cfg.GPGForward = globalCfg.GPGForward
 	}
-	if projectCfg.GPGForward != nil {
-		cfg.GPGForward = *projectCfg.GPGForward
+	if projectCfg.GPGForward != "" {
+		cfg.GPGForward = projectCfg.GPGForward
 	}
 	if v := os.Getenv("ADDT_GPG_FORWARD"); v != "" {
-		cfg.GPGForward = v == "true"
+		// Support legacy boolean values
+		if v == "true" {
+			cfg.GPGForward = "keys"
+		} else if v == "false" {
+			cfg.GPGForward = ""
+		} else {
+			cfg.GPGForward = v
+		}
+	}
+
+	// GPG allowed key IDs: global -> project -> env
+	cfg.GPGAllowedKeyIDs = globalCfg.GPGAllowedKeyIDs
+	if len(projectCfg.GPGAllowedKeyIDs) > 0 {
+		cfg.GPGAllowedKeyIDs = projectCfg.GPGAllowedKeyIDs
+	}
+	if v := os.Getenv("ADDT_GPG_ALLOWED_KEY_IDS"); v != "" {
+		cfg.GPGAllowedKeyIDs = strings.Split(v, ",")
 	}
 
 	// DinD mode: default -> global -> project -> env
