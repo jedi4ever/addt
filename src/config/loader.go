@@ -71,13 +71,25 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		}
 	}
 
-	// SSH forward: default -> global -> project -> env
-	cfg.SSHForward = globalCfg.SSHForward
+	// SSH forward: default (proxy) -> global -> project -> env
+	cfg.SSHForward = "proxy"
+	if globalCfg.SSHForward != "" {
+		cfg.SSHForward = globalCfg.SSHForward
+	}
 	if projectCfg.SSHForward != "" {
 		cfg.SSHForward = projectCfg.SSHForward
 	}
 	if v := os.Getenv("ADDT_SSH_FORWARD"); v != "" {
 		cfg.SSHForward = v
+	}
+
+	// SSH allowed keys: global -> project -> env
+	cfg.SSHAllowedKeys = globalCfg.SSHAllowedKeys
+	if len(projectCfg.SSHAllowedKeys) > 0 {
+		cfg.SSHAllowedKeys = projectCfg.SSHAllowedKeys
+	}
+	if v := os.Getenv("ADDT_SSH_ALLOWED_KEYS"); v != "" {
+		cfg.SSHAllowedKeys = strings.Split(v, ",")
 	}
 
 	// GPG forward: default (false) -> global -> project -> env
