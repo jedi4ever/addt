@@ -7,11 +7,16 @@ import (
 )
 
 // DetectContainerRuntime automatically detects which container runtime to use
-// Priority: explicit ADDT_PROVIDER > Docker (if running) > Podman (if available) > Docker (default)
+// Priority: explicit ADDT_PROVIDER > Podman (if available) > Docker (if running) > Podman (default)
 func DetectContainerRuntime() string {
 	// If explicitly set, use that
 	if provider := os.Getenv("ADDT_PROVIDER"); provider != "" {
 		return provider
+	}
+
+	// Check if Podman is available (preferred - no daemon required)
+	if isPodmanAvailable() {
+		return "podman"
 	}
 
 	// Check if Docker is available and running
@@ -19,13 +24,8 @@ func DetectContainerRuntime() string {
 		return "docker"
 	}
 
-	// Check if Podman is available
-	if isPodmanAvailable() {
-		return "podman"
-	}
-
-	// Default to docker (will fail with helpful error if not available)
-	return "docker"
+	// Default to podman (will offer to install if not available)
+	return "podman"
 }
 
 // isDockerRunning checks if Docker daemon is running
