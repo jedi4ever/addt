@@ -1,4 +1,4 @@
-.PHONY: all build clean test help install dist fmt release
+.PHONY: all build clean test help install dist fmt release build-otel build-orchestrator
 
 # Variables
 BINARY_NAME=addt
@@ -13,14 +13,17 @@ PLATFORMS=darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
 help:
 	@echo "Available targets:"
-	@echo "  make build         - Format and build binary for current platform"
-	@echo "  make fmt           - Format Go code"
-	@echo "  make dist          - Build binaries for all platforms"
-	@echo "  make install       - Build and install to /usr/local/bin"
-	@echo "  make clean         - Remove build artifacts"
-	@echo "  make test          - Run tests"
-	@echo "  make release       - Create and push a new release (requires VERSION and CHANGELOG.md updated)"
-	@echo "  make help          - Show this help"
+	@echo "  make build              - Format and build main binary for current platform"
+	@echo "  make build-otel         - Build addt-otel binary"
+	@echo "  make build-orchestrator - Build addt-orchestrator binary"
+	@echo "  make build-all          - Build all binaries"
+	@echo "  make fmt                - Format Go code"
+	@echo "  make dist               - Build binaries for all platforms"
+	@echo "  make install            - Build and install to /usr/local/bin"
+	@echo "  make clean              - Remove build artifacts"
+	@echo "  make test               - Run tests"
+	@echo "  make release            - Create and push a new release (requires VERSION and CHANGELOG.md updated)"
+	@echo "  make help               - Show this help"
 
 # Default target
 all: build
@@ -31,7 +34,7 @@ fmt:
 	@cd $(SRC_DIR) && go fmt ./...
 	@echo "✓ Code formatted"
 
-# Build for current platform
+# Build main binary for current platform
 build: fmt $(BUILD_DIR)/$(BINARY_NAME)
 
 $(BUILD_DIR)/$(BINARY_NAME): $(GO_FILES) $(ASSET_FILES) VERSION
@@ -40,6 +43,26 @@ $(BUILD_DIR)/$(BINARY_NAME): $(GO_FILES) $(ASSET_FILES) VERSION
 	@cd $(SRC_DIR) && go build -ldflags "-X main.Version=$(VERSION)" -o ../$(BUILD_DIR)/$(BINARY_NAME) .
 	@chmod +x $(BUILD_DIR)/$(BINARY_NAME)
 	@echo "✓ Built $(BUILD_DIR)/$(BINARY_NAME)"
+
+# Build addt-otel binary
+build-otel: fmt
+	@echo "Building addt-otel..."
+	@mkdir -p $(BUILD_DIR)
+	@cd $(SRC_DIR) && go build -o ../$(BUILD_DIR)/addt-otel ./cmd/addt-otel
+	@chmod +x $(BUILD_DIR)/addt-otel
+	@echo "✓ Built $(BUILD_DIR)/addt-otel"
+
+# Build addt-orchestrator binary
+build-orchestrator: fmt
+	@echo "Building addt-orchestrator..."
+	@mkdir -p $(BUILD_DIR)
+	@cd $(SRC_DIR) && go build -o ../$(BUILD_DIR)/addt-orchestrator ./cmd/addt-orchestrator
+	@chmod +x $(BUILD_DIR)/addt-orchestrator
+	@echo "✓ Built $(BUILD_DIR)/addt-orchestrator"
+
+# Build all binaries
+build-all: build build-otel build-orchestrator
+	@echo "✓ All binaries built"
 
 # Build for all platforms
 dist: clean fmt

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>addt orchestrator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        h1 span {
+            color: #7c3aed;
+        }
+
+        .refresh-btn {
+            background: #333;
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .refresh-btn:hover {
+            background: #444;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+
+        .sessions-panel {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sessions-panel h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .session-card {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .session-card:hover {
+            background: #222;
+        }
+
+        .session-card.active {
+            border-color: #7c3aed;
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .session-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #fff;
+            word-break: break-all;
+        }
+
+        .session-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.running {
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+        }
+
+        .status-dot.stopped {
+            background: #ef4444;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-start {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        .btn-start:hover {
+            background: #16a34a;
+        }
+
+        .btn-stop {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-stop:hover {
+            background: #dc2626;
+        }
+
+        .btn-terminal {
+            background: #7c3aed;
+            color: #fff;
+        }
+
+        .btn-terminal:hover {
+            background: #6d28d9;
+        }
+
+        .btn-remove {
+            background: #333;
+            color: #888;
+        }
+
+        .btn-remove:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        .terminal-panel {
+            background: #0f0f0f;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            background: #1a1a1a;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .terminal-title {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .terminal-title span {
+            color: #fff;
+        }
+
+        .terminal-close {
+            background: #333;
+            border: none;
+            color: #888;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .terminal-close:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        #terminal-container {
+            flex: 1;
+            padding: 10px;
+        }
+
+        .no-session {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+        }
+
+        .empty-state p {
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span>addt</span> orchestrator</h1>
+            <button class="refresh-btn" onclick="loadSessions()">↻ Refresh</button>
+        </header>
+
+        <div class="layout">
+            <div class="sessions-panel">
+                <h2>Sessions</h2>
+                <div id="sessions-list">
+                    <div class="empty-state">
+                        <p>No sessions found</p>
+                        <p>Start addt in a directory to create a session</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="terminal-panel">
+                <div class="terminal-header">
+                    <span class="terminal-title">Terminal: <span id="terminal-session">Not connected</span></span>
+                    <button class="terminal-close" onclick="closeTerminal()">×</button>
+                </div>
+                <div id="terminal-container">
+                    <div class="no-session" id="terminal-placeholder">
+                        Select a running session and click "Terminal" to connect
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script>
+        let terminal = null;
+        let fitAddon = null;
+        let socket = null;
+        let currentSession = null;
+
+        async function loadSessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const sessions = await response.json();
+                renderSessions(sessions || []);
+            } catch (error) {
+                console.error('Failed to load sessions:', error);
+            }
+        }
+
+        function renderSessions(sessions) {
+            const container = document.getElementById('sessions-list');
+
+            if (sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No sessions found</p>
+                        <p>Start addt in a directory to create a session</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sessions.map(session => `
+                <div class="session-card ${currentSession === session.name ? 'active' : ''}" data-name="${session.name}">
+                    <div class="session-header">
+                        <span class="session-name">${session.name}</span>
+                        <div class="session-status">
+                            <span class="status-dot ${session.status}"></span>
+                            <span>${session.status}</span>
+                        </div>
+                    </div>
+                    <div class="session-actions">
+                        ${session.status === 'stopped'
+                            ? `<button class="btn btn-start" onclick="startSession('${session.name}')">Start</button>`
+                            : `<button class="btn btn-stop" onclick="stopSession('${session.name}')">Stop</button>`
+                        }
+                        ${session.status === 'running'
+                            ? `<button class="btn btn-terminal" onclick="openTerminal('${session.name}')">Terminal</button>`
+                            : ''
+                        }
+                        <button class="btn btn-remove" onclick="removeSession('${session.name}')">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function startSession(name) {
+            try {
+                await fetch(`/api/sessions/start?name=${encodeURIComponent(name)}`, { method: 'POST' });
+                loadSessions();
+            } catch (error) {
+                console.error('Failed to start session:', error);
+            }
+        }
+
+        async function stopSession(name) {
+            try {
+                await fetch(`/api/sessions/stop?name=${encodeURIComponent(name)}`, { method: 'POST' });
+                if (currentSession === name) {
+                    closeTerminal();
+                }
+                loadSessions();
+            } catch (error) {
+                console.error('Failed to stop session:', error);
+            }
+        }
+
+        async function removeSession(name) {
+            if (!confirm(`Remove session "${name}"? This cannot be undone.`)) {
+                return;
+            }
+            try {
+                await fetch(`/api/sessions/remove?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+                if (currentSession === name) {
+                    closeTerminal();
+                }
+                loadSessions();
+            } catch (error) {
+                console.error('Failed to remove session:', error);
+            }
+        }
+
+        function openTerminal(name) {
+            closeTerminal();
+            currentSession = name;
+
+            document.getElementById('terminal-session').textContent = name;
+            document.getElementById('terminal-placeholder').style.display = 'none';
+
+            // Create terminal
+            terminal = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                theme: {
+                    background: '#0f0f0f',
+                    foreground: '#ffffff',
+                    cursor: '#ffffff',
+                    selection: 'rgba(255, 255, 255, 0.3)'
+                }
+            });
+
+            fitAddon = new FitAddon.FitAddon();
+            terminal.loadAddon(fitAddon);
+            terminal.open(document.getElementById('terminal-container'));
+            fitAddon.fit();
+
+            // Connect WebSocket
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${protocol}//${window.location.host}/api/terminal?name=${encodeURIComponent(name)}`);
+            socket.binaryType = 'arraybuffer';
+
+            socket.onopen = () => {
+                terminal.write('\r\n\x1b[32mConnected to ' + name + '\x1b[0m\r\n\r\n');
+            };
+
+            socket.onmessage = (event) => {
+                const data = event.data instanceof ArrayBuffer
+                    ? new TextDecoder().decode(event.data)
+                    : event.data;
+                terminal.write(data);
+            };
+
+            socket.onclose = () => {
+                terminal.write('\r\n\x1b[31mDisconnected\x1b[0m\r\n');
+            };
+
+            socket.onerror = (error) => {
+                terminal.write('\r\n\x1b[31mConnection error\x1b[0m\r\n');
+            };
+
+            // Send input to WebSocket
+            terminal.onData((data) => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(data);
+                }
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (fitAddon) fitAddon.fit();
+            });
+
+            loadSessions(); // Refresh to show active state
+        }
+
+        function closeTerminal() {
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            if (terminal) {
+                terminal.dispose();
+                terminal = null;
+            }
+            currentSession = null;
+            document.getElementById('terminal-session').textContent = 'Not connected';
+            document.getElementById('terminal-placeholder').style.display = 'flex';
+            loadSessions();
+        }
+
+        // Initial load
+        loadSessions();
+
+        // Auto-refresh every 5 seconds
+        setInterval(loadSessions, 5000);
+    </script>
+</body>
+</html>
