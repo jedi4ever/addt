@@ -14,7 +14,7 @@ func (p *PodmanProvider) GetStatus(cfg *provider.Config, envName string) string 
 	var parts []string
 
 	// Get Node version from image labels
-	cmd := exec.Command("podman", "inspect", cfg.ImageName, "--format", "{{index .Config.Labels \"tools.node.version\"}}")
+	cmd := exec.Command(GetPodmanPath(), "inspect", cfg.ImageName, "--format", "{{index .Config.Labels \"tools.node.version\"}}")
 	if output, err := cmd.Output(); err == nil {
 		if nodeVersion := strings.TrimSpace(string(output)); nodeVersion != "" {
 			parts = append(parts, fmt.Sprintf("Node %s", nodeVersion))

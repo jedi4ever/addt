@@ -28,7 +28,7 @@ func (p *PodmanProvider) GetExtensionMountsWithNames(imageName string) []extensi
 	var mounts []extensions.ExtensionMountWithName
 
 	// Read extensions.json from the image
-	cmd := exec.Command("podman", "run", "--rm", "--entrypoint", "cat", imageName,
+	cmd := exec.Command(GetPodmanPath(), "run", "--rm", "--entrypoint", "cat", imageName,
 		"/home/addt/.addt/extensions.json")
 	output, err := cmd.Output()
 	if err != nil {
@@ -111,7 +111,7 @@ func (p *PodmanProvider) AddExtensionMounts(podmanArgs []string, imageName, home
 // GetExtensionMetadata reads all extension metadata from the image
 func (p *PodmanProvider) GetExtensionMetadata(imageName string) map[string]extensions.ExtensionMetadata {
 	// Read extensions.json from the image
-	cmd := exec.Command("podman", "run", "--rm", "--entrypoint", "cat", imageName,
+	cmd := exec.Command(GetPodmanPath(), "run", "--rm", "--entrypoint", "cat", imageName,
 		"/home/addt/.addt/extensions.json")
 	output, err := cmd.Output()
 	if err != nil {

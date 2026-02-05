@@ -46,20 +46,47 @@ func (p *PodmanProvider) GetName() string {
 	return "podman"
 }
 
-// CheckPrerequisites verifies Podman is installed
+// CheckPrerequisites verifies Podman is installed, offering to install if not found
 func (p *PodmanProvider) CheckPrerequisites() error {
-	// Check Podman is installed
-	if _, err := exec.LookPath("podman"); err != nil {
-		return fmt.Errorf("Podman is not installed. Please install Podman from: https://podman.io/docs/installation")
+	podmanPath := GetPodmanPath()
+
+	// Check if Podman is installed (either system or addt-managed)
+	if _, err := exec.LookPath(podmanPath); err != nil {
+		// Also check absolute path for addt-managed podman
+		if podmanPath != "podman" {
+			if _, err := os.Stat(podmanPath); err != nil {
+				return p.handlePodmanNotFound()
+			}
+		} else {
+			return p.handlePodmanNotFound()
+		}
 	}
 
 	// Podman is daemonless, so we just verify it can run
-	cmd := exec.Command("podman", "info", "--format", "{{.Host.Os}}")
+	cmd := exec.Command(podmanPath, "info", "--format", "{{.Host.Os}}")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Podman is not working correctly. Please check your Podman installation")
+		return fmt.Errorf("Podman is not working correctly. Please check your Podman installation.\n\n%s", GetInstallInstructions())
 	}
 
 	return nil
+}
+
+// handlePodmanNotFound prompts the user to install Podman
+func (p *PodmanProvider) handlePodmanNotFound() error {
+	fmt.Println("Podman is not installed.")
+	fmt.Println()
+	fmt.Println(GetInstallInstructions())
+	fmt.Println()
+
+	if PromptInstallPodman() {
+		if err := InstallPodman(); err != nil {
+			return fmt.Errorf("failed to install Podman: %w", err)
+		}
+		fmt.Println("\n✓ Podman installed successfully!")
+		return nil
+	}
+
+	return fmt.Errorf("Podman is required. Please install it and try again")
 }
 
 // Container lifecycle methods (Exists, IsRunning, Start, Stop, Remove, List)

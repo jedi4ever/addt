@@ -15,7 +15,7 @@ func (p *PodmanProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
 		baseImageName := p.GetBaseImageName()
 		fmt.Printf("Rebuilding base image %s...\n", baseImageName)
 		if p.ImageExists(baseImageName) {
-			cmd := exec.Command("podman", "rmi", baseImageName)
+			cmd := exec.Command(GetPodmanPath(), "rmi", baseImageName)
 			cmd.Run()
 		}
 		if err := p.BuildBaseImage(); err != nil {
@@ -30,7 +30,7 @@ func (p *PodmanProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
 		if imageExists {
 			fmt.Printf("Rebuilding %s...\n", p.config.ImageName)
 			fmt.Println("Removing existing image...")
-			cmd := exec.Command("podman", "rmi", p.config.ImageName)
+			cmd := exec.Command(GetPodmanPath(), "rmi", p.config.ImageName)
 			cmd.Run()
 		}
 		return p.BuildImage(p.embeddedDockerfile, p.embeddedEntrypoint)

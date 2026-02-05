@@ -9,13 +9,13 @@ import (
 
 // ImageExists checks if a Podman image exists
 func (p *PodmanProvider) ImageExists(imageName string) bool {
-	cmd := exec.Command("podman", "image", "inspect", imageName)
+	cmd := exec.Command(GetPodmanPath(), "image", "inspect", imageName)
 	return cmd.Run() == nil
 }
 
 // FindImageByLabel finds an image by a specific label value
 func (p *PodmanProvider) FindImageByLabel(label, value string) string {
-	cmd := exec.Command("podman", "images",
+	cmd := exec.Command(GetPodmanPath(), "images",
 		"--filter", fmt.Sprintf("label=%s=%s", label, value),
 		"--format", "{{.Repository}}:{{.Tag}}")
 	output, err := cmd.Output()
@@ -34,7 +34,7 @@ func (p *PodmanProvider) FindImageByLabel(label, value string) string {
 
 // GetImageLabel retrieves a specific label value from an image
 func (p *PodmanProvider) GetImageLabel(imageName, label string) string {
-	cmd := exec.Command("podman", "inspect",
+	cmd := exec.Command(GetPodmanPath(), "inspect",
 		"--format", fmt.Sprintf("{{index .Config.Labels %q}}", label),
 		imageName)
 	output, err := cmd.Output()

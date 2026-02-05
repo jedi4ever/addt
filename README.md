@@ -333,6 +333,8 @@ addt run claude "Fix the bug"
 
 Podman is a daemonless container runtime that's compatible with Docker images and commands. All features (firewall, SSH forwarding, etc.) work the same way with both runtimes.
 
+**Auto-install:** If Podman isn't installed, addt will offer to install it automatically using your system's package manager (apt, dnf, pacman, brew, etc.).
+
 ### Resource Limits
 
 ```bash

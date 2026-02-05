@@ -144,7 +144,7 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 
 // executePodmanCommand runs the podman command with standard I/O
 func (p *PodmanProvider) executePodmanCommand(podmanArgs []string) error {
-	cmd := exec.Command("podman", podmanArgs...)
+	cmd := exec.Command(GetPodmanPath(), podmanArgs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

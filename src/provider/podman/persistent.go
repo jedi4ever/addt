@@ -17,7 +17,7 @@ import (
 
 // Exists checks if a container exists (running or stopped)
 func (p *PodmanProvider) Exists(name string) bool {
-	cmd := exec.Command("podman", "ps", "-a", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
+	cmd := exec.Command(GetPodmanPath(), "ps", "-a", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
@@ -27,7 +27,7 @@ func (p *PodmanProvider) Exists(name string) bool {
 
 // IsRunning checks if a container is currently running
 func (p *PodmanProvider) IsRunning(name string) bool {
-	cmd := exec.Command("podman", "ps", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
+	cmd := exec.Command(GetPodmanPath(), "ps", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
@@ -37,13 +37,13 @@ func (p *PodmanProvider) IsRunning(name string) bool {
 
 // Start starts a stopped container
 func (p *PodmanProvider) Start(name string) error {
-	cmd := exec.Command("podman", "start", name)
+	cmd := exec.Command(GetPodmanPath(), "start", name)
 	return cmd.Run()
 }
 
 // Stop stops a running container
 func (p *PodmanProvider) Stop(name string) error {
-	cmd := exec.Command("podman", "stop", name)
+	cmd := exec.Command(GetPodmanPath(), "stop", name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -51,7 +51,7 @@ func (p *PodmanProvider) Stop(name string) error {
 
 // Remove removes a container
 func (p *PodmanProvider) Remove(name string) error {
-	cmd := exec.Command("podman", "rm", "-f", name)
+	cmd := exec.Command(GetPodmanPath(), "rm", "-f", name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -59,7 +59,7 @@ func (p *PodmanProvider) Remove(name string) error {
 
 // List lists all persistent addt containers
 func (p *PodmanProvider) List() ([]provider.Environment, error) {
-	cmd := exec.Command("podman", "ps", "-a", "--filter", "name=^addt-persistent-",
+	cmd := exec.Command(GetPodmanPath(), "ps", "-a", "--filter", "name=^addt-persistent-",
 		"--format", "{{.Names}}\t{{.Status}}\t{{.CreatedAt}}")
 	output, err := cmd.Output()
 	if err != nil {
