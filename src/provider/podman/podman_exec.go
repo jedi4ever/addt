@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 
 	"github.com/jedi4ever/addt/provider"
 )
@@ -106,17 +105,8 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	// GPG forwarding
 	podmanArgs = append(podmanArgs, p.HandleGPGForwarding(spec.GPGForward, ctx.homeDir, ctx.username)...)
 
-	// Firewall configuration
-	if p.config.FirewallEnabled {
-		// Requires NET_ADMIN capability for iptables
-		podmanArgs = append(podmanArgs, "--cap-add", "NET_ADMIN")
-
-		// Mount firewall config directory
-		firewallConfigDir := filepath.Join(ctx.homeDir, ".addt", "firewall")
-		if _, err := os.Stat(firewallConfigDir); err == nil {
-			podmanArgs = append(podmanArgs, "-v", fmt.Sprintf("%s:/home/%s/.addt/firewall", firewallConfigDir, ctx.username))
-		}
-	}
+	// Firewall configuration using pasta networking
+	podmanArgs = append(podmanArgs, p.HandleFirewallConfig(ctx.homeDir, ctx.username)...)
 
 	// Docker/Podman forwarding
 	podmanArgs = append(podmanArgs, p.HandleDockerForwarding(spec.DindMode, spec.Name)...)
