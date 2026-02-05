@@ -57,7 +57,7 @@ chmod +x addt && sudo mv addt /usr/local/bin/
 
 **Verify:** `addt version`
 
-**Requires:** [Docker](https://docs.docker.com/get-docker/) running locally.
+**Requires:** [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/docs/installation) running locally.
 
 ---
 
@@ -322,6 +322,17 @@ addt firewall project allow registry.npmjs.org
 
 Rule evaluation: `Defaults → Extension → Global → Project` (most specific wins)
 
+### Using Podman Instead of Docker
+
+If you prefer Podman over Docker, simply set the provider:
+
+```bash
+export ADDT_PROVIDER=podman
+addt run claude "Fix the bug"
+```
+
+Podman is a daemonless container runtime that's compatible with Docker images and commands. All features (firewall, SSH forwarding, etc.) work the same way with both runtimes.
+
 ### Resource Limits
 
 ```bash
@@ -411,6 +422,7 @@ addt cli update                   # Update addt
 ### Container Behavior
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `ADDT_PROVIDER` | docker | Container runtime: `docker`, `podman`, or `daytona` |
 | `ADDT_PERSISTENT` | false | Keep container running |
 | `ADDT_PORTS` | - | Ports to expose: `3000,8080` |
 | `ADDT_DOCKER_CPUS` | - | CPU limit: `2` |
