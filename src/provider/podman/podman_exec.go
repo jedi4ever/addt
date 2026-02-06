@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"time"
 
 	"github.com/jedi4ever/addt/assets"
 	"github.com/jedi4ever/addt/provider"
@@ -42,8 +43,22 @@ func (p *PodmanProvider) setupContainerContext(spec *provider.RunSpec) (*contain
 			ctx.useExistingContainer = true
 		} else {
 			fmt.Println("Container is stopped, starting...")
-			p.Start(spec.Name)
-			ctx.useExistingContainer = true
+			if err := p.Start(spec.Name); err != nil {
+				fmt.Println("Failed to start container, removing and recreating...")
+				p.Remove(spec.Name)
+				// Fall through to create a new container
+			} else {
+				// Give container a moment to stabilize (entrypoint may exit immediately)
+				time.Sleep(500 * time.Millisecond)
+				if !p.IsRunning(spec.Name) {
+					// Container started but exited immediately (entrypoint finished)
+					fmt.Println("Container exited after start, removing and recreating...")
+					p.Remove(spec.Name)
+					// Fall through to create a new container
+				} else {
+					ctx.useExistingContainer = true
+				}
+			}
 		}
 	} else if spec.Persistent {
 		fmt.Printf("Creating new persistent container: %s\n", spec.Name)
@@ -267,6 +282,11 @@ func (p *PodmanProvider) Run(spec *provider.RunSpec) error {
 		return p.executePodmanCommand(podmanArgs)
 	}
 
+	// New persistent container: detached keep-alive + exec entrypoint
+	if spec.Persistent {
+		return p.runPersistent(podmanArgs, spec, secretsJSON)
+	}
+
 	// New container with secrets: use two-step process
 	// 1. Start container detached with wait script
 	// 2. Copy secrets via podman cp
@@ -283,6 +303,60 @@ func (p *PodmanProvider) Run(spec *provider.RunSpec) error {
 	podmanArgs = append(podmanArgs, spec.Args...)
 	podmanLogger.Debugf("Executing podman run with final args (entrypoint will be called from image): %v", podmanArgs)
 	return p.executePodmanCommand(podmanArgs)
+}
+
+// runPersistent creates a persistent container with sleep infinity as PID 1,
+// then execs the entrypoint. This ensures the container stays alive after
+// the agent exits, so subsequent runs can reuse it via podman exec.
+func (p *PodmanProvider) runPersistent(baseArgs []string, spec *provider.RunSpec, secretsJSON string) error {
+	// Strip interactive/init flags — not needed for detached sleep process
+	var runArgs []string
+	interactive := false
+	for _, arg := range baseArgs {
+		switch arg {
+		case "-it":
+			interactive = true
+		case "-i":
+			interactive = true
+		case "-t", "--init":
+			// not needed for detached sleep process
+		default:
+			runArgs = append(runArgs, arg)
+		}
+	}
+
+	// Start container detached with sleep as keep-alive PID 1
+	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
+	podmanLogger.Debugf("Starting persistent container: podman %v", runArgs)
+
+	cmd := exec.Command("podman", runArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to start persistent container: %w\n%s", err, string(output))
+	}
+
+	// Copy secrets if needed
+	if secretsJSON != "" {
+		podmanLogger.Debug("Copying secrets to persistent container")
+		if err := p.copySecretsToContainer(spec.Name, secretsJSON); err != nil {
+			podmanLogger.Debugf("Failed to copy secrets, cleaning up container %s", spec.Name)
+			exec.Command("podman", "rm", "-f", spec.Name).Run()
+			return fmt.Errorf("failed to copy secrets: %w", err)
+		}
+	}
+
+	// Exec entrypoint — output goes directly to terminal
+	execArgs := []string{"exec"}
+	if interactive {
+		execArgs = append(execArgs, "-it")
+	} else {
+		execArgs = append(execArgs, "-i")
+	}
+	execArgs = append(execArgs, spec.Name, "/usr/local/bin/podman-entrypoint.sh")
+	execArgs = append(execArgs, spec.Args...)
+
+	podmanLogger.Debugf("Executing entrypoint in persistent container: podman %v", execArgs)
+	return p.executePodmanCommand(execArgs)
 }
 
 // runWithSecrets starts a container, copies secrets, then execs the entrypoint.
@@ -378,6 +452,8 @@ func (p *PodmanProvider) Shell(spec *provider.RunSpec) error {
 		podmanArgs = append(podmanArgs, "-e", "ADDT_COMMAND=/bin/bash")
 		podmanArgs = append(podmanArgs, spec.Name, "/usr/local/bin/podman-entrypoint.sh")
 		podmanArgs = append(podmanArgs, spec.Args...)
+	} else if spec.Persistent {
+		return p.shellPersistent(podmanArgs, spec, ctx)
 	} else {
 		// Use default entrypoint with ADDT_COMMAND override to bash
 		// The entrypoint handles all initialization: socat bridges, secrets,
@@ -388,6 +464,50 @@ func (p *PodmanProvider) Shell(spec *provider.RunSpec) error {
 	}
 
 	return p.executePodmanCommand(podmanArgs)
+}
+
+// shellPersistent creates a persistent container with sleep infinity as PID 1,
+// then execs the entrypoint with ADDT_COMMAND=/bin/bash for shell access.
+func (p *PodmanProvider) shellPersistent(baseArgs []string, spec *provider.RunSpec, ctx *containerContext) error {
+	// Strip interactive/init flags — not needed for detached sleep process
+	var runArgs []string
+	interactive := false
+	for _, arg := range baseArgs {
+		switch arg {
+		case "-it":
+			interactive = true
+		case "-i":
+			interactive = true
+		case "-t", "--init":
+			// not needed for detached sleep process
+		default:
+			runArgs = append(runArgs, arg)
+		}
+	}
+
+	// Start container detached with sleep as keep-alive PID 1
+	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
+	podmanLogger.Debugf("Starting persistent container for shell: podman %v", runArgs)
+
+	cmd := exec.Command("podman", runArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to start persistent container: %w\n%s", err, string(output))
+	}
+
+	// Exec entrypoint with bash override
+	execArgs := []string{"exec"}
+	if interactive {
+		execArgs = append(execArgs, "-it")
+	} else {
+		execArgs = append(execArgs, "-i")
+	}
+	execArgs = append(execArgs, "-e", "ADDT_COMMAND=/bin/bash")
+	execArgs = append(execArgs, spec.Name, "/usr/local/bin/podman-entrypoint.sh")
+	execArgs = append(execArgs, spec.Args...)
+
+	podmanLogger.Debugf("Executing shell in persistent container: podman %v", execArgs)
+	return p.executePodmanCommand(execArgs)
 }
 
 // addSecuritySettings adds container security hardening options

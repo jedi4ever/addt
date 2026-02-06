@@ -43,8 +43,22 @@ func (p *DockerProvider) setupContainerContext(spec *provider.RunSpec) (*contain
 			ctx.useExistingContainer = true
 		} else {
 			fmt.Println("Container is stopped, starting...")
-			p.Start(spec.Name)
-			ctx.useExistingContainer = true
+			if err := p.Start(spec.Name); err != nil {
+				fmt.Println("Failed to start container, removing and recreating...")
+				p.Remove(spec.Name)
+				// Fall through to create a new container
+			} else {
+				// Give container a moment to stabilize (entrypoint may exit immediately)
+				time.Sleep(500 * time.Millisecond)
+				if !p.IsRunning(spec.Name) {
+					// Container started but exited immediately (entrypoint finished)
+					fmt.Println("Container exited after start, removing and recreating...")
+					p.Remove(spec.Name)
+					// Fall through to create a new container
+				} else {
+					ctx.useExistingContainer = true
+				}
+			}
 		}
 	} else if spec.Persistent {
 		fmt.Printf("Creating new persistent container: %s\n", spec.Name)
@@ -262,6 +276,11 @@ func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 		return p.executeDockerCommand(dockerArgs)
 	}
 
+	// New persistent container: detached keep-alive + exec entrypoint
+	if spec.Persistent {
+		return p.runPersistent(dockerArgs, spec, secretsJSON)
+	}
+
 	// New container with secrets: use two-step process
 	// 1. Start container detached with wait script
 	// 2. Copy secrets via docker cp
@@ -274,6 +293,60 @@ func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 	dockerArgs = append(dockerArgs, spec.ImageName)
 	dockerArgs = append(dockerArgs, spec.Args...)
 	return p.executeDockerCommand(dockerArgs)
+}
+
+// runPersistent creates a persistent container with sleep infinity as PID 1,
+// then execs the entrypoint. This ensures the container stays alive after
+// the agent exits, so subsequent runs can reuse it via docker exec.
+func (p *DockerProvider) runPersistent(baseArgs []string, spec *provider.RunSpec, secretsJSON string) error {
+	// Strip interactive/init flags — not needed for detached sleep process
+	var runArgs []string
+	interactive := false
+	for _, arg := range baseArgs {
+		switch arg {
+		case "-it":
+			interactive = true
+		case "-i":
+			interactive = true
+		case "-t", "--init":
+			// not needed for detached sleep process
+		default:
+			runArgs = append(runArgs, arg)
+		}
+	}
+
+	// Start container detached with sleep as keep-alive PID 1
+	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
+	dockerLogger.Debugf("Starting persistent container: docker %v", runArgs)
+
+	cmd := exec.Command("docker", runArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to start persistent container: %w\n%s", err, string(output))
+	}
+
+	// Copy secrets if needed
+	if secretsJSON != "" {
+		dockerLogger.Debug("Copying secrets to persistent container")
+		if err := p.copySecretsToContainer(spec.Name, secretsJSON); err != nil {
+			dockerLogger.Debugf("Failed to copy secrets, cleaning up container %s", spec.Name)
+			exec.Command("docker", "rm", "-f", spec.Name).Run()
+			return fmt.Errorf("failed to copy secrets: %w", err)
+		}
+	}
+
+	// Exec entrypoint — output goes directly to terminal
+	execArgs := []string{"exec"}
+	if interactive {
+		execArgs = append(execArgs, "-it")
+	} else {
+		execArgs = append(execArgs, "-i")
+	}
+	execArgs = append(execArgs, spec.Name, "/usr/local/bin/docker-entrypoint.sh")
+	execArgs = append(execArgs, spec.Args...)
+
+	dockerLogger.Debugf("Executing entrypoint in persistent container: docker %v", execArgs)
+	return p.executeDockerCommand(execArgs)
 }
 
 // runWithSecrets starts a container, copies secrets, then runs entrypoint
@@ -448,8 +521,12 @@ func (p *DockerProvider) Shell(spec *provider.RunSpec) error {
 	// Open shell
 	fmt.Println("Opening bash shell in container...")
 	if ctx.useExistingContainer {
-		dockerArgs = append(dockerArgs, spec.Name, "/bin/bash")
+		// Run through entrypoint so init (socat, firewall, DinD) works
+		dockerArgs = append(dockerArgs, "-e", "ADDT_COMMAND=/bin/bash")
+		dockerArgs = append(dockerArgs, spec.Name, "/usr/local/bin/docker-entrypoint.sh")
 		dockerArgs = append(dockerArgs, spec.Args...)
+	} else if spec.Persistent {
+		return p.shellPersistent(dockerArgs, spec, ctx)
 	} else {
 		// Override entrypoint to bash for shell mode
 		// Need to handle firewall initialization and DinD initialization
@@ -491,6 +568,50 @@ exec /bin/bash "$@"
 	}
 
 	return p.executeDockerCommand(dockerArgs)
+}
+
+// shellPersistent creates a persistent container with sleep infinity as PID 1,
+// then execs the entrypoint with ADDT_COMMAND=/bin/bash for shell access.
+func (p *DockerProvider) shellPersistent(baseArgs []string, spec *provider.RunSpec, ctx *containerContext) error {
+	// Strip interactive/init flags — not needed for detached sleep process
+	var runArgs []string
+	interactive := false
+	for _, arg := range baseArgs {
+		switch arg {
+		case "-it":
+			interactive = true
+		case "-i":
+			interactive = true
+		case "-t", "--init":
+			// not needed for detached sleep process
+		default:
+			runArgs = append(runArgs, arg)
+		}
+	}
+
+	// Start container detached with sleep as keep-alive PID 1
+	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
+	dockerLogger.Debugf("Starting persistent container for shell: docker %v", runArgs)
+
+	cmd := exec.Command("docker", runArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to start persistent container: %w\n%s", err, string(output))
+	}
+
+	// Exec entrypoint with bash override
+	execArgs := []string{"exec"}
+	if interactive {
+		execArgs = append(execArgs, "-it")
+	} else {
+		execArgs = append(execArgs, "-i")
+	}
+	execArgs = append(execArgs, "-e", "ADDT_COMMAND=/bin/bash")
+	execArgs = append(execArgs, spec.Name, "/usr/local/bin/docker-entrypoint.sh")
+	execArgs = append(execArgs, spec.Args...)
+
+	dockerLogger.Debugf("Executing shell in persistent container: docker %v", execArgs)
+	return p.executeDockerCommand(execArgs)
 }
 
 // addSecuritySettings adds container security hardening options
