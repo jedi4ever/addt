@@ -45,15 +45,15 @@ func BuildRunOptions(p provider.Provider, cfg *provider.Config, name string, arg
 		HistoryPersist:   cfg.HistoryPersist,
 		GPGForward:       cfg.GPGForward,
 		GPGAllowedKeyIDs: cfg.GPGAllowedKeyIDs,
-		DindMode:         cfg.DindMode,
-		CPUs:             cfg.CPUs,
-		Memory:           cfg.Memory,
+		DockerDindMode:         cfg.DockerDindMode,
+		DockerCPUs:       cfg.DockerCPUs,
+		DockerMemory:     cfg.DockerMemory,
 	}
 	// Resolve flag → env var mappings (e.g., --yolo → ADDT_EXTENSION_CLAUDE_YOLO=true)
 	addFlagEnvVars(spec.Env, cfg, args)
 
-	optionsLogger.Debugf("RunSpec created: Name=%s, ImageName=%s, Interactive=%v, Persistent=%v, DindMode=%s",
-		spec.Name, spec.ImageName, spec.Interactive, spec.Persistent, spec.DindMode)
+	optionsLogger.Debugf("RunSpec created: Name=%s, ImageName=%s, Interactive=%v, Persistent=%v, DockerDindMode=%s",
+		spec.Name, spec.ImageName, spec.Interactive, spec.Persistent, spec.DockerDindMode)
 
 	// Handle args based on mode
 	if openShell && len(args) > 0 {

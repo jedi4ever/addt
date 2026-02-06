@@ -136,7 +136,7 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 	}
 
 	// Docker forwarding
-	dockerArgs = append(dockerArgs, p.HandleDockerForwarding(spec.DindMode, spec.Name)...)
+	dockerArgs = append(dockerArgs, p.HandleDockerForwarding(spec.DockerDindMode, spec.Name)...)
 
 	// Add ports
 	for _, port := range spec.Ports {
@@ -160,11 +160,11 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 	}
 
 	// Add resource limits
-	if spec.CPUs != "" {
-		dockerArgs = append(dockerArgs, "--cpus", spec.CPUs)
+	if spec.DockerCPUs != "" {
+		dockerArgs = append(dockerArgs, "--cpus", spec.DockerCPUs)
 	}
-	if spec.Memory != "" {
-		dockerArgs = append(dockerArgs, "--memory", spec.Memory)
+	if spec.DockerMemory != "" {
+		dockerArgs = append(dockerArgs, "--memory", spec.DockerMemory)
 	}
 
 	// Add security settings
@@ -453,7 +453,7 @@ func (p *DockerProvider) Shell(spec *provider.RunSpec) error {
 	} else {
 		// Override entrypoint to bash for shell mode
 		// Need to handle firewall initialization and DinD initialization
-		needsInit := spec.DindMode == "isolated" || spec.DindMode == "true" || p.config.FirewallEnabled
+		needsInit := spec.DockerDindMode == "isolated" || spec.DockerDindMode == "true" || p.config.FirewallEnabled
 
 		if needsInit {
 			// Create initialization script that runs before bash
@@ -464,7 +464,7 @@ if [ "${ADDT_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewall.
 fi
 
 # Start Docker daemon if in DinD mode
-if [ "$ADDT_DIND" = "true" ]; then
+if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
     echo 'Starting Docker daemon in isolated mode...'
     sudo dockerd --host=unix:///var/run/docker.sock >/tmp/docker.log 2>&1 &
     echo 'Waiting for Docker daemon...'

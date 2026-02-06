@@ -47,9 +47,9 @@ func TestHandleDockerForwarding_Isolated(t *testing.T) {
 				t.Errorf("HandleDockerForwarding(%q) missing volume %q, got %v", tc.mode, expectedVolume, args)
 			}
 
-			// Should set ADDT_DIND=true env var
-			if !containsEnv(args, "ADDT_DIND=true") {
-				t.Errorf("HandleDockerForwarding(%q) missing ADDT_DIND=true env var", tc.mode)
+			// Should set ADDT_DOCKER_DIND_ENABLE=true env var
+			if !containsEnv(args, "ADDT_DOCKER_DIND_ENABLE=true") {
+				t.Errorf("HandleDockerForwarding(%q) missing ADDT_DOCKER_DIND_ENABLE=true env var", tc.mode)
 			}
 		})
 	}
@@ -84,9 +84,9 @@ func TestHandleDockerForwarding_Host(t *testing.T) {
 			t.Errorf("HandleDockerForwarding(\"host\") should not have --privileged")
 		}
 
-		// Should NOT set ADDT_DIND env var (only isolated mode)
-		if containsEnv(args, "ADDT_DIND=true") {
-			t.Errorf("HandleDockerForwarding(\"host\") should not set ADDT_DIND=true")
+		// Should NOT set ADDT_DOCKER_DIND_ENABLE env var (only isolated mode)
+		if containsEnv(args, "ADDT_DOCKER_DIND_ENABLE=true") {
+			t.Errorf("HandleDockerForwarding(\"host\") should not set ADDT_DOCKER_DIND_ENABLE=true")
 		}
 	} else {
 		// Without Docker socket, host mode should return empty

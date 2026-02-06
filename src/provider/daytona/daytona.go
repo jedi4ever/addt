@@ -389,7 +389,7 @@ func (p *DaytonaProvider) GetStatus(cfg *provider.Config, envName string) string
 	}
 
 	// Docker support - note that Daytona may not support this
-	if cfg.DindMode != "" {
+	if cfg.DockerDindMode != "" {
 		status += " | Docker:limited"
 	}
 

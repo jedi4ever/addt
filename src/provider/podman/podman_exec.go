@@ -145,7 +145,7 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	}
 
 	// Podman-in-Podman support (similar to DinD)
-	podmanArgs = append(podmanArgs, p.HandlePodmanForwarding(spec.DindMode, spec.Name)...)
+	podmanArgs = append(podmanArgs, p.HandlePodmanForwarding(spec.DockerDindMode, spec.Name)...)
 
 	// Add ports
 	for _, port := range spec.Ports {
@@ -174,11 +174,11 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	}
 
 	// Add resource limits
-	if spec.CPUs != "" {
-		podmanArgs = append(podmanArgs, "--cpus", spec.CPUs)
+	if spec.DockerCPUs != "" {
+		podmanArgs = append(podmanArgs, "--cpus", spec.DockerCPUs)
 	}
-	if spec.Memory != "" {
-		podmanArgs = append(podmanArgs, "--memory", spec.Memory)
+	if spec.DockerMemory != "" {
+		podmanArgs = append(podmanArgs, "--memory", spec.DockerMemory)
 	}
 
 	// Add security settings
@@ -493,7 +493,7 @@ func (p *PodmanProvider) HandlePodmanForwarding(mode string, containerName strin
 		// Podman doesn't need a daemon, so "isolated" mode is simpler
 		// We enable fuse-overlayfs and podman socket
 		args = append(args,
-			"-e", "ADDT_DIND=true",
+			"-e", "ADDT_DOCKER_DIND_ENABLE=true",
 			"--device", "/dev/fuse",
 			"--security-opt", "label=disable",
 		)

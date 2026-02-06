@@ -106,38 +106,38 @@ func TestBuildRunOptions_SSHAndGPG(t *testing.T) {
 	}
 }
 
-func TestBuildRunOptions_DindMode(t *testing.T) {
+func TestBuildRunOptions_DockerDindMode(t *testing.T) {
 	cfg := &provider.Config{
 		ImageName:        "test-image",
-		DindMode:         "isolated",
+		DockerDindMode:         "isolated",
 		WorkdirAutomount: true,
 		PortRangeStart:   30000,
 	}
 
 	opts := BuildRunOptions(&mockOptionsProvider{}, cfg, "test-container", []string{}, false)
 
-	if opts.DindMode != "isolated" {
-		t.Errorf("DindMode = %q, want 'isolated'", opts.DindMode)
+	if opts.DockerDindMode != "isolated" {
+		t.Errorf("DockerDindMode = %q, want 'isolated'", opts.DockerDindMode)
 	}
 }
 
 func TestBuildRunOptions_Resources(t *testing.T) {
 	cfg := &provider.Config{
 		ImageName:        "test-image",
-		CPUs:             "2",
-		Memory:           "4g",
+		DockerCPUs:       "2",
+		DockerMemory:     "4g",
 		WorkdirAutomount: true,
 		PortRangeStart:   30000,
 	}
 
 	opts := BuildRunOptions(&mockOptionsProvider{}, cfg, "test-container", []string{}, false)
 
-	if opts.CPUs != "2" {
-		t.Errorf("CPUs = %q, want '2'", opts.CPUs)
+	if opts.DockerCPUs != "2" {
+		t.Errorf("DockerCPUs = %q, want '2'", opts.DockerCPUs)
 	}
 
-	if opts.Memory != "4g" {
-		t.Errorf("Memory = %q, want '4g'", opts.Memory)
+	if opts.DockerMemory != "4g" {
+		t.Errorf("DockerMemory = %q, want '4g'", opts.DockerMemory)
 	}
 }
 

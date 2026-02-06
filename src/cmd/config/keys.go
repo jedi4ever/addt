@@ -21,10 +21,6 @@ type KeyInfo struct {
 // GetKeys returns all valid config keys with their metadata (sorted alphabetically)
 func GetKeys() []KeyInfo {
 	keys := []KeyInfo{
-		{Key: "dind", Description: "Enable Docker-in-Docker", Type: "bool", EnvVar: "ADDT_DIND"},
-		{Key: "dind_mode", Description: "Docker-in-Docker mode: host or isolated", Type: "string", EnvVar: "ADDT_DIND_MODE"},
-		{Key: "docker_cpus", Description: "CPU limit for container (e.g., \"2\", \"0.5\")", Type: "string", EnvVar: "ADDT_DOCKER_CPUS"},
-		{Key: "docker_memory", Description: "Memory limit for container (e.g., \"512m\", \"2g\")", Type: "string", EnvVar: "ADDT_DOCKER_MEMORY"},
 		{Key: "firewall", Description: "Enable network firewall", Type: "bool", EnvVar: "ADDT_FIREWALL"},
 		{Key: "firewall_mode", Description: "Firewall mode: strict, permissive, off", Type: "string", EnvVar: "ADDT_FIREWALL_MODE"},
 		{Key: "github_detect", Description: "Auto-detect GitHub token from gh CLI", Type: "bool", EnvVar: "ADDT_GITHUB_DETECT"},
@@ -42,11 +38,23 @@ func GetKeys() []KeyInfo {
 		{Key: "workdir", Description: "Override working directory (default: current directory)", Type: "string", EnvVar: "ADDT_WORKDIR"},
 		{Key: "workdir_automount", Description: "Auto-mount working directory to /workspace", Type: "bool", EnvVar: "ADDT_WORKDIR_AUTOMOUNT"},
 	}
+	// Add docker keys
+	keys = append(keys, GetDockerKeys()...)
 	// Add security keys
 	keys = append(keys, GetSecurityKeys()...)
 	// Add OTEL keys
 	keys = append(keys, GetOtelKeys()...)
 	return keys
+}
+
+// GetDockerKeys returns all valid Docker config keys
+func GetDockerKeys() []KeyInfo {
+	return []KeyInfo{
+		{Key: "docker.cpus", Description: "CPU limit for container (e.g., \"2\", \"0.5\")", Type: "string", EnvVar: "ADDT_DOCKER_CPUS"},
+		{Key: "docker.dind.enable", Description: "Enable Docker-in-Docker", Type: "bool", EnvVar: "ADDT_DOCKER_DIND_ENABLE"},
+		{Key: "docker.dind.mode", Description: "Docker-in-Docker mode: host or isolated", Type: "string", EnvVar: "ADDT_DOCKER_DIND_MODE"},
+		{Key: "docker.memory", Description: "Memory limit for container (e.g., \"512m\", \"2g\")", Type: "string", EnvVar: "ADDT_DOCKER_MEMORY"},
+	}
 }
 
 // GetSecurityKeys returns all valid security config keys
@@ -94,11 +102,11 @@ func GetExtensionKeys() []KeyInfo {
 // GetDefaultValue returns the default value for a config key
 func GetDefaultValue(key string) string {
 	switch key {
-	case "docker_cpus":
+	case "docker.cpus":
 		return ""
-	case "dind":
+	case "docker.dind.enable":
 		return "false"
-	case "dind_mode":
+	case "docker.dind.mode":
 		return "isolated"
 	case "firewall":
 		return "false"
@@ -114,7 +122,7 @@ func GetDefaultValue(key string) string {
 		return "false"
 	case "log_file":
 		return "addt.log"
-	case "docker_memory":
+	case "docker.memory":
 		return ""
 	case "node_version":
 		return "22"
@@ -271,14 +279,6 @@ func IsFlagKey(key string, extName string) bool {
 // GetValue retrieves a config value from the config struct
 func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 	switch key {
-	case "docker_cpus":
-		return cfg.DockerCPUs
-	case "dind":
-		if cfg.Dind != nil {
-			return fmt.Sprintf("%v", *cfg.Dind)
-		}
-	case "dind_mode":
-		return cfg.DindMode
 	case "firewall":
 		if cfg.Firewall != nil {
 			return fmt.Sprintf("%v", *cfg.Firewall)
@@ -301,8 +301,6 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 		}
 	case "log_file":
 		return cfg.LogFile
-	case "docker_memory":
-		return cfg.DockerMemory
 	case "node_version":
 		return cfg.NodeVersion
 	case "persistent":
@@ -327,6 +325,10 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 		if cfg.WorkdirAutomount != nil {
 			return fmt.Sprintf("%v", *cfg.WorkdirAutomount)
 		}
+	}
+	// Check docker keys
+	if strings.HasPrefix(key, "docker.") {
+		return GetDockerValue(cfg.Docker, key)
 	}
 	// Check security keys
 	if strings.HasPrefix(key, "security.") {
@@ -428,16 +430,31 @@ func GetOtelValue(o *otel.Settings, key string) string {
 	return ""
 }
 
+// GetDockerValue retrieves a Docker config value
+func GetDockerValue(d *cfgtypes.DockerSettings, key string) string {
+	if d == nil {
+		return ""
+	}
+	switch key {
+	case "docker.cpus":
+		return d.CPUs
+	case "docker.memory":
+		return d.Memory
+	case "docker.dind.enable":
+		if d.Dind != nil && d.Dind.Enable != nil {
+			return fmt.Sprintf("%v", *d.Dind.Enable)
+		}
+	case "docker.dind.mode":
+		if d.Dind != nil {
+			return d.Dind.Mode
+		}
+	}
+	return ""
+}
+
 // SetValue sets a config value in the config struct
 func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 	switch key {
-	case "docker_cpus":
-		cfg.DockerCPUs = value
-	case "dind":
-		b := value == "true"
-		cfg.Dind = &b
-	case "dind_mode":
-		cfg.DindMode = value
 	case "firewall":
 		b := value == "true"
 		cfg.Firewall = &b
@@ -461,8 +478,6 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 		cfg.Log = &b
 	case "log_file":
 		cfg.LogFile = value
-	case "docker_memory":
-		cfg.DockerMemory = value
 	case "node_version":
 		cfg.NodeVersion = value
 	case "persistent":
@@ -485,6 +500,13 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 		b := value == "true"
 		cfg.WorkdirAutomount = &b
 	default:
+		// Check docker keys
+		if strings.HasPrefix(key, "docker.") {
+			if cfg.Docker == nil {
+				cfg.Docker = &cfgtypes.DockerSettings{}
+			}
+			SetDockerValue(cfg.Docker, key, value)
+		}
 		// Check security keys
 		if strings.HasPrefix(key, "security.") {
 			if cfg.Security == nil {
@@ -576,15 +598,30 @@ func SetOtelValue(o *otel.Settings, key, value string) {
 	}
 }
 
+// SetDockerValue sets a Docker config value
+func SetDockerValue(d *cfgtypes.DockerSettings, key, value string) {
+	switch key {
+	case "docker.cpus":
+		d.CPUs = value
+	case "docker.memory":
+		d.Memory = value
+	case "docker.dind.enable":
+		if d.Dind == nil {
+			d.Dind = &cfgtypes.DindSettings{}
+		}
+		b := value == "true"
+		d.Dind.Enable = &b
+	case "docker.dind.mode":
+		if d.Dind == nil {
+			d.Dind = &cfgtypes.DindSettings{}
+		}
+		d.Dind.Mode = value
+	}
+}
+
 // UnsetValue clears a config value in the config struct
 func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 	switch key {
-	case "docker_cpus":
-		cfg.DockerCPUs = ""
-	case "dind":
-		cfg.Dind = nil
-	case "dind_mode":
-		cfg.DindMode = ""
 	case "firewall":
 		cfg.Firewall = nil
 	case "firewall_mode":
@@ -601,8 +638,6 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 		cfg.Log = nil
 	case "log_file":
 		cfg.LogFile = ""
-	case "docker_memory":
-		cfg.DockerMemory = ""
 	case "node_version":
 		cfg.NodeVersion = ""
 	case "persistent":
@@ -620,6 +655,10 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 	case "workdir_automount":
 		cfg.WorkdirAutomount = nil
 	default:
+		// Check docker keys
+		if strings.HasPrefix(key, "docker.") && cfg.Docker != nil {
+			UnsetDockerValue(cfg.Docker, key)
+		}
 		// Check security keys
 		if strings.HasPrefix(key, "security.") && cfg.Security != nil {
 			UnsetSecurityValue(cfg.Security, key)
@@ -684,5 +723,23 @@ func UnsetOtelValue(o *otel.Settings, key string) {
 		o.ServiceName = nil
 	case "otel.headers":
 		o.Headers = nil
+	}
+}
+
+// UnsetDockerValue clears a Docker config value
+func UnsetDockerValue(d *cfgtypes.DockerSettings, key string) {
+	switch key {
+	case "docker.cpus":
+		d.CPUs = ""
+	case "docker.memory":
+		d.Memory = ""
+	case "docker.dind.enable":
+		if d.Dind != nil {
+			d.Dind.Enable = nil
+		}
+	case "docker.dind.mode":
+		if d.Dind != nil {
+			d.Dind.Mode = ""
+		}
 	}
 }

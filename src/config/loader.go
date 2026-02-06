@@ -148,12 +148,14 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 	}
 
 	// DinD mode: default -> global -> project -> env
-	cfg.DindMode = globalCfg.DindMode
-	if projectCfg.DindMode != "" {
-		cfg.DindMode = projectCfg.DindMode
+	if globalCfg.Docker != nil && globalCfg.Docker.Dind != nil {
+		cfg.DockerDindMode = globalCfg.Docker.Dind.Mode
 	}
-	if v := os.Getenv("ADDT_DIND_MODE"); v != "" {
-		cfg.DindMode = v
+	if projectCfg.Docker != nil && projectCfg.Docker.Dind != nil && projectCfg.Docker.Dind.Mode != "" {
+		cfg.DockerDindMode = projectCfg.Docker.Dind.Mode
+	}
+	if v := os.Getenv("ADDT_DOCKER_DIND_MODE"); v != "" {
+		cfg.DockerDindMode = v
 	}
 
 	// Log file: default -> global -> project -> env
@@ -266,27 +268,27 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 	}
 
 	// CPUs: default (2) -> global -> project -> env
-	cfg.CPUs = "2" // Secure default: limit CPU usage
-	if globalCfg.DockerCPUs != "" {
-		cfg.CPUs = globalCfg.DockerCPUs
+	cfg.DockerCPUs = "2" // Secure default: limit CPU usage
+	if globalCfg.Docker != nil && globalCfg.Docker.CPUs != "" {
+		cfg.DockerCPUs = globalCfg.Docker.CPUs
 	}
-	if projectCfg.DockerCPUs != "" {
-		cfg.CPUs = projectCfg.DockerCPUs
+	if projectCfg.Docker != nil && projectCfg.Docker.CPUs != "" {
+		cfg.DockerCPUs = projectCfg.Docker.CPUs
 	}
 	if v := os.Getenv("ADDT_DOCKER_CPUS"); v != "" {
-		cfg.CPUs = v
+		cfg.DockerCPUs = v
 	}
 
 	// Memory: default (4g) -> global -> project -> env
-	cfg.Memory = "4g" // Secure default: limit memory usage
-	if globalCfg.DockerMemory != "" {
-		cfg.Memory = globalCfg.DockerMemory
+	cfg.DockerMemory = "4g" // Secure default: limit memory usage
+	if globalCfg.Docker != nil && globalCfg.Docker.Memory != "" {
+		cfg.DockerMemory = globalCfg.Docker.Memory
 	}
-	if projectCfg.DockerMemory != "" {
-		cfg.Memory = projectCfg.DockerMemory
+	if projectCfg.Docker != nil && projectCfg.Docker.Memory != "" {
+		cfg.DockerMemory = projectCfg.Docker.Memory
 	}
 	if v := os.Getenv("ADDT_DOCKER_MEMORY"); v != "" {
-		cfg.Memory = v
+		cfg.DockerMemory = v
 	}
 
 	// Workdir: default (empty = current dir) -> global -> project -> env

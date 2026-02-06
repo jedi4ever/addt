@@ -77,8 +77,8 @@ Environment Variables:
     ADDT_WORKDIR_AUTOMOUNT Auto-mount workdir to /workspace (default: true)
 
   Docker-in-Docker:
-    ADDT_DIND              Enable Docker-in-Docker (default: false)
-    ADDT_DIND_MODE         DinD mode: host or isolated (default: isolated)
+    ADDT_DOCKER_DIND_ENABLE  Enable Docker-in-Docker (default: false)
+    ADDT_DOCKER_DIND_MODE    DinD mode: host or isolated (default: isolated)
 
   Security/Network:
     ADDT_FIREWALL          Enable network firewall (default: false)
@@ -119,8 +119,8 @@ Configuration:
   Use 'addt config' to manage persistent settings:
     addt config list                                # Show project config (default)
     addt config list -g                             # Show global config
-    addt config set docker_cpus 2                   # Set in project config
-    addt config set docker_cpus 2 -g                # Set in global config
+    addt config set docker.cpus 2                   # Set in project config
+    addt config set docker.cpus 2 -g                # Set in global config
     addt config extension claude set version 1.0.5  # Set extension version
 
   Precedence: env vars > project (.addt.yaml) > global (~/.addt/config.yaml) > defaults

@@ -98,11 +98,11 @@ func TestDockerForwarding_Integration_IsolatedMode(t *testing.T) {
 		t.Errorf("Expected docker volume mount in args, got: %v", args)
 	}
 
-	// Check for ADDT_DIND env var
+	// Check for ADDT_DOCKER_DIND_ENABLE env var
 	foundDindEnv := false
 	for i, arg := range args {
 		if arg == "-e" && i+1 < len(args) {
-			if args[i+1] == "ADDT_DIND=true" {
+			if args[i+1] == "ADDT_DOCKER_DIND_ENABLE=true" {
 				foundDindEnv = true
 				break
 			}
@@ -110,7 +110,7 @@ func TestDockerForwarding_Integration_IsolatedMode(t *testing.T) {
 	}
 
 	if !foundDindEnv {
-		t.Errorf("Expected ADDT_DIND=true env var in args, got: %v", args)
+		t.Errorf("Expected ADDT_DOCKER_DIND_ENABLE=true env var in args, got: %v", args)
 	}
 }
 

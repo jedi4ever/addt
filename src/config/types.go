@@ -14,13 +14,23 @@ type ExtensionSettings struct {
 	Flags           map[string]*bool `yaml:"flags,omitempty"`
 }
 
+// DindSettings holds Docker-in-Docker configuration
+type DindSettings struct {
+	Enable *bool  `yaml:"enable,omitempty"`
+	Mode   string `yaml:"mode,omitempty"`
+}
+
+// DockerSettings holds Docker/container resource configuration
+type DockerSettings struct {
+	Dind   *DindSettings `yaml:"dind,omitempty"`
+	CPUs   string        `yaml:"cpus,omitempty"`
+	Memory string        `yaml:"memory,omitempty"`
+}
+
 // GlobalConfig represents the persistent configuration stored in ~/.addt/config.yaml
 type GlobalConfig struct {
-	Dind             *bool    `yaml:"dind,omitempty"`
-	DindMode         string   `yaml:"dind_mode,omitempty"`
-	DockerCPUs       string   `yaml:"docker_cpus,omitempty"`
-	DockerMemory     string   `yaml:"docker_memory,omitempty"`
-	VmMemory         string   `yaml:"vm_memory,omitempty"` // Podman VM memory in MB (default: 8192)
+	Docker           *DockerSettings `yaml:"docker,omitempty"`
+	VmMemory         string          `yaml:"vm_memory,omitempty"` // Podman VM memory in MB (default: 8192)
 	VmCpus           string   `yaml:"vm_cpus,omitempty"`   // Podman VM CPUs (default: 4)
 	Firewall         *bool    `yaml:"firewall,omitempty"`
 	FirewallMode     string   `yaml:"firewall_mode,omitempty"`
@@ -70,7 +80,7 @@ type Config struct {
 	HistoryPersist           bool     // Persist shell history between sessions (default: false)
 	GPGForward               string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs         []string // GPG key IDs allowed for signing
-	DindMode                 string
+	DockerDindMode           string
 	EnvFile                  string
 	LogEnabled               bool
 	LogFile                  string
@@ -94,8 +104,8 @@ type Config struct {
 	ExtensionVersions        map[string]string          // Per-extension versions (e.g., {"claude": "1.0.5", "codex": "latest"})
 	ExtensionAutomount       map[string]bool            // Per-extension automount control (e.g., {"claude": true, "codex": false})
 	ExtensionFlagSettings    map[string]map[string]bool // Per-extension flag settings from config (e.g., {"claude": {"yolo": true}})
-	CPUs                     string                     // CPU limit (e.g., "2", "0.5", "1.5")
-	Memory                   string                     // Memory limit (e.g., "512m", "2g", "4gb")
+	DockerCPUs               string                     // CPU limit (e.g., "2", "0.5", "1.5")
+	DockerMemory             string                     // Memory limit (e.g., "512m", "2g", "4gb")
 
 	// Security settings
 	Security security.Config

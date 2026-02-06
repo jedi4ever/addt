@@ -48,7 +48,7 @@ func (p *PodmanProvider) GetStatus(cfg *provider.Config, envName string) string 
 		parts = append(parts, fmt.Sprintf("GPG:%s", cfg.GPGForward))
 	}
 
-	switch cfg.DindMode {
+	switch cfg.DockerDindMode {
 	case "isolated", "true":
 		parts = append(parts, "PinP:isolated") // Podman-in-Podman
 	case "host":

@@ -31,7 +31,7 @@ func (p *DockerProvider) handleHostDockerForwarding() []string {
 
 	socketPath := "/var/run/docker.sock"
 	if _, err := os.Stat(socketPath); err != nil {
-		fmt.Println("Warning: ADDT_DIND_MODE=host but /var/run/docker.sock not found")
+		fmt.Println("Warning: ADDT_DOCKER_DIND_MODE=host but /var/run/docker.sock not found")
 		return args
 	}
 
@@ -56,7 +56,7 @@ func (p *DockerProvider) handleIsolatedDockerForwarding(containerName string) []
 	args = append(args, "-v", fmt.Sprintf("%s:/var/lib/docker", volumeName))
 
 	// Signal to entrypoint that it should start dockerd
-	args = append(args, "-e", "ADDT_DIND=true")
+	args = append(args, "-e", "ADDT_DOCKER_DIND_ENABLE=true")
 
 	return args
 }

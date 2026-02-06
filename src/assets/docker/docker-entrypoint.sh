@@ -99,7 +99,7 @@ if [ -f /run/secrets/.secrets ]; then
 fi
 
 # Start Docker daemon if in DinD mode
-if [ "$ADDT_DIND" = "true" ]; then
+if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
     debug_log "DinD mode enabled, starting Docker daemon"
     echo "Starting Docker daemon in isolated mode..."
 

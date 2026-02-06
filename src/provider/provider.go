@@ -53,7 +53,7 @@ type Config struct {
 	HistoryPersist        bool
 	GPGForward            string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs      []string // GPG key IDs (fingerprints) that are allowed
-	DindMode              string
+	DockerDindMode              string
 	EnvFile               string
 	LogEnabled            bool
 	LogFile               string
@@ -72,8 +72,8 @@ type Config struct {
 	ExtensionAutomount    map[string]bool            // Per-extension automount control (e.g., {"claude": true, "codex": false})
 	ExtensionFlagSettings map[string]map[string]bool // Per-extension flag settings from config (e.g., {"claude": {"yolo": true}})
 	NoCache               bool                       // Disable Docker cache for builds
-	CPUs                  string                     // CPU limit (e.g., "2", "0.5", "1.5")
-	Memory                string                     // Memory limit (e.g., "512m", "2g", "4gb")
+	DockerCPUs            string                     // CPU limit (e.g., "2", "0.5", "1.5")
+	DockerMemory          string                     // Memory limit (e.g., "512m", "2g", "4gb")
 
 	// Security settings
 	Security security.Config
@@ -99,9 +99,9 @@ type RunSpec struct {
 	HistoryPersist   bool
 	GPGForward       string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs []string // GPG key IDs that are allowed
-	DindMode         string
-	CPUs             string // CPU limit (e.g., "2", "0.5")
-	Memory           string // Memory limit (e.g., "512m", "2g")
+	DockerDindMode   string
+	DockerCPUs       string // CPU limit (e.g., "2", "0.5")
+	DockerMemory     string // Memory limit (e.g., "512m", "2g")
 }
 
 // Environment represents a container or workspace

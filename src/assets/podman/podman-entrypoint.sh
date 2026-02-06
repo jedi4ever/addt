@@ -103,7 +103,7 @@ if [ -f /run/secrets/.secrets ]; then
 fi
 
 # Start nested Podman if in nested mode (Podman-in-Podman)
-if [ "$ADDT_DIND" = "true" ]; then
+if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
     debug_log "DinD mode enabled (Podman-in-Podman)"
     echo "Nested Podman mode enabled..."
     # Podman doesn't need a daemon - it's daemonless

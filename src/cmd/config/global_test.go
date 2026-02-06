@@ -76,10 +76,12 @@ func TestSaveAndLoadGlobalConfig(t *testing.T) {
 
 	// Create and save config
 	cfg := &cfgtypes.GlobalConfig{
-		NodeVersion:  "20",
-		GoVersion:    "1.21",
-		DockerCPUs:   "2",
-		DockerMemory: "4g",
+		NodeVersion: "20",
+		GoVersion:   "1.21",
+		Docker: &cfgtypes.DockerSettings{
+			CPUs:   "2",
+			Memory: "4g",
+		},
 	}
 
 	err := cfgtypes.SaveGlobalConfigFile(cfg)
@@ -99,10 +101,10 @@ func TestSaveAndLoadGlobalConfig(t *testing.T) {
 	if loaded.GoVersion != "1.21" {
 		t.Errorf("GoVersion = %q, want %q", loaded.GoVersion, "1.21")
 	}
-	if loaded.DockerCPUs != "2" {
-		t.Errorf("DockerCPUs = %q, want %q", loaded.DockerCPUs, "2")
+	if loaded.Docker == nil || loaded.Docker.CPUs != "2" {
+		t.Errorf("Docker.CPUs = %q, want %q", loaded.Docker.CPUs, "2")
 	}
-	if loaded.DockerMemory != "4g" {
-		t.Errorf("DockerMemory = %q, want %q", loaded.DockerMemory, "4g")
+	if loaded.Docker == nil || loaded.Docker.Memory != "4g" {
+		t.Errorf("Docker.Memory = %q, want %q", loaded.Docker.Memory, "4g")
 	}
 }
