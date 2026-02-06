@@ -103,6 +103,20 @@ if [ -n "$ADDT_GPG_PROXY_HOST" ] && [ -n "$ADDT_GPG_PROXY_PORT" ]; then
               TCP:"$ADDT_GPG_PROXY_HOST":"$ADDT_GPG_PROXY_PORT" &
     fi
 fi
+# Tmux TCP bridge (macOS + podman)
+if [ -n "$ADDT_TMUX_PROXY_HOST" ] && [ -n "$ADDT_TMUX_PROXY_PORT" ]; then
+    TMUX_SOCK="/tmp/tmux-addt/default"
+    if [ ! -S "$TMUX_SOCK" ]; then
+        mkdir -p "$(dirname "$TMUX_SOCK")"
+        setsid socat UNIX-LISTEN:"$TMUX_SOCK",fork,mode=600 \
+              TCP:"$ADDT_TMUX_PROXY_HOST":"$ADDT_TMUX_PROXY_PORT" &
+    fi
+    if [ -n "$ADDT_TMUX_PARTS" ]; then
+        export TMUX="$TMUX_SOCK,$ADDT_TMUX_PARTS"
+    else
+        export TMUX="$TMUX_SOCK"
+    fi
+fi
 BASHRC
 RUN cat /tmp/addt-bashrc-snippet.sh >> /etc/bash.bashrc && rm /tmp/addt-bashrc-snippet.sh
 

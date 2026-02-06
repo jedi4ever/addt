@@ -55,6 +55,27 @@ if [ -n "$ADDT_GPG_PROXY_HOST" ] && [ -n "$ADDT_GPG_PROXY_PORT" ]; then
     fi
 fi
 
+# Set up tmux proxy via TCP (macOS + podman: Unix sockets can't be mounted)
+if [ -n "$ADDT_TMUX_PROXY_HOST" ] && [ -n "$ADDT_TMUX_PROXY_PORT" ]; then
+    debug_log "Setting up tmux TCP bridge to $ADDT_TMUX_PROXY_HOST:$ADDT_TMUX_PROXY_PORT"
+    TMUX_SOCK="/tmp/tmux-addt/default"
+    if command -v socat >/dev/null 2>&1; then
+        mkdir -p "$(dirname "$TMUX_SOCK")"
+        rm -f "$TMUX_SOCK"
+        setsid socat UNIX-LISTEN:"$TMUX_SOCK",fork,mode=600 \
+              TCP:"$ADDT_TMUX_PROXY_HOST":"$ADDT_TMUX_PROXY_PORT" &
+        # Reconstruct TMUX env: socket_path,pid,window
+        if [ -n "$ADDT_TMUX_PARTS" ]; then
+            export TMUX="$TMUX_SOCK,$ADDT_TMUX_PARTS"
+        else
+            export TMUX="$TMUX_SOCK"
+        fi
+        debug_log "Tmux bridge started: TMUX=$TMUX"
+    else
+        echo "Warning: socat not found, tmux forwarding unavailable"
+    fi
+fi
+
 # Load secrets from file if present (copied via podman cp to tmpfs)
 # Secrets are written to tmpfs at /run/secrets/.secrets by the host
 # This approach keeps secrets out of environment variables entirely

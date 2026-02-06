@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -20,6 +21,8 @@ type tmuxProxy struct {
 	wg             sync.WaitGroup
 	running        bool
 	mu             sync.Mutex
+	useTCP         bool
+	tcpPort        int
 }
 
 // HandleTmuxForwarding handles tmux socket forwarding to the container.
@@ -33,12 +36,10 @@ func (p *PodmanProvider) HandleTmuxForwarding(enabled bool) []string {
 	// Check if we're inside a tmux session
 	tmuxEnv := os.Getenv("TMUX")
 	if tmuxEnv == "" {
-		// Not in a tmux session, nothing to forward
 		return nil
 	}
 
 	// TMUX env format: /tmp/tmux-1000/default,12345,0
-	// First part is the socket path
 	parts := strings.Split(tmuxEnv, ",")
 	if len(parts) < 1 {
 		return nil
@@ -49,38 +50,89 @@ func (p *PodmanProvider) HandleTmuxForwarding(enabled bool) []string {
 		return nil
 	}
 
-	// Verify socket exists
 	if _, err := os.Stat(socketPath); os.IsNotExist(err) {
 		return nil
 	}
 
-	// Create a proxy socket in ~/.addt/sockets/ so Podman machine can access it
+	// On macOS, podman can't mount Unix sockets via virtiofs — use TCP bridge
+	if runtime.GOOS == "darwin" {
+		return p.handleTmuxForwardingTCP(socketPath, parts)
+	}
+
+	// Linux: create proxy socket and mount it directly
 	proxyDir, proxySocket, err := p.createTmuxProxy(socketPath)
 	if err != nil {
 		fmt.Printf("Warning: failed to create tmux proxy: %v\n", err)
 		return nil
 	}
 
-	// Build new TMUX env with proxy socket path
 	newTmuxEnv := proxySocket
 	if len(parts) > 1 {
 		newTmuxEnv = proxySocket + "," + strings.Join(parts[1:], ",")
 	}
 
 	var args []string
-
-	// Mount the proxy socket directory
 	args = append(args, "-v", fmt.Sprintf("%s:%s", proxyDir, proxyDir))
-
-	// Pass the modified TMUX environment variable
 	args = append(args, "-e", fmt.Sprintf("TMUX=%s", newTmuxEnv))
 
-	// Also pass TMUX_PANE if set
 	if tmuxPane := os.Getenv("TMUX_PANE"); tmuxPane != "" {
 		args = append(args, "-e", fmt.Sprintf("TMUX_PANE=%s", tmuxPane))
 	}
 
 	return args
+}
+
+// handleTmuxForwardingTCP uses TCP bridge for macOS + podman.
+func (p *PodmanProvider) handleTmuxForwardingTCP(socketPath string, tmuxParts []string) []string {
+	proxy, err := p.createTmuxProxyTCP(socketPath)
+	if err != nil {
+		fmt.Printf("Warning: failed to create tmux TCP proxy: %v\n", err)
+		return nil
+	}
+
+	hostIP, err := getHostGatewayIP()
+	if err != nil {
+		fmt.Printf("Warning: could not detect host IP for tmux proxy: %v\n", err)
+		proxy.Stop()
+		return nil
+	}
+
+	var args []string
+	args = append(args, "-e", fmt.Sprintf("ADDT_TMUX_PROXY_HOST=%s", hostIP))
+	args = append(args, "-e", fmt.Sprintf("ADDT_TMUX_PROXY_PORT=%d", proxy.tcpPort))
+
+	// Pass the remaining TMUX parts (pid, window) for reconstruction in the entrypoint
+	if len(tmuxParts) > 1 {
+		args = append(args, "-e", fmt.Sprintf("ADDT_TMUX_PARTS=%s", strings.Join(tmuxParts[1:], ",")))
+	}
+
+	if tmuxPane := os.Getenv("TMUX_PANE"); tmuxPane != "" {
+		args = append(args, "-e", fmt.Sprintf("TMUX_PANE=%s", tmuxPane))
+	}
+
+	fmt.Println("Tmux forwarding active (TCP)")
+	return args
+}
+
+// createTmuxProxyTCP creates a TCP-based tmux proxy for macOS.
+func (p *PodmanProvider) createTmuxProxyTCP(upstreamSocket string) (*tmuxProxy, error) {
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on TCP: %w", err)
+	}
+
+	proxy := &tmuxProxy{
+		listener:       listener,
+		upstreamSocket: upstreamSocket,
+		running:        true,
+		useTCP:         true,
+		tcpPort:        listener.Addr().(*net.TCPAddr).Port,
+	}
+
+	p.tmuxProxy = proxy
+	go proxy.acceptLoop()
+
+	return proxy, nil
 }
 
 // createTmuxProxy creates a Unix socket proxy from ~/.addt/sockets/ to the real tmux socket
@@ -202,5 +254,7 @@ func (tp *tmuxProxy) Stop() {
 		tp.listener.Close()
 	}
 	tp.wg.Wait()
-	os.RemoveAll(tp.proxyDir)
+	if !tp.useTCP && tp.proxyDir != "" {
+		os.RemoveAll(tp.proxyDir)
+	}
 }
