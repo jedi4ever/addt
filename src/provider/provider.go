@@ -53,7 +53,7 @@ type Config struct {
 	HistoryPersist        bool
 	GPGForward            string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs      []string // GPG key IDs (fingerprints) that are allowed
-	DockerDindMode              string
+	DockerDindMode        string
 	EnvFile               string
 	LogEnabled            bool
 	LogFile               string

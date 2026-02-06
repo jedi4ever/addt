@@ -31,28 +31,28 @@ type DockerSettings struct {
 type GlobalConfig struct {
 	Docker           *DockerSettings `yaml:"docker,omitempty"`
 	VmMemory         string          `yaml:"vm_memory,omitempty"` // Podman VM memory in MB (default: 8192)
-	VmCpus           string   `yaml:"vm_cpus,omitempty"`   // Podman VM CPUs (default: 4)
-	Firewall         *bool    `yaml:"firewall,omitempty"`
-	FirewallMode     string   `yaml:"firewall_mode,omitempty"`
-	FirewallAllowed  []string `yaml:"firewall_allowed,omitempty"`
-	FirewallDenied   []string `yaml:"firewall_denied,omitempty"`
-	GitHubDetect     *bool    `yaml:"github_detect,omitempty"`
-	GoVersion        string   `yaml:"go_version,omitempty"`
-	GPGForward       string   `yaml:"gpg_forward,omitempty"`         // "proxy", "agent", "keys", or "off"
-	GPGAllowedKeyIDs []string `yaml:"gpg_allowed_key_ids,omitempty"` // GPG key IDs allowed
-	Log              *bool    `yaml:"log,omitempty"`
-	LogFile          string   `yaml:"log_file,omitempty"`
-	NodeVersion      string   `yaml:"node_version,omitempty"`
-	Persistent       *bool    `yaml:"persistent,omitempty"`
-	PortRangeStart   *int     `yaml:"port_range_start,omitempty"`
-	SSHForward       string   `yaml:"ssh_forward,omitempty"`
-	SSHAllowedKeys   []string `yaml:"ssh_allowed_keys,omitempty"`
-	TmuxForward      *bool    `yaml:"tmux_forward,omitempty"`
-	HistoryPersist   *bool    `yaml:"history_persist,omitempty"` // Persist shell history between sessions
-	UvVersion        string   `yaml:"uv_version,omitempty"`
-	Workdir          string   `yaml:"workdir,omitempty"`
-	WorkdirAutomount *bool    `yaml:"workdir_automount,omitempty"`
-	WorkdirReadonly  *bool    `yaml:"workdir_readonly,omitempty"`
+	VmCpus           string          `yaml:"vm_cpus,omitempty"`   // Podman VM CPUs (default: 4)
+	Firewall         *bool           `yaml:"firewall,omitempty"`
+	FirewallMode     string          `yaml:"firewall_mode,omitempty"`
+	FirewallAllowed  []string        `yaml:"firewall_allowed,omitempty"`
+	FirewallDenied   []string        `yaml:"firewall_denied,omitempty"`
+	GitHubDetect     *bool           `yaml:"github_detect,omitempty"`
+	GoVersion        string          `yaml:"go_version,omitempty"`
+	GPGForward       string          `yaml:"gpg_forward,omitempty"`         // "proxy", "agent", "keys", or "off"
+	GPGAllowedKeyIDs []string        `yaml:"gpg_allowed_key_ids,omitempty"` // GPG key IDs allowed
+	Log              *bool           `yaml:"log,omitempty"`
+	LogFile          string          `yaml:"log_file,omitempty"`
+	NodeVersion      string          `yaml:"node_version,omitempty"`
+	Persistent       *bool           `yaml:"persistent,omitempty"`
+	PortRangeStart   *int            `yaml:"port_range_start,omitempty"`
+	SSHForward       string          `yaml:"ssh_forward,omitempty"`
+	SSHAllowedKeys   []string        `yaml:"ssh_allowed_keys,omitempty"`
+	TmuxForward      *bool           `yaml:"tmux_forward,omitempty"`
+	HistoryPersist   *bool           `yaml:"history_persist,omitempty"` // Persist shell history between sessions
+	UvVersion        string          `yaml:"uv_version,omitempty"`
+	Workdir          string          `yaml:"workdir,omitempty"`
+	WorkdirAutomount *bool           `yaml:"workdir_automount,omitempty"`
+	WorkdirReadonly  *bool           `yaml:"workdir_readonly,omitempty"`
 
 	// Per-extension configuration
 	Extensions map[string]*ExtensionSettings `yaml:"extensions,omitempty"`

@@ -45,7 +45,7 @@ func BuildRunOptions(p provider.Provider, cfg *provider.Config, name string, arg
 		HistoryPersist:   cfg.HistoryPersist,
 		GPGForward:       cfg.GPGForward,
 		GPGAllowedKeyIDs: cfg.GPGAllowedKeyIDs,
-		DockerDindMode:         cfg.DockerDindMode,
+		DockerDindMode:   cfg.DockerDindMode,
 		DockerCPUs:       cfg.DockerCPUs,
 		DockerMemory:     cfg.DockerMemory,
 	}

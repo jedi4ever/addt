@@ -109,7 +109,7 @@ func TestBuildRunOptions_SSHAndGPG(t *testing.T) {
 func TestBuildRunOptions_DockerDindMode(t *testing.T) {
 	cfg := &provider.Config{
 		ImageName:        "test-image",
-		DockerDindMode:         "isolated",
+		DockerDindMode:   "isolated",
 		WorkdirAutomount: true,
 		PortRangeStart:   30000,
 	}
