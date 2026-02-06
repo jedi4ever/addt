@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     nftables \
     dnsutils \
     socat \
+    procps \
     supervisor \
     fuse-overlayfs \
     slirp4netns \
