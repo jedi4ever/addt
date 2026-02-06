@@ -339,6 +339,23 @@ claude "Start a feature"     # Creates container
 claude "Continue working"    # Reuses container (instant!)
 ```
 
+### Shell History Persistence
+
+Keep your bash and zsh history across container sessions:
+
+```bash
+export ADDT_HISTORY_PERSIST=true
+addt run claude "Work on my project"
+# Exit and re-run — your shell history is still there
+```
+
+History files are stored per-project at `~/.addt/history/<project-hash>/` on your host, and mounted as `~/.bash_history` and `~/.zsh_history` inside the container.
+
+Configure via project config:
+```bash
+addt config project set history_persist true
+```
+
 ### SSH Forwarding
 
 SSH forwarding defaults to **proxy mode** - the most secure option that works on all platforms:
@@ -679,6 +696,7 @@ addt cli update                   # Update addt
 | `ADDT_DOCKER_MEMORY` | - | Memory limit: `4g` |
 | `ADDT_WORKDIR` | `.` | Working directory to mount |
 | `ADDT_WORKDIR_READONLY` | false | Mount workspace as read-only |
+| `ADDT_HISTORY_PERSIST` | false | Persist shell history between sessions |
 
 ### Forwarding
 | Variable | Default | Description |
