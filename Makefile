@@ -6,7 +6,7 @@ BUILD_DIR=dist
 SRC_DIR=src
 VERSION=$(shell cat VERSION 2>/dev/null || echo "dev")
 GO_FILES=$(shell find $(SRC_DIR) -name '*.go')
-ASSET_FILES=$(shell find $(SRC_DIR)/assets -type f 2>/dev/null)
+ASSET_FILES=$(shell find $(SRC_DIR)/assets $(SRC_DIR)/extensions -type f ! -name '*.go' 2>/dev/null)
 
 # Build targets for different platforms
 PLATFORMS=darwin/amd64 darwin/arm64 linux/amd64 linux/arm64

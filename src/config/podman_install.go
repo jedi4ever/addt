@@ -204,13 +204,36 @@ func ensurePodmanMachine(podmanPath string) error {
 	machines := strings.TrimSpace(string(output))
 	if machines == "" {
 		// No machine exists, initialize one
-		spinner := util.NewSpinner("Initializing Podman machine...")
+		// Read VM resource settings: env var -> global config -> defaults
+		globalCfg := loadGlobalConfig()
+
+		vmMemory := os.Getenv("ADDT_VM_MEMORY")
+		if vmMemory == "" && globalCfg.VmMemory != "" {
+			vmMemory = globalCfg.VmMemory
+		}
+		if vmMemory == "" {
+			vmMemory = "8192"
+		}
+
+		vmCpus := os.Getenv("ADDT_VM_CPUS")
+		if vmCpus == "" && globalCfg.VmCpus != "" {
+			vmCpus = globalCfg.VmCpus
+		}
+		if vmCpus == "" {
+			vmCpus = "4"
+		}
+
+		spinner := util.NewSpinner(fmt.Sprintf("Initializing Podman machine (memory: %sMB, cpus: %s)...", vmMemory, vmCpus))
 		spinner.Start()
 
-		initCmd := exec.Command(podmanPath, "machine", "init")
-		if err := initCmd.Run(); err != nil {
+		initCmd := exec.Command(podmanPath, "machine", "init",
+			"--memory", vmMemory,
+			"--cpus", vmCpus,
+		)
+		initOutput, err := initCmd.CombinedOutput()
+		if err != nil {
 			spinner.StopWithError("Machine init failed")
-			return fmt.Errorf("failed to initialize machine: %w", err)
+			return fmt.Errorf("failed to initialize machine: %w\n%s", err, string(initOutput))
 		}
 		spinner.StopWithSuccess("Podman machine initialized")
 	}
@@ -228,9 +251,10 @@ func ensurePodmanMachine(podmanPath string) error {
 		spinner.Start()
 
 		startCmd := exec.Command(podmanPath, "machine", "start")
-		if err := startCmd.Run(); err != nil {
+		startOutput, err := startCmd.CombinedOutput()
+		if err != nil {
 			spinner.StopWithError("Machine start failed")
-			return fmt.Errorf("failed to start machine: %w", err)
+			return fmt.Errorf("failed to start machine: %w\n%s", err, string(startOutput))
 		}
 		spinner.StopWithSuccess("Podman machine started")
 	}

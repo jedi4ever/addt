@@ -19,6 +19,8 @@ type GlobalConfig struct {
 	DindMode         string   `yaml:"dind_mode,omitempty"`
 	DockerCPUs       string   `yaml:"docker_cpus,omitempty"`
 	DockerMemory     string   `yaml:"docker_memory,omitempty"`
+	VmMemory         string   `yaml:"vm_memory,omitempty"` // Podman VM memory in MB (default: 8192)
+	VmCpus           string   `yaml:"vm_cpus,omitempty"`   // Podman VM CPUs (default: 4)
 	Firewall         *bool    `yaml:"firewall,omitempty"`
 	FirewallMode     string   `yaml:"firewall_mode,omitempty"`
 	FirewallAllowed  []string `yaml:"firewall_allowed,omitempty"`

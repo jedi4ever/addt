@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+
+	"github.com/jedi4ever/addt/util"
 )
 
 // BuildIfNeeded ensures the Docker image is ready
@@ -23,7 +25,10 @@ func (p *DockerProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
 		}
 	}
 
+	logger := util.Log("docker-build")
+	logger.Debugf("Checking image: %s", p.config.ImageName)
 	imageExists := p.ImageExists(p.config.ImageName)
+	logger.Debugf("Image exists: %v", imageExists)
 
 	// Handle --addt-rebuild flag
 	if rebuild {
@@ -95,8 +100,12 @@ func (p *DockerProvider) DetermineImageName() string {
 	// Join with underscore
 	tag := strings.Join(tagParts, "_")
 
-	// Prefix with addt version and assets hash so images are rebuilt when addt or assets change
-	imageName := fmt.Sprintf("addt:v%s_%s-%s", p.config.AddtVersion, tag, p.assetsHash())
+	// Prefix with addt version, base hash, and extension hash so images are rebuilt when assets change
+	baseHash := p.assetsHash()
+	extHash := p.extAssetsHash()
+	imageName := fmt.Sprintf("addt:v%s_%s-%s-%s", p.config.AddtVersion, tag, baseHash, extHash)
+	logger := util.Log("docker-build")
+	logger.Debugf("assetsHash=%s extAssetsHash=%s imageName=%s", baseHash, extHash, imageName)
 	return imageName
 }
 
