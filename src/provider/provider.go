@@ -39,40 +39,41 @@ type Provider interface {
 
 // Config holds provider configuration
 type Config struct {
-	AddtVersion        string
-	NodeVersion        string
-	GoVersion          string
-	UvVersion          string
-	EnvVars            []string
-	GitHubDetect       bool
-	Ports              []string
-	PortRangeStart     int
-	SSHForward         string
-	SSHAllowedKeys     []string
-	TmuxForward        bool
-	HistoryPersist     bool
-	GPGForward         string   // "proxy", "agent", "keys", or "off"
-	GPGAllowedKeyIDs   []string // GPG key IDs (fingerprints) that are allowed
-	DindMode           string
-	EnvFile            string
-	LogEnabled         bool
-	LogFile            string
-	ImageName          string
-	Persistent         bool
-	WorkdirAutomount   bool
-	WorkdirReadonly    bool
-	Workdir            string
-	FirewallEnabled    bool
-	FirewallMode       string
-	Mode               string
-	Provider           string
-	Extensions         string
-	Command            string
-	ExtensionVersions  map[string]string // Per-extension versions (e.g., {"claude": "1.0.5", "codex": "latest"})
-	ExtensionAutomount map[string]bool   // Per-extension automount control (e.g., {"claude": true, "codex": false})
-	NoCache            bool              // Disable Docker cache for builds
-	CPUs               string            // CPU limit (e.g., "2", "0.5", "1.5")
-	Memory             string            // Memory limit (e.g., "512m", "2g", "4gb")
+	AddtVersion           string
+	NodeVersion           string
+	GoVersion             string
+	UvVersion             string
+	EnvVars               []string
+	GitHubDetect          bool
+	Ports                 []string
+	PortRangeStart        int
+	SSHForward            string
+	SSHAllowedKeys        []string
+	TmuxForward           bool
+	HistoryPersist        bool
+	GPGForward            string   // "proxy", "agent", "keys", or "off"
+	GPGAllowedKeyIDs      []string // GPG key IDs (fingerprints) that are allowed
+	DindMode              string
+	EnvFile               string
+	LogEnabled            bool
+	LogFile               string
+	ImageName             string
+	Persistent            bool
+	WorkdirAutomount      bool
+	WorkdirReadonly       bool
+	Workdir               string
+	FirewallEnabled       bool
+	FirewallMode          string
+	Mode                  string
+	Provider              string
+	Extensions            string
+	Command               string
+	ExtensionVersions     map[string]string          // Per-extension versions (e.g., {"claude": "1.0.5", "codex": "latest"})
+	ExtensionAutomount    map[string]bool            // Per-extension automount control (e.g., {"claude": true, "codex": false})
+	ExtensionFlagSettings map[string]map[string]bool // Per-extension flag settings from config (e.g., {"claude": {"yolo": true}})
+	NoCache               bool                       // Disable Docker cache for builds
+	CPUs                  string                     // CPU limit (e.g., "2", "0.5", "1.5")
+	Memory                string                     // Memory limit (e.g., "512m", "2g", "4gb")
 
 	// Security settings
 	Security security.Config
