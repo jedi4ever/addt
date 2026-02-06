@@ -9,8 +9,11 @@ import (
 	"github.com/jedi4ever/addt/config/otel"
 	"github.com/jedi4ever/addt/extensions"
 	"github.com/jedi4ever/addt/provider"
+	"github.com/jedi4ever/addt/util"
 	"github.com/jedi4ever/addt/util/terminal"
 )
+
+var envLogger = util.Log("env")
 
 // BuildEnvironment creates the environment variables map for the container
 func BuildEnvironment(p provider.Provider, cfg *provider.Config) map[string]string {
@@ -33,6 +36,9 @@ func BuildEnvironment(p provider.Provider, cfg *provider.Config) map[string]stri
 
 	// Add command override
 	addCommandEnvVar(env, cfg)
+
+	// Add logging configuration
+	addLoggingEnvVars(env)
 
 	// Add OpenTelemetry configuration
 	addOtelEnvVars(env, cfg)
@@ -92,7 +98,7 @@ func addCredentialScriptEnvVars(env map[string]string, cfg *provider.Config) {
 		// Run the credential script
 		credEnvVars, err := extensions.RunCredentialScript(&ext)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: credential script for %s failed: %v\n", ext.Name, err)
+			envLogger.Warning("credential script for %s failed: %v", ext.Name, err)
 			continue
 		}
 
@@ -161,6 +167,20 @@ func addFirewallEnvVars(env map[string]string, cfg *provider.Config) {
 func addCommandEnvVar(env map[string]string, cfg *provider.Config) {
 	if cfg.Command != "" {
 		env["ADDT_COMMAND"] = cfg.Command
+	}
+}
+
+// addLoggingEnvVars adds logging-related environment variables
+func addLoggingEnvVars(env map[string]string) {
+	// Pass ADDT_LOG_LEVEL to container if set
+	if logLevel := os.Getenv("ADDT_LOG_LEVEL"); logLevel != "" {
+		env["ADDT_LOG_LEVEL"] = logLevel
+		envLogger.Debugf("Passing ADDT_LOG_LEVEL=%s to container", logLevel)
+	}
+	// Pass ADDT_LOG_FILE to container if set
+	if logFile := os.Getenv("ADDT_LOG_FILE"); logFile != "" {
+		env["ADDT_LOG_FILE"] = logFile
+		envLogger.Debugf("Passing ADDT_LOG_FILE=%s to container", logFile)
 	}
 }
 
