@@ -84,9 +84,27 @@ USER root
 COPY podman-entrypoint.sh /usr/local/bin/podman-entrypoint.sh
 RUN chmod +x /usr/local/bin/podman-entrypoint.sh
 
-# SSH agent TCP bridge setup (for macOS + podman where Unix sockets can't be mounted)
+# TCP bridge setup for macOS + podman (Unix sockets can't be mounted via virtiofs)
 # Added to /etc/bash.bashrc so it runs in any bash session (shell mode, podman exec, etc.)
-RUN echo '\n# SSH agent TCP bridge (macOS + podman)\nif [ -n "$ADDT_SSH_PROXY_HOST" ] && [ -n "$ADDT_SSH_PROXY_PORT" ]; then\n    if [ ! -S /tmp/ssh-agent.sock ]; then\n        socat UNIX-LISTEN:/tmp/ssh-agent.sock,fork,mode=600 \\\n              TCP:"$ADDT_SSH_PROXY_HOST":"$ADDT_SSH_PROXY_PORT" &\n    fi\n    export SSH_AUTH_SOCK=/tmp/ssh-agent.sock\nfi' >> /etc/bash.bashrc
+COPY <<'BASHRC' /tmp/addt-bashrc-snippet.sh
+# SSH agent TCP bridge (macOS + podman)
+if [ -n "$ADDT_SSH_PROXY_HOST" ] && [ -n "$ADDT_SSH_PROXY_PORT" ]; then
+    if [ ! -S /tmp/ssh-agent.sock ]; then
+        setsid socat UNIX-LISTEN:/tmp/ssh-agent.sock,fork,mode=600 \
+              TCP:"$ADDT_SSH_PROXY_HOST":"$ADDT_SSH_PROXY_PORT" &
+    fi
+    export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
+fi
+# GPG agent TCP bridge (macOS + podman)
+if [ -n "$ADDT_GPG_PROXY_HOST" ] && [ -n "$ADDT_GPG_PROXY_PORT" ]; then
+    GPG_SOCK="$HOME/.gnupg/S.gpg-agent"
+    if [ ! -S "$GPG_SOCK" ] && [ -d "$HOME/.gnupg" ]; then
+        setsid socat UNIX-LISTEN:"$GPG_SOCK",fork,mode=600 \
+              TCP:"$ADDT_GPG_PROXY_HOST":"$ADDT_GPG_PROXY_PORT" &
+    fi
+fi
+BASHRC
+RUN cat /tmp/addt-bashrc-snippet.sh >> /etc/bash.bashrc && rm /tmp/addt-bashrc-snippet.sh
 
 # Copy firewall initialization script
 COPY init-firewall.sh /usr/local/bin/init-firewall.sh

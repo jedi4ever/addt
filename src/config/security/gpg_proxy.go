@@ -21,6 +21,8 @@ type GPGProxyAgent struct {
 	mu             sync.Mutex
 	running        bool
 	wg             sync.WaitGroup
+	useTCP         bool // listen on TCP instead of Unix socket (macOS + podman)
+	tcpPort        int  // TCP port when useTCP is true
 }
 
 // NewGPGProxyAgent creates a new GPG proxy agent
@@ -73,6 +75,21 @@ func normalizeKeyIDs(keyIDs []string) []string {
 	return normalized
 }
 
+// NewGPGProxyAgentTCP creates a GPG proxy agent that listens on TCP.
+// Used on macOS where podman can't mount Unix sockets from the host.
+func NewGPGProxyAgentTCP(upstreamSocket string, allowedKeyIDs []string) (*GPGProxyAgent, error) {
+	return &GPGProxyAgent{
+		upstreamSocket: upstreamSocket,
+		allowedKeyIDs:  normalizeKeyIDs(allowedKeyIDs),
+		useTCP:         true,
+	}, nil
+}
+
+// TCPPort returns the TCP port the proxy is listening on (only valid after Start with useTCP)
+func (p *GPGProxyAgent) TCPPort() int {
+	return p.tcpPort
+}
+
 // Start begins listening on the proxy socket
 func (p *GPGProxyAgent) Start() error {
 	p.mu.Lock()
@@ -82,18 +99,30 @@ func (p *GPGProxyAgent) Start() error {
 		return nil
 	}
 
-	// Remove existing socket if present
-	os.Remove(p.proxySocket)
+	var listener net.Listener
+	if p.useTCP {
+		// TCP mode: listen on all interfaces so podman VM can reach us
+		l, err := net.Listen("tcp", "0.0.0.0:0")
+		if err != nil {
+			return fmt.Errorf("failed to listen on TCP: %w", err)
+		}
+		p.tcpPort = l.Addr().(*net.TCPAddr).Port
+		listener = l
+	} else {
+		// Remove existing socket if present
+		os.Remove(p.proxySocket)
 
-	listener, err := net.Listen("unix", p.proxySocket)
-	if err != nil {
-		return fmt.Errorf("failed to listen on proxy socket: %w", err)
-	}
+		l, err := net.Listen("unix", p.proxySocket)
+		if err != nil {
+			return fmt.Errorf("failed to listen on proxy socket: %w", err)
+		}
 
-	// Set socket permissions
-	if err := os.Chmod(p.proxySocket, 0600); err != nil {
-		listener.Close()
-		return fmt.Errorf("failed to set socket permissions: %w", err)
+		// Set socket permissions
+		if err := os.Chmod(p.proxySocket, 0600); err != nil {
+			l.Close()
+			return fmt.Errorf("failed to set socket permissions: %w", err)
+		}
+		listener = l
 	}
 
 	p.listener = listener
@@ -121,9 +150,11 @@ func (p *GPGProxyAgent) Stop() error {
 
 	p.wg.Wait()
 
-	// Clean up socket directory
-	socketDir := filepath.Dir(p.proxySocket)
-	os.RemoveAll(socketDir)
+	// Clean up socket directory (Unix socket mode only)
+	if !p.useTCP && p.proxySocket != "" {
+		socketDir := filepath.Dir(p.proxySocket)
+		os.RemoveAll(socketDir)
+	}
 
 	return nil
 }

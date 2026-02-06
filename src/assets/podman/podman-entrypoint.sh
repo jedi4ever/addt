@@ -31,12 +31,27 @@ debug_log "Arguments: $*"
 if [ -n "$ADDT_SSH_PROXY_HOST" ] && [ -n "$ADDT_SSH_PROXY_PORT" ]; then
     debug_log "Setting up SSH agent TCP bridge to $ADDT_SSH_PROXY_HOST:$ADDT_SSH_PROXY_PORT"
     if command -v socat >/dev/null 2>&1; then
-        socat UNIX-LISTEN:/tmp/ssh-agent.sock,fork,mode=600 \
+        setsid socat UNIX-LISTEN:/tmp/ssh-agent.sock,fork,mode=600 \
               TCP:"$ADDT_SSH_PROXY_HOST":"$ADDT_SSH_PROXY_PORT" &
         export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
         debug_log "SSH agent bridge started at $SSH_AUTH_SOCK"
     else
         echo "Warning: socat not found, SSH agent forwarding unavailable"
+    fi
+fi
+
+# Set up GPG agent proxy via TCP (macOS + podman: Unix sockets can't be mounted)
+if [ -n "$ADDT_GPG_PROXY_HOST" ] && [ -n "$ADDT_GPG_PROXY_PORT" ]; then
+    debug_log "Setting up GPG agent TCP bridge to $ADDT_GPG_PROXY_HOST:$ADDT_GPG_PROXY_PORT"
+    GPG_SOCK="$HOME/.gnupg/S.gpg-agent"
+    if command -v socat >/dev/null 2>&1; then
+        # Remove stale socket if present
+        rm -f "$GPG_SOCK"
+        setsid socat UNIX-LISTEN:"$GPG_SOCK",fork,mode=600 \
+              TCP:"$ADDT_GPG_PROXY_HOST":"$ADDT_GPG_PROXY_PORT" &
+        debug_log "GPG agent bridge started at $GPG_SOCK"
+    else
+        echo "Warning: socat not found, GPG agent forwarding unavailable"
     fi
 fi
 
