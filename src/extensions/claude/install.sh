@@ -16,6 +16,13 @@ else
     sudo npm install -g @anthropic-ai/claude-code@$CLAUDE_VERSION
 fi
 
+# native installer
+echo "Extension [claude]: Installing Claude Code Native Installer"
+# this will install in $HOME/.local/bin/claude
+# this has precedence over the npm install
+# simple removing it selects the npm install
+curl -fsSL https://claude.ai/install.sh | bash
+
 # Verify installation
 INSTALLED_VERSION=$(claude --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
 echo "Extension [claude]: Done. Installed Claude Code v${INSTALLED_VERSION}"
