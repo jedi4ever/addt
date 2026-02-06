@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/jedi4ever/addt/config/otel"
@@ -165,7 +166,22 @@ func addCommandEnvVar(env map[string]string, cfg *provider.Config) {
 
 // addOtelEnvVars adds OpenTelemetry environment variables
 func addOtelEnvVars(env map[string]string, cfg *provider.Config) {
-	otelEnvVars := otel.GetEnvVars(cfg.Otel)
+	// Build resource attributes from runtime context
+	project := ""
+	if cfg.Workdir != "" {
+		project = filepath.Base(cfg.Workdir)
+	} else if cwd, err := os.Getwd(); err == nil {
+		project = filepath.Base(cwd)
+	}
+
+	attrs := otel.ResourceAttrs{
+		Extension: cfg.Extensions,
+		Provider:  cfg.Provider,
+		Version:   cfg.AddtVersion,
+		Project:   project,
+	}
+
+	otelEnvVars := otel.GetEnvVars(cfg.Otel, attrs)
 	for k, v := range otelEnvVars {
 		env[k] = v
 	}

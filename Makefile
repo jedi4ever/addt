@@ -11,6 +11,9 @@ ASSET_FILES=$(shell find $(SRC_DIR)/assets -type f 2>/dev/null)
 # Build targets for different platforms
 PLATFORMS=darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
+# Default target
+all: build-all
+
 help:
 	@echo "Available targets:"
 	@echo "  make build              - Format and build main binary for current platform"
@@ -25,8 +28,6 @@ help:
 	@echo "  make release            - Create and push a new release (requires VERSION and CHANGELOG.md updated)"
 	@echo "  make help               - Show this help"
 
-# Default target
-all: build
 
 # Format Go code
 fmt:

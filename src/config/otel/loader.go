@@ -66,17 +66,26 @@ func applyEnvOverrides(cfg *Config) {
 
 // GetEnvVars returns a map of OTEL environment variables to pass to containers.
 // These follow the OpenTelemetry specification for SDK configuration.
-// Also includes Claude Code specific variables for enabling telemetry.
-func GetEnvVars(cfg Config) map[string]string {
+// The attrs parameter provides runtime context that is injected as resource
+// attributes via OTEL_RESOURCE_ATTRIBUTES (appears on all signals).
+func GetEnvVars(cfg Config, attrs ResourceAttrs) map[string]string {
 	if !cfg.Enabled {
 		return nil
+	}
+
+	serviceName := cfg.ServiceName
+	if serviceName == "addt" && attrs.Extension != "" {
+		serviceName = "addt-" + attrs.Extension
 	}
 
 	env := map[string]string{
 		// Standard OTEL configuration
 		"OTEL_EXPORTER_OTLP_ENDPOINT": cfg.Endpoint,
 		"OTEL_EXPORTER_OTLP_PROTOCOL": cfg.Protocol,
-		"OTEL_SERVICE_NAME":           cfg.ServiceName,
+		"OTEL_SERVICE_NAME":           serviceName,
+		// Enable OTLP export for metrics and logs (default SDK is "none")
+		"OTEL_METRICS_EXPORTER": "otlp",
+		"OTEL_LOGS_EXPORTER":    "otlp",
 		// Claude Code specific - enable telemetry export
 		"CLAUDE_CODE_ENABLE_TELEMETRY": "1",
 	}
@@ -85,5 +94,29 @@ func GetEnvVars(cfg Config) map[string]string {
 		env["OTEL_EXPORTER_OTLP_HEADERS"] = cfg.Headers
 	}
 
+	// Build OTEL_RESOURCE_ATTRIBUTES for runtime context
+	if ra := buildResourceAttrs(attrs); ra != "" {
+		env["OTEL_RESOURCE_ATTRIBUTES"] = ra
+	}
+
 	return env
+}
+
+// buildResourceAttrs builds a comma-separated key=value string for
+// OTEL_RESOURCE_ATTRIBUTES from the provided runtime context.
+func buildResourceAttrs(attrs ResourceAttrs) string {
+	var parts []string
+	if attrs.Extension != "" {
+		parts = append(parts, "addt.extension="+attrs.Extension)
+	}
+	if attrs.Provider != "" {
+		parts = append(parts, "addt.provider="+attrs.Provider)
+	}
+	if attrs.Version != "" {
+		parts = append(parts, "addt.version="+attrs.Version)
+	}
+	if attrs.Project != "" {
+		parts = append(parts, "addt.project="+attrs.Project)
+	}
+	return strings.Join(parts, ",")
 }

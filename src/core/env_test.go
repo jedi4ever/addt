@@ -1,6 +1,7 @@
 package core
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jedi4ever/addt/provider"
@@ -118,6 +119,53 @@ func TestBuildEnvironment_NoPortMap(t *testing.T) {
 
 	if _, ok := env["ADDT_PORT_MAP"]; ok {
 		t.Error("ADDT_PORT_MAP should not be set when no ports configured")
+	}
+}
+
+func TestBuildEnvironment_OtelEnabled(t *testing.T) {
+	cfg := &provider.Config{}
+	cfg.Otel.Enabled = true
+	cfg.Otel.Endpoint = "http://host.docker.internal:4318"
+	cfg.Otel.Protocol = "http/json"
+	cfg.Otel.ServiceName = "addt"
+	cfg.Extensions = "claude"
+	cfg.Provider = "podman"
+	cfg.AddtVersion = "0.0.9"
+
+	env := BuildEnvironment(&mockEnvProvider{}, cfg)
+
+	if env["OTEL_EXPORTER_OTLP_ENDPOINT"] != "http://host.docker.internal:4318" {
+		t.Errorf("OTEL_EXPORTER_OTLP_ENDPOINT = %q, want 'http://host.docker.internal:4318'", env["OTEL_EXPORTER_OTLP_ENDPOINT"])
+	}
+	if env["OTEL_EXPORTER_OTLP_PROTOCOL"] != "http/json" {
+		t.Errorf("OTEL_EXPORTER_OTLP_PROTOCOL = %q, want 'http/json'", env["OTEL_EXPORTER_OTLP_PROTOCOL"])
+	}
+	if env["OTEL_SERVICE_NAME"] != "addt-claude" {
+		t.Errorf("OTEL_SERVICE_NAME = %q, want 'addt-claude'", env["OTEL_SERVICE_NAME"])
+	}
+	if env["CLAUDE_CODE_ENABLE_TELEMETRY"] != "1" {
+		t.Errorf("CLAUDE_CODE_ENABLE_TELEMETRY = %q, want '1'", env["CLAUDE_CODE_ENABLE_TELEMETRY"])
+	}
+	ra := env["OTEL_RESOURCE_ATTRIBUTES"]
+	if ra == "" {
+		t.Fatal("OTEL_RESOURCE_ATTRIBUTES not set")
+	}
+	if !strings.Contains(ra, "addt.extension=claude") {
+		t.Errorf("OTEL_RESOURCE_ATTRIBUTES = %q, missing addt.extension=claude", ra)
+	}
+	if !strings.Contains(ra, "addt.provider=podman") {
+		t.Errorf("OTEL_RESOURCE_ATTRIBUTES = %q, missing addt.provider=podman", ra)
+	}
+}
+
+func TestBuildEnvironment_OtelDisabled(t *testing.T) {
+	cfg := &provider.Config{}
+	cfg.Otel.Enabled = false
+
+	env := BuildEnvironment(&mockEnvProvider{}, cfg)
+
+	if _, ok := env["OTEL_EXPORTER_OTLP_ENDPOINT"]; ok {
+		t.Error("OTEL_EXPORTER_OTLP_ENDPOINT should not be set when OTEL is disabled")
 	}
 }
 

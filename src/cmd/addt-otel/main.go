@@ -34,11 +34,12 @@ type LogEntry struct {
 	Timestamp string                 `json:"timestamp"`
 	Type      string                 `json:"type"`
 	Count     int                    `json:"count,omitempty"`
+	Summary   string                 `json:"summary,omitempty"`
 	Data      map[string]interface{} `json:"data,omitempty"`
 }
 
 func (l *Logger) log(telemetryType string, data map[string]interface{}, count int) {
-	timestamp := time.Now().Format(time.RFC3339)
+	timestamp := time.Now().Format("15:04:05")
 
 	if l.jsonOut {
 		entry := LogEntry{
@@ -48,6 +49,8 @@ func (l *Logger) log(telemetryType string, data map[string]interface{}, count in
 		}
 		if l.verbose {
 			entry.Data = data
+		} else {
+			entry.Summary = compactSummary(telemetryType, data)
 		}
 		jsonBytes, _ := json.Marshal(entry)
 		fmt.Fprintln(l.out, string(jsonBytes))
@@ -56,9 +59,244 @@ func (l *Logger) log(telemetryType string, data map[string]interface{}, count in
 			jsonBytes, _ := json.MarshalIndent(data, "", "  ")
 			fmt.Fprintf(l.out, "[%s] %s (%d items):\n%s\n", timestamp, telemetryType, count, string(jsonBytes))
 		} else {
-			fmt.Fprintf(l.out, "[%s] %s: received %d items\n", timestamp, telemetryType, count)
+			summary := compactSummary(telemetryType, data)
+			fmt.Fprintf(l.out, "[%s] %s (%d) %s\n", timestamp, telemetryType, count, summary)
 		}
 	}
+}
+
+// compactSummary extracts key details from OTEL data into a short string.
+func compactSummary(telemetryType string, data map[string]interface{}) string {
+	if data == nil {
+		return ""
+	}
+
+	switch telemetryType {
+	case "traces":
+		return summarizeTraces(data)
+	case "metrics":
+		return summarizeMetrics(data)
+	case "logs":
+		return summarizeLogs(data)
+	}
+	return ""
+}
+
+func summarizeTraces(data map[string]interface{}) string {
+	var parts []string
+	svc := extractServiceName(data, "resourceSpans")
+	if svc != "" {
+		parts = append(parts, "svc="+svc)
+	}
+	names := extractSpanNames(data)
+	if len(names) > 0 {
+		parts = append(parts, "spans=["+strings.Join(names, ", ")+"]")
+	}
+	return strings.Join(parts, " ")
+}
+
+func summarizeMetrics(data map[string]interface{}) string {
+	var parts []string
+	svc := extractServiceName(data, "resourceMetrics")
+	if svc != "" {
+		parts = append(parts, "svc="+svc)
+	}
+	names := extractMetricNames(data)
+	if len(names) > 0 {
+		parts = append(parts, "metrics=["+strings.Join(names, ", ")+"]")
+	}
+	return strings.Join(parts, " ")
+}
+
+func summarizeLogs(data map[string]interface{}) string {
+	var parts []string
+	svc := extractServiceName(data, "resourceLogs")
+	if svc != "" {
+		parts = append(parts, "svc="+svc)
+	}
+	bodies := extractLogBodies(data)
+	if len(bodies) > 0 {
+		parts = append(parts, "logs=["+strings.Join(bodies, ", ")+"]")
+	}
+	return strings.Join(parts, " ")
+}
+
+// extractServiceName gets service.name from the first resource's attributes.
+func extractServiceName(data map[string]interface{}, resourceKey string) string {
+	resources, ok := data[resourceKey].([]interface{})
+	if !ok || len(resources) == 0 {
+		return ""
+	}
+	resMap, ok := resources[0].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	resource, ok := resMap["resource"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	attrs, ok := resource["attributes"].([]interface{})
+	if !ok {
+		return ""
+	}
+	for _, attr := range attrs {
+		a, ok := attr.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if a["key"] == "service.name" {
+			if val, ok := a["value"].(map[string]interface{}); ok {
+				if s, ok := val["stringValue"].(string); ok {
+					return s
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func extractSpanNames(data map[string]interface{}) []string {
+	var names []string
+	resources, ok := data["resourceSpans"].([]interface{})
+	if !ok {
+		return nil
+	}
+	for _, res := range resources {
+		resMap, ok := res.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		scopes, ok := resMap["scopeSpans"].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, scope := range scopes {
+			scopeMap, ok := scope.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			spans, ok := scopeMap["spans"].([]interface{})
+			if !ok {
+				continue
+			}
+			for _, span := range spans {
+				spanMap, ok := span.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				if name, ok := spanMap["name"].(string); ok {
+					names = append(names, name)
+				}
+			}
+		}
+	}
+	return truncateList(names, 5)
+}
+
+func extractMetricNames(data map[string]interface{}) []string {
+	var names []string
+	resources, ok := data["resourceMetrics"].([]interface{})
+	if !ok {
+		return nil
+	}
+	for _, res := range resources {
+		resMap, ok := res.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		scopes, ok := resMap["scopeMetrics"].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, scope := range scopes {
+			scopeMap, ok := scope.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			metrics, ok := scopeMap["metrics"].([]interface{})
+			if !ok {
+				continue
+			}
+			for _, metric := range metrics {
+				metricMap, ok := metric.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				if name, ok := metricMap["name"].(string); ok {
+					names = append(names, name)
+				}
+			}
+		}
+	}
+	return truncateList(names, 5)
+}
+
+func extractLogBodies(data map[string]interface{}) []string {
+	var bodies []string
+	resources, ok := data["resourceLogs"].([]interface{})
+	if !ok {
+		return nil
+	}
+	for _, res := range resources {
+		resMap, ok := res.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		scopes, ok := resMap["scopeLogs"].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, scope := range scopes {
+			scopeMap, ok := scope.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			records, ok := scopeMap["logRecords"].([]interface{})
+			if !ok {
+				continue
+			}
+			for _, rec := range records {
+				recMap, ok := rec.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				body := extractStringValue(recMap["body"])
+				if body != "" {
+					if len(body) > 60 {
+						body = body[:57] + "..."
+					}
+					bodies = append(bodies, body)
+				}
+			}
+		}
+	}
+	return truncateList(bodies, 3)
+}
+
+// extractStringValue gets a string from an OTLP AnyValue.
+func extractStringValue(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	if m, ok := v.(map[string]interface{}); ok {
+		if s, ok := m["stringValue"].(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// truncateList limits a list and adds "+N more" if needed.
+func truncateList(items []string, max int) []string {
+	if len(items) <= max {
+		return items
+	}
+	result := items[:max]
+	result = append(result, fmt.Sprintf("+%d more", len(items)-max))
+	return result
 }
 
 func main() {

@@ -76,7 +76,7 @@ func GetOtelKeys() []KeyInfo {
 	return []KeyInfo{
 		{Key: "otel.enabled", Description: "Enable OpenTelemetry", Type: "bool", EnvVar: "ADDT_OTEL_ENABLED"},
 		{Key: "otel.endpoint", Description: "OTLP endpoint URL", Type: "string", EnvVar: "ADDT_OTEL_ENDPOINT"},
-		{Key: "otel.protocol", Description: "OTLP protocol: http/protobuf or grpc", Type: "string", EnvVar: "ADDT_OTEL_PROTOCOL"},
+		{Key: "otel.protocol", Description: "OTLP protocol: http/json, http/protobuf, or grpc", Type: "string", EnvVar: "ADDT_OTEL_PROTOCOL"},
 		{Key: "otel.service_name", Description: "Service name for telemetry", Type: "string", EnvVar: "ADDT_OTEL_SERVICE_NAME"},
 		{Key: "otel.headers", Description: "OTLP headers (key=value,key2=value2)", Type: "string", EnvVar: "ADDT_OTEL_HEADERS"},
 	}
@@ -172,7 +172,7 @@ func GetDefaultValue(key string) string {
 	case "otel.endpoint":
 		return "http://host.docker.internal:4318"
 	case "otel.protocol":
-		return "http/protobuf"
+		return "http/json"
 	case "otel.service_name":
 		return "addt"
 	case "otel.headers":

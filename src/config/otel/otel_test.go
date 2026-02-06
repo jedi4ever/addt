@@ -2,6 +2,7 @@ package otel
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -14,8 +15,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Endpoint != "http://host.docker.internal:4318" {
 		t.Errorf("Expected Endpoint=http://host.docker.internal:4318, got %v", cfg.Endpoint)
 	}
-	if cfg.Protocol != "http/protobuf" {
-		t.Errorf("Expected Protocol=http/protobuf, got %v", cfg.Protocol)
+	if cfg.Protocol != "http/json" {
+		t.Errorf("Expected Protocol=http/json, got %v", cfg.Protocol)
 	}
 	if cfg.ServiceName != "addt" {
 		t.Errorf("Expected ServiceName=addt, got %v", cfg.ServiceName)
@@ -109,14 +110,16 @@ func TestApplyEnvOverrides(t *testing.T) {
 }
 
 func TestGetEnvVars(t *testing.T) {
+	emptyAttrs := ResourceAttrs{}
+
 	// Test when disabled
 	cfg := Config{Enabled: false}
-	env := GetEnvVars(cfg)
+	env := GetEnvVars(cfg, emptyAttrs)
 	if env != nil {
 		t.Errorf("Expected nil env vars when disabled, got %v", env)
 	}
 
-	// Test when enabled
+	// Test when enabled with custom service name (no override)
 	cfg = Config{
 		Enabled:     true,
 		Endpoint:    "http://otel:4318",
@@ -124,29 +127,83 @@ func TestGetEnvVars(t *testing.T) {
 		ServiceName: "test-service",
 		Headers:     "key=value",
 	}
-	env = GetEnvVars(cfg)
+	env = GetEnvVars(cfg, emptyAttrs)
 
 	if env["OTEL_EXPORTER_OTLP_ENDPOINT"] != cfg.Endpoint {
-		t.Errorf("Expected OTEL_EXPORTER_OTLP_ENDPOINT=%s, got %s", cfg.Endpoint, env["OTEL_EXPORTER_OTLP_ENDPOINT"])
+		t.Errorf("OTEL_EXPORTER_OTLP_ENDPOINT=%s, want %s", env["OTEL_EXPORTER_OTLP_ENDPOINT"], cfg.Endpoint)
 	}
 	if env["OTEL_EXPORTER_OTLP_PROTOCOL"] != cfg.Protocol {
-		t.Errorf("Expected OTEL_EXPORTER_OTLP_PROTOCOL=%s, got %s", cfg.Protocol, env["OTEL_EXPORTER_OTLP_PROTOCOL"])
+		t.Errorf("OTEL_EXPORTER_OTLP_PROTOCOL=%s, want %s", env["OTEL_EXPORTER_OTLP_PROTOCOL"], cfg.Protocol)
 	}
-	if env["OTEL_SERVICE_NAME"] != cfg.ServiceName {
-		t.Errorf("Expected OTEL_SERVICE_NAME=%s, got %s", cfg.ServiceName, env["OTEL_SERVICE_NAME"])
+	if env["OTEL_SERVICE_NAME"] != "test-service" {
+		t.Errorf("OTEL_SERVICE_NAME=%s, want test-service", env["OTEL_SERVICE_NAME"])
 	}
 	if env["OTEL_EXPORTER_OTLP_HEADERS"] != cfg.Headers {
-		t.Errorf("Expected OTEL_EXPORTER_OTLP_HEADERS=%s, got %s", cfg.Headers, env["OTEL_EXPORTER_OTLP_HEADERS"])
+		t.Errorf("OTEL_EXPORTER_OTLP_HEADERS=%s, want %s", env["OTEL_EXPORTER_OTLP_HEADERS"], cfg.Headers)
 	}
 	if env["CLAUDE_CODE_ENABLE_TELEMETRY"] != "1" {
-		t.Errorf("Expected CLAUDE_CODE_ENABLE_TELEMETRY=1, got %s", env["CLAUDE_CODE_ENABLE_TELEMETRY"])
+		t.Errorf("CLAUDE_CODE_ENABLE_TELEMETRY=%s, want 1", env["CLAUDE_CODE_ENABLE_TELEMETRY"])
+	}
+	if env["OTEL_METRICS_EXPORTER"] != "otlp" {
+		t.Errorf("OTEL_METRICS_EXPORTER=%s, want otlp", env["OTEL_METRICS_EXPORTER"])
+	}
+	if env["OTEL_LOGS_EXPORTER"] != "otlp" {
+		t.Errorf("OTEL_LOGS_EXPORTER=%s, want otlp", env["OTEL_LOGS_EXPORTER"])
 	}
 
 	// Test without headers
 	cfg.Headers = ""
-	env = GetEnvVars(cfg)
+	env = GetEnvVars(cfg, emptyAttrs)
 	if _, ok := env["OTEL_EXPORTER_OTLP_HEADERS"]; ok {
 		t.Error("Expected no OTEL_EXPORTER_OTLP_HEADERS when empty")
+	}
+}
+
+func TestGetEnvVars_ServiceNameWithExtension(t *testing.T) {
+	// Default service name "addt" gets extension appended
+	cfg := Config{Enabled: true, Endpoint: "http://otel:4318", Protocol: "http/json", ServiceName: "addt"}
+	attrs := ResourceAttrs{Extension: "claude"}
+	env := GetEnvVars(cfg, attrs)
+
+	if env["OTEL_SERVICE_NAME"] != "addt-claude" {
+		t.Errorf("OTEL_SERVICE_NAME=%s, want addt-claude", env["OTEL_SERVICE_NAME"])
+	}
+
+	// Custom service name is NOT overridden
+	cfg.ServiceName = "my-service"
+	env = GetEnvVars(cfg, attrs)
+	if env["OTEL_SERVICE_NAME"] != "my-service" {
+		t.Errorf("OTEL_SERVICE_NAME=%s, want my-service", env["OTEL_SERVICE_NAME"])
+	}
+}
+
+func TestGetEnvVars_ResourceAttributes(t *testing.T) {
+	cfg := Config{Enabled: true, Endpoint: "http://otel:4318", Protocol: "http/json", ServiceName: "addt"}
+	attrs := ResourceAttrs{
+		Extension: "claude",
+		Provider:  "podman",
+		Version:   "0.0.9",
+		Project:   "myproject",
+	}
+	env := GetEnvVars(cfg, attrs)
+
+	ra := env["OTEL_RESOURCE_ATTRIBUTES"]
+	if ra == "" {
+		t.Fatal("OTEL_RESOURCE_ATTRIBUTES not set")
+	}
+	for _, want := range []string{"addt.extension=claude", "addt.provider=podman", "addt.version=0.0.9", "addt.project=myproject"} {
+		if !strings.Contains(ra, want) {
+			t.Errorf("OTEL_RESOURCE_ATTRIBUTES=%q, missing %q", ra, want)
+		}
+	}
+}
+
+func TestGetEnvVars_EmptyResourceAttributes(t *testing.T) {
+	cfg := Config{Enabled: true, Endpoint: "http://otel:4318", Protocol: "http/json", ServiceName: "addt"}
+	env := GetEnvVars(cfg, ResourceAttrs{})
+
+	if _, ok := env["OTEL_RESOURCE_ATTRIBUTES"]; ok {
+		t.Error("OTEL_RESOURCE_ATTRIBUTES should not be set when attrs are empty")
 	}
 }
 
