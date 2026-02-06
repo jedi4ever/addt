@@ -17,7 +17,7 @@ func HandleContainersCommand(prov provider.Provider, cfg *provider.Config, args 
 	switch action {
 	case "build":
 		// Redirect to addt build for backwards compatibility
-		HandleBuildCommand(prov, cfg, args[1:], false)
+		HandleBuildCommand(prov, cfg, args[1:], false, false)
 	case "list", "ls":
 		envs, err := prov.List()
 		if err != nil {
