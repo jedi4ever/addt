@@ -21,16 +21,16 @@ type ProjectType struct {
 
 // InitConfig holds the configuration being built during init
 type InitConfig struct {
-	Extensions      string                `yaml:"extensions,omitempty"`
-	Persistent      *bool                 `yaml:"persistent,omitempty"`
-	Firewall        *bool                 `yaml:"firewall,omitempty"`
-	FirewallMode    string                `yaml:"firewall_mode,omitempty"`
-	FirewallAllowed []string              `yaml:"firewall_allowed,omitempty"`
-	SSH             *cfgtypes.SSHSettings `yaml:"ssh,omitempty"`
-	GPGForward      string                `yaml:"gpg_forward,omitempty"`
-	WorkdirReadonly *bool                 `yaml:"workdir_readonly,omitempty"`
-	NodeVersion     string                `yaml:"node_version,omitempty"`
-	GoVersion       string                `yaml:"go_version,omitempty"`
+	Extensions      string                   `yaml:"extensions,omitempty"`
+	Persistent      *bool                    `yaml:"persistent,omitempty"`
+	Firewall        *bool                    `yaml:"firewall,omitempty"`
+	FirewallMode    string                   `yaml:"firewall_mode,omitempty"`
+	FirewallAllowed []string                 `yaml:"firewall_allowed,omitempty"`
+	SSH             *cfgtypes.SSHSettings    `yaml:"ssh,omitempty"`
+	GPGForward      string                   `yaml:"gpg_forward,omitempty"`
+	WorkdirReadonly *bool                    `yaml:"workdir_readonly,omitempty"`
+	NodeVersion     string                   `yaml:"node_version,omitempty"`
+	GoVersion       string                   `yaml:"go_version,omitempty"`
 	GitHub          *cfgtypes.GitHubSettings `yaml:"github,omitempty"`
 }
 
