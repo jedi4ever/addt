@@ -207,6 +207,17 @@ func runShellCommand(t *testing.T, dir string, args ...string) (string, error) {
 	return string(output), err
 }
 
+// runCmd executes a host command and returns trimmed stdout, or empty on error.
+func runCmd(t *testing.T, name string, args ...string) string {
+	t.Helper()
+	c := exec.Command(name, args...)
+	out, err := c.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // ensureAddtImage builds the extension image via TestBuildHelper subprocess.
 func ensureAddtImage(t *testing.T, dir, extension string) {
 	t.Helper()
