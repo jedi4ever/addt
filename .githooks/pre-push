@@ -1,0 +1,37 @@
+#!/bin/bash
+# Pre-push hook: Check formatting, compile integration tests, and run unit tests before pushing
+
+cd "$(git rev-parse --show-toplevel)/src"
+
+echo "Checking code formatting..."
+if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+    echo ""
+    echo "Code is not formatted! Push aborted."
+    echo "Run 'go fmt ./...' to fix formatting."
+    echo ""
+    echo "Unformatted files:"
+    gofmt -s -l .
+    exit 1
+fi
+echo "Code formatting OK."
+
+echo ""
+echo "Compiling integration tests..."
+if ! go test -tags=integration -run='^$' ./... 2>&1; then
+    echo ""
+    echo "Integration tests failed to compile! Push aborted."
+    echo "Fix the compile errors and try again."
+    exit 1
+fi
+echo "Integration tests compile OK."
+
+echo ""
+echo "Running unit tests before push..."
+if ! go test ./...; then
+    echo ""
+    echo "Tests failed! Push aborted."
+    echo "Fix the failing tests and try again."
+    exit 1
+fi
+
+echo "Tests passed. Proceeding with push."

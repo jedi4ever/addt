@@ -512,16 +512,15 @@ func TestPrepareSecretsJSON(t *testing.T) {
 	}
 
 	prov := &DockerProvider{
-		config:            cfg,
-		tempDirs:          []string{},
-		extensionEnvVars:  map[string][]string{"addt-test": {"ANTHROPIC_API_KEY", "GH_TOKEN"}},
-		extensionVersions: map[string]string{},
+		config:   cfg,
+		tempDirs: []string{},
 	}
 
 	env := map[string]string{
-		"ANTHROPIC_API_KEY": "sk-test-key",
-		"GH_TOKEN":          "ghp_test",
-		"TERM":              "xterm",
+		"ANTHROPIC_API_KEY":    "sk-test-key",
+		"GH_TOKEN":             "ghp_test",
+		"TERM":                 "xterm",
+		"ADDT_CREDENTIAL_VARS": "ANTHROPIC_API_KEY,GH_TOKEN",
 	}
 
 	jsonStr, secretVarNames, err := prov.prepareSecretsJSON("addt-test", env)

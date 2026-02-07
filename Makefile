@@ -1,4 +1,4 @@
-.PHONY: all build clean test help install dist fmt release build-otel build-orchestrator
+.PHONY: all build clean test help install dist fmt release build-otel build-orchestrator setup
 
 # Variables
 BINARY_NAME=addt
@@ -14,6 +14,11 @@ PLATFORMS=darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 # Default target
 all: build-all
 
+# Setup git hooks (runs automatically on build)
+setup:
+	@git config core.hooksPath .githooks
+	@echo "Git hooks configured."
+
 help:
 	@echo "Available targets:"
 	@echo "  make build              - Format and build main binary for current platform"
@@ -26,6 +31,7 @@ help:
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make test               - Run tests"
 	@echo "  make release            - Create and push a new release (requires VERSION and CHANGELOG.md updated)"
+	@echo "  make setup              - Configure git hooks"
 	@echo "  make help               - Show this help"
 
 
@@ -36,7 +42,7 @@ fmt:
 	@echo "✓ Code formatted"
 
 # Build main binary for current platform
-build: fmt $(BUILD_DIR)/$(BINARY_NAME)
+build: setup fmt $(BUILD_DIR)/$(BINARY_NAME)
 
 $(BUILD_DIR)/$(BINARY_NAME): $(GO_FILES) $(ASSET_FILES) VERSION
 	@echo "Building $(BINARY_NAME) v$(VERSION)..."
