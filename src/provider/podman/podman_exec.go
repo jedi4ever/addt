@@ -156,14 +156,26 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 
 	// Firewall configuration with pasta network backend
 	if p.config.FirewallEnabled {
+		// Start as root so entrypoint can apply iptables rules without sudo,
+		// then drop to addt via gosu (compatible with no-new-privileges)
+		podmanArgs = append(podmanArgs, "--user", "root")
+
 		// Use pasta network backend for better firewall support in rootless mode
 		// pasta handles network namespaces efficiently and supports filtering
 		if p.CheckPastaAvailable() {
 			podmanArgs = append(podmanArgs, "--network=pasta")
 		}
 
-		// Requires NET_ADMIN capability for iptables/nftables inside container
+		// Capabilities for the root phase (dropped after gosu switches to addt):
+		// NET_ADMIN: iptables/nftables rules
+		// DAC_OVERRIDE: create dirs/files in addt's home
+		// CHOWN: fix file ownership
+		// SETUID/SETGID: gosu needs these to switch from root to addt
 		podmanArgs = append(podmanArgs, "--cap-add", "NET_ADMIN")
+		podmanArgs = append(podmanArgs, "--cap-add", "DAC_OVERRIDE")
+		podmanArgs = append(podmanArgs, "--cap-add", "CHOWN")
+		podmanArgs = append(podmanArgs, "--cap-add", "SETUID")
+		podmanArgs = append(podmanArgs, "--cap-add", "SETGID")
 
 		// Mount firewall config directory
 		addtHome := util.GetAddtHome()
@@ -417,7 +429,7 @@ func (p *PodmanProvider) runWithSecrets(baseArgs []string, spec *provider.RunSpe
 	}
 
 	// Exec entrypoint — output goes directly to terminal
-	// Note: secrets file is root-owned from podman cp; entrypoint uses sudo to clean it up
+	// Note: secrets file ownership is fixed by root phase of entrypoint before dropping to addt
 	execArgs := []string{"exec"}
 	if interactive {
 		execArgs = append(execArgs, "-it")

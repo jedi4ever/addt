@@ -3,6 +3,7 @@ description: OpenAI Codex CLI - AI coding assistant by OpenAI
 entrypoint: codex
 default_version: latest
 dependencies: []
+auto_mount: false
 env_vars:
   - OPENAI_API_KEY
 mounts:

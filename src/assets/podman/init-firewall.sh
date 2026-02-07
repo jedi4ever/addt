@@ -113,10 +113,32 @@ cdn.jsdelivr.net
 unpkg.com
 EOF
 
-    chown addt:$(id -gn addt) "$ALLOWED_DOMAINS_FILE" 2>/dev/null || true
+    chown "$(id -u addt):$(id -g addt)" "$ALLOWED_DOMAINS_FILE" 2>/dev/null || true
 
     echo "Firewall: Default configuration created"
     echo "Firewall: Edit $ALLOWED_DOMAINS_FILE to customize allowed domains"
+
+    # Re-read the freshly created file to resolve domains
+    echo "Firewall: Resolving default domains..."
+    while IFS= read -r domain || [ -n "$domain" ]; do
+        [[ "$domain" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$domain" ]] && continue
+        domain=$(echo "$domain" | xargs)
+        echo "  Resolving: $domain"
+        if command -v dig >/dev/null 2>&1; then
+            IPS_RESOLVED=$(dig +short "$domain" A | grep -E '^[0-9]+\.' || true)
+        elif command -v host >/dev/null 2>&1; then
+            IPS_RESOLVED=$(host "$domain" | grep "has address" | awk '{print $4}' || true)
+        else
+            continue
+        fi
+        for ip in $IPS_RESOLVED; do
+            if [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                ALLOWED_IPS="$ALLOWED_IPS $ip"
+                echo "    Added: $ip"
+            fi
+        done
+    done < "$ALLOWED_DOMAINS_FILE"
 fi
 
 # Configure firewall rules

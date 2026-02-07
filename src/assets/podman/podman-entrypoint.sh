@@ -21,10 +21,41 @@ if [ "${ADDT_LOG_LEVEL:-INFO}" = "DEBUG" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Entrypoint script started" > "$DEBUG_LOG_FILE"
 fi
 
-debug_log "Entrypoint script started"
+debug_log "Entrypoint script started (uid=$(id -u))"
 debug_log "ADDT_LOG_LEVEL=${ADDT_LOG_LEVEL:-INFO}"
 debug_log "ADDT_COMMAND=${ADDT_COMMAND:-not set}"
 debug_log "Arguments: $*"
+
+# --- Root phase: do privileged ops then re-exec as addt ---
+if [ "$(id -u)" = "0" ]; then
+    debug_log "Running as root, performing privileged operations"
+
+    # Initialize firewall if enabled
+    if [ "${ADDT_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewall.sh ]; then
+        debug_log "Firewall enabled, initializing (as root)"
+        /usr/local/bin/init-firewall.sh
+    fi
+
+    # Fix secrets ownership so addt user can read/delete them
+    # Use numeric IDs to avoid group name resolution issues (on macOS, host GID
+    # may conflict with an existing Debian group, so 'addt' group may not exist)
+    if [ -f /run/secrets/.secrets ]; then
+        chown "$(id -u addt):$(id -g addt)" /run/secrets/.secrets
+        debug_log "Fixed secrets file ownership for addt user"
+    fi
+
+    # Re-exec this script as addt user
+    echo "Entrypoint: Dropping to addt via gosu..." >&2
+    debug_log "Dropping privileges: exec gosu addt $0 $*"
+    exec gosu addt "$0" "$@"
+    # If gosu fails, we get here
+    echo "ERROR: gosu failed to exec" >&2
+    exit 1
+fi
+
+# --- Normal phase: running as addt user ---
+echo "Entrypoint: Running as addt user (uid=$(id -u))" >&2
+debug_log "Running as addt user"
 
 # Set up SSH agent proxy via TCP (macOS + podman: Unix sockets can't be mounted)
 # The host runs an SSH proxy on TCP; socat bridges it to a local Unix socket.
@@ -97,7 +128,7 @@ if [ -f /run/secrets/.secrets ]; then
     PERMISSIONS=$(stat -c '%a' /run/secrets/.secrets)
     debug_log "Secrets file permissions: $PERMISSIONS"
 
-    # Delete the secrets file immediately after parsing (sudo needed: file is root-owned from podman cp)
+    # Delete the secrets file immediately after parsing (ownership fixed by root phase)
     rm -f /run/secrets/.secrets
     debug_log "Secrets loaded and file removed"
 fi
@@ -115,11 +146,8 @@ if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
     fi
 fi
 
-# Initialize firewall if enabled
-if [ "${ADDT_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewall.sh ]; then
-    debug_log "Firewall enabled, initializing"
-    sudo /usr/local/bin/init-firewall.sh
-fi
+# Note: Firewall initialization is handled in the root phase above.
+# When the container starts as root, firewall rules are applied before dropping to addt.
 
 # Run extension setup scripts (if not already run in this session)
 EXTENSIONS_DIR="/usr/local/share/addt/extensions"

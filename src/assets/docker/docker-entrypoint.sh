@@ -21,10 +21,61 @@ if [ "${ADDT_LOG_LEVEL:-INFO}" = "DEBUG" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Entrypoint script started" > "$DEBUG_LOG_FILE"
 fi
 
-debug_log "Entrypoint script started"
+debug_log "Entrypoint script started (uid=$(id -u))"
 debug_log "ADDT_LOG_LEVEL=${ADDT_LOG_LEVEL:-INFO}"
 debug_log "ADDT_COMMAND=${ADDT_COMMAND:-not set}"
 debug_log "Arguments: $*"
+
+# --- Root phase: do privileged ops then re-exec as addt ---
+if [ "$(id -u)" = "0" ]; then
+    debug_log "Running as root, performing privileged operations"
+
+    # Initialize firewall if enabled
+    if [ "${ADDT_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewall.sh ]; then
+        debug_log "Firewall enabled, initializing (as root)"
+        /usr/local/bin/init-firewall.sh
+    fi
+
+    # Start Docker daemon if in DinD mode
+    if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
+        debug_log "DinD mode enabled, starting Docker daemon (as root)"
+        echo "Starting Docker daemon in isolated mode..."
+
+        dockerd --host=unix:///var/run/docker.sock >/tmp/docker.log 2>&1 &
+
+        echo "Waiting for Docker daemon..."
+        for i in $(seq 1 30); do
+            if [ -S /var/run/docker.sock ]; then
+                chmod 666 /var/run/docker.sock
+                if docker info >/dev/null 2>&1; then
+                    echo "Docker daemon ready (isolated environment)"
+                    break
+                fi
+            fi
+            if [ "$i" -eq 30 ]; then
+                echo "Error: Docker daemon failed to start"
+                cat /tmp/docker.log 2>/dev/null || echo "No log file available"
+                exit 1
+            fi
+            sleep 1
+        done
+    fi
+
+    # Fix secrets ownership so addt user can read/delete them
+    # Use numeric IDs to avoid group name resolution issues (on macOS, host GID
+    # may conflict with an existing Debian group, so 'addt' group may not exist)
+    if [ -f /run/secrets/.secrets ]; then
+        chown "$(id -u addt):$(id -g addt)" /run/secrets/.secrets
+        debug_log "Fixed secrets file ownership for addt user"
+    fi
+
+    # Re-exec this script as addt user
+    debug_log "Dropping privileges: exec gosu addt $0 $*"
+    exec gosu addt "$0" "$@"
+fi
+
+# --- Normal phase: running as addt user ---
+debug_log "Running as addt user"
 
 # Set up SSH agent proxy via TCP (macOS + podman: Unix sockets can't be mounted)
 # The host runs an SSH proxy on TCP; socat bridges it to a local Unix socket.
@@ -93,44 +144,13 @@ if [ -f /run/secrets/.secrets ]; then
         }
     ')"
 
-    # Delete the secrets file immediately after parsing (sudo needed: file is root-owned from cp)
-    sudo rm -f /run/secrets/.secrets
+    # Delete the secrets file immediately after parsing
+    rm -f /run/secrets/.secrets
     debug_log "Secrets loaded and file removed"
 fi
 
-# Start Docker daemon if in DinD mode
-if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
-    debug_log "DinD mode enabled, starting Docker daemon"
-    echo "Starting Docker daemon in isolated mode..."
-
-    # Start dockerd in the background
-    sudo dockerd --host=unix:///var/run/docker.sock >/tmp/docker.log 2>&1 &
-
-    # Wait for Docker daemon to be ready
-    echo "Waiting for Docker daemon..."
-    for i in {1..30}; do
-        if [ -S /var/run/docker.sock ]; then
-            # Socket exists, fix permissions
-            sudo chmod 666 /var/run/docker.sock
-            if docker info >/dev/null 2>&1; then
-                echo "✓ Docker daemon ready (isolated environment)"
-                break
-            fi
-        fi
-        if [ $i -eq 30 ]; then
-            echo "Error: Docker daemon failed to start"
-            cat /tmp/docker.log 2>/dev/null || echo "No log file available"
-            exit 1
-        fi
-        sleep 1
-    done
-fi
-
-# Initialize firewall if enabled
-if [ "${ADDT_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewall.sh ]; then
-    debug_log "Firewall enabled, initializing"
-    sudo /usr/local/bin/init-firewall.sh
-fi
+# Note: DinD and firewall initialization are handled in the root phase above.
+# When the container starts as root, those ops run before dropping to addt.
 
 # Run extension setup scripts (if not already run in this session)
 EXTENSIONS_DIR="/usr/local/share/addt/extensions"

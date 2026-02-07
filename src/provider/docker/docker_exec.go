@@ -152,8 +152,19 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 
 	// Firewall configuration
 	if p.config.FirewallEnabled {
-		// Requires NET_ADMIN capability for iptables
+		// Start as root so entrypoint can apply iptables rules without sudo,
+		// then drop to addt via gosu (compatible with no-new-privileges)
+		dockerArgs = append(dockerArgs, "--user", "root")
+		// Capabilities for the root phase (dropped after gosu switches to addt):
+		// NET_ADMIN: iptables/nftables rules
+		// DAC_OVERRIDE: create dirs/files in addt's home
+		// CHOWN: fix file ownership
+		// SETUID/SETGID: gosu needs these to switch from root to addt
 		dockerArgs = append(dockerArgs, "--cap-add", "NET_ADMIN")
+		dockerArgs = append(dockerArgs, "--cap-add", "DAC_OVERRIDE")
+		dockerArgs = append(dockerArgs, "--cap-add", "CHOWN")
+		dockerArgs = append(dockerArgs, "--cap-add", "SETUID")
+		dockerArgs = append(dockerArgs, "--cap-add", "SETGID")
 
 		// Mount firewall config directory
 		addtHome := util.GetAddtHome()
@@ -165,8 +176,14 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 		}
 	}
 
-	// Docker forwarding
-	dockerArgs = append(dockerArgs, p.HandleDockerForwarding(spec.DockerDindMode, spec.Name)...)
+	// Docker forwarding (DinD)
+	dindArgs := p.HandleDockerForwarding(spec.DockerDindMode, spec.Name)
+	dockerArgs = append(dockerArgs, dindArgs...)
+
+	// Start as root for DinD so entrypoint can start dockerd without sudo
+	if spec.DockerDindMode == "isolated" || spec.DockerDindMode == "true" {
+		dockerArgs = append(dockerArgs, "--user", "root")
+	}
 
 	// Add ports
 	for _, port := range spec.Ports {
@@ -551,23 +568,25 @@ func (p *DockerProvider) Shell(spec *provider.RunSpec) error {
 		needsInit := spec.DockerDindMode == "isolated" || spec.DockerDindMode == "true" || p.config.FirewallEnabled
 
 		if needsInit {
+			// Start as root so init script can run privileged ops, then drop to addt
+			dockerArgs = append(dockerArgs, "--user", "root")
 			// Create initialization script that runs before bash
 			script := `
 # Initialize firewall if enabled
 if [ "${ADDT_FIREWALL_ENABLED}" = "true" ] && [ -f /usr/local/bin/init-firewall.sh ]; then
-    sudo /usr/local/bin/init-firewall.sh
+    /usr/local/bin/init-firewall.sh
 fi
 
 # Start Docker daemon if in DinD mode
 if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
     echo 'Starting Docker daemon in isolated mode...'
-    sudo dockerd --host=unix:///var/run/docker.sock >/tmp/docker.log 2>&1 &
+    dockerd --host=unix:///var/run/docker.sock >/tmp/docker.log 2>&1 &
     echo 'Waiting for Docker daemon...'
     for i in $(seq 1 30); do
         if [ -S /var/run/docker.sock ]; then
-            sudo chmod 666 /var/run/docker.sock
+            chmod 666 /var/run/docker.sock
             if docker info >/dev/null 2>&1; then
-                echo '✓ Docker daemon ready (isolated environment)'
+                echo 'Docker daemon ready (isolated environment)'
                 break
             fi
         fi
@@ -575,7 +594,7 @@ if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
     done
 fi
 
-exec /bin/bash "$@"
+exec gosu addt /bin/bash "$@"
 `
 			dockerArgs = append(dockerArgs, "--entrypoint", "/bin/bash", spec.ImageName, "-c", script, "bash")
 			dockerArgs = append(dockerArgs, spec.Args...)
