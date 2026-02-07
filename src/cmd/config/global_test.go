@@ -78,7 +78,7 @@ func TestSaveAndLoadGlobalConfig(t *testing.T) {
 	cfg := &cfgtypes.GlobalConfig{
 		NodeVersion: "20",
 		GoVersion:   "1.21",
-		Docker: &cfgtypes.DockerSettings{
+		Container: &cfgtypes.ContainerSettings{
 			CPUs:   "2",
 			Memory: "4g",
 		},
@@ -101,10 +101,10 @@ func TestSaveAndLoadGlobalConfig(t *testing.T) {
 	if loaded.GoVersion != "1.21" {
 		t.Errorf("GoVersion = %q, want %q", loaded.GoVersion, "1.21")
 	}
-	if loaded.Docker == nil || loaded.Docker.CPUs != "2" {
-		t.Errorf("Docker.CPUs = %q, want %q", loaded.Docker.CPUs, "2")
+	if loaded.Container == nil || loaded.Container.CPUs != "2" {
+		t.Errorf("Container.CPUs = %q, want %q", loaded.Container.CPUs, "2")
 	}
-	if loaded.Docker == nil || loaded.Docker.Memory != "4g" {
-		t.Errorf("Docker.Memory = %q, want %q", loaded.Docker.Memory, "4g")
+	if loaded.Container == nil || loaded.Container.Memory != "4g" {
+		t.Errorf("Container.Memory = %q, want %q", loaded.Container.Memory, "4g")
 	}
 }

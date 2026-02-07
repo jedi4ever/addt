@@ -76,8 +76,8 @@ type Config struct {
 	ExtensionAutomount      map[string]bool            // Per-extension automount control (e.g., {"claude": true, "codex": false})
 	ExtensionFlagSettings   map[string]map[string]bool // Per-extension flag settings from config (e.g., {"claude": {"yolo": true}})
 	NoCache                 bool                       // Disable Docker cache for builds
-	DockerCPUs              string                     // CPU limit (e.g., "2", "0.5", "1.5")
-	DockerMemory            string                     // Memory limit (e.g., "512m", "2g", "4gb")
+	ContainerCPUs           string                     // Container CPU limit (e.g., "2", "0.5", "1.5")
+	ContainerMemory         string                     // Container memory limit (e.g., "512m", "2g", "4gb")
 
 	// Security settings
 	Security security.Config
@@ -105,8 +105,8 @@ type RunSpec struct {
 	GPGForward       string   // "proxy", "agent", "keys", or "off"
 	GPGAllowedKeyIDs []string // GPG key IDs that are allowed
 	DockerDindMode   string
-	DockerCPUs       string // CPU limit (e.g., "2", "0.5")
-	DockerMemory     string // Memory limit (e.g., "512m", "2g")
+	ContainerCPUs    string // Container CPU limit (e.g., "2", "0.5")
+	ContainerMemory  string // Container memory limit (e.g., "512m", "2g")
 }
 
 // Environment represents a container or workspace

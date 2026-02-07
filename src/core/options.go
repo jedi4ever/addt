@@ -47,8 +47,8 @@ func BuildRunOptions(p provider.Provider, cfg *provider.Config, name string, arg
 		GPGForward:       cfg.GPGForward,
 		GPGAllowedKeyIDs: cfg.GPGAllowedKeyIDs,
 		DockerDindMode:   cfg.DockerDindMode,
-		DockerCPUs:       cfg.DockerCPUs,
-		DockerMemory:     cfg.DockerMemory,
+		ContainerCPUs:       cfg.ContainerCPUs,
+		ContainerMemory:     cfg.ContainerMemory,
 	}
 	// Resolve flag → env var mappings (e.g., --yolo → ADDT_EXTENSION_CLAUDE_YOLO=true)
 	addFlagEnvVars(spec.Env, cfg, args)

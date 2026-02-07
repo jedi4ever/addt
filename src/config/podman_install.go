@@ -208,16 +208,16 @@ func ensurePodmanMachine(podmanPath string) error {
 		globalCfg := loadGlobalConfig()
 
 		vmMemory := os.Getenv("ADDT_VM_MEMORY")
-		if vmMemory == "" && globalCfg.VmMemory != "" {
-			vmMemory = globalCfg.VmMemory
+		if vmMemory == "" && globalCfg.Vm != nil && globalCfg.Vm.Memory != "" {
+			vmMemory = globalCfg.Vm.Memory
 		}
 		if vmMemory == "" {
 			vmMemory = "8192"
 		}
 
 		vmCpus := os.Getenv("ADDT_VM_CPUS")
-		if vmCpus == "" && globalCfg.VmCpus != "" {
-			vmCpus = globalCfg.VmCpus
+		if vmCpus == "" && globalCfg.Vm != nil && globalCfg.Vm.CPUs != "" {
+			vmCpus = globalCfg.Vm.CPUs
 		}
 		if vmCpus == "" {
 			vmCpus = "4"

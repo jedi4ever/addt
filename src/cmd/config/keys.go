@@ -43,6 +43,10 @@ func GetKeys() []KeyInfo {
 	keys = append(keys, GetSSHKeys()...)
 	// Add workdir keys
 	keys = append(keys, GetWorkdirKeys()...)
+	// Add container keys
+	keys = append(keys, GetContainerKeys()...)
+	// Add VM keys
+	keys = append(keys, GetVmKeys()...)
 	// Add docker keys
 	keys = append(keys, GetDockerKeys()...)
 	// Add security keys
@@ -63,8 +67,10 @@ func GetExtensionKeys() []KeyInfo {
 // GetDefaultValue returns the default value for a config key
 func GetDefaultValue(key string) string {
 	switch key {
-	case "docker.cpus":
-		return ""
+	case "container.cpus":
+		return "2"
+	case "container.memory":
+		return "4g"
 	case "docker.dind.enable":
 		return "false"
 	case "docker.dind.mode":
@@ -105,8 +111,10 @@ func GetDefaultValue(key string) string {
 		return "10m"
 	case "log.max_files":
 		return "5"
-	case "docker.memory":
-		return ""
+	case "vm.cpus":
+		return "4"
+	case "vm.memory":
+		return "8192"
 	case "node_version":
 		return "22"
 	case "persistent":
@@ -323,6 +331,14 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 	if strings.HasPrefix(key, "ssh.") {
 		return GetSSHValue(cfg.SSH, key)
 	}
+	// Check container keys
+	if strings.HasPrefix(key, "container.") {
+		return GetContainerValue(cfg.Container, key)
+	}
+	// Check VM keys
+	if strings.HasPrefix(key, "vm.") {
+		return GetVmValue(cfg.Vm, key)
+	}
 	// Check docker keys
 	if strings.HasPrefix(key, "docker.") {
 		return GetDockerValue(cfg.Docker, key)
@@ -408,6 +424,20 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 			}
 			SetSSHValue(cfg.SSH, key, value)
 		}
+		// Check container keys
+		if strings.HasPrefix(key, "container.") {
+			if cfg.Container == nil {
+				cfg.Container = &cfgtypes.ContainerSettings{}
+			}
+			SetContainerValue(cfg.Container, key, value)
+		}
+		// Check VM keys
+		if strings.HasPrefix(key, "vm.") {
+			if cfg.Vm == nil {
+				cfg.Vm = &cfgtypes.VmSettings{}
+			}
+			SetVmValue(cfg.Vm, key, value)
+		}
 		// Check docker keys
 		if strings.HasPrefix(key, "docker.") {
 			if cfg.Docker == nil {
@@ -477,6 +507,14 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 		// Check SSH keys
 		if strings.HasPrefix(key, "ssh.") && cfg.SSH != nil {
 			UnsetSSHValue(cfg.SSH, key)
+		}
+		// Check container keys
+		if strings.HasPrefix(key, "container.") && cfg.Container != nil {
+			UnsetContainerValue(cfg.Container, key)
+		}
+		// Check VM keys
+		if strings.HasPrefix(key, "vm.") && cfg.Vm != nil {
+			UnsetVmValue(cfg.Vm, key)
 		}
 		// Check docker keys
 		if strings.HasPrefix(key, "docker.") && cfg.Docker != nil {

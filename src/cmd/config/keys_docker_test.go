@@ -8,7 +8,6 @@ import (
 
 func TestDockerKeyValidation(t *testing.T) {
 	dockerKeys := []string{
-		"docker.cpus", "docker.memory",
 		"docker.dind.enable", "docker.dind.mode",
 	}
 
@@ -23,8 +22,6 @@ func TestDockerGetValue(t *testing.T) {
 	dindEnable := true
 	cfg := &cfgtypes.GlobalConfig{
 		Docker: &cfgtypes.DockerSettings{
-			CPUs:   "4",
-			Memory: "8g",
 			Dind: &cfgtypes.DindSettings{
 				Enable: &dindEnable,
 				Mode:   "isolated",
@@ -36,8 +33,6 @@ func TestDockerGetValue(t *testing.T) {
 		key      string
 		expected string
 	}{
-		{"docker.cpus", "4"},
-		{"docker.memory", "8g"},
 		{"docker.dind.enable", "true"},
 		{"docker.dind.mode", "isolated"},
 	}
@@ -51,26 +46,16 @@ func TestDockerGetValue(t *testing.T) {
 
 	// Test with nil Docker
 	nilCfg := &cfgtypes.GlobalConfig{}
-	if got := GetValue(nilCfg, "docker.cpus"); got != "" {
-		t.Errorf("GetValue(docker.cpus) with nil Docker = %q, want empty", got)
+	if got := GetValue(nilCfg, "docker.dind.enable"); got != "" {
+		t.Errorf("GetValue(docker.dind.enable) with nil Docker = %q, want empty", got)
 	}
 }
 
 func TestDockerSetValue(t *testing.T) {
 	cfg := &cfgtypes.GlobalConfig{}
 
-	SetValue(cfg, "docker.cpus", "2")
-	if cfg.Docker == nil || cfg.Docker.CPUs != "2" {
-		t.Errorf("CPUs not set correctly")
-	}
-
-	SetValue(cfg, "docker.memory", "4g")
-	if cfg.Docker.Memory != "4g" {
-		t.Errorf("Memory = %q, want %q", cfg.Docker.Memory, "4g")
-	}
-
 	SetValue(cfg, "docker.dind.enable", "true")
-	if cfg.Docker.Dind == nil || cfg.Docker.Dind.Enable == nil || *cfg.Docker.Dind.Enable != true {
+	if cfg.Docker == nil || cfg.Docker.Dind == nil || cfg.Docker.Dind.Enable == nil || *cfg.Docker.Dind.Enable != true {
 		t.Errorf("Dind.Enable not set correctly")
 	}
 
@@ -84,23 +69,11 @@ func TestDockerUnsetValue(t *testing.T) {
 	dindEnable := true
 	cfg := &cfgtypes.GlobalConfig{
 		Docker: &cfgtypes.DockerSettings{
-			CPUs:   "4",
-			Memory: "8g",
 			Dind: &cfgtypes.DindSettings{
 				Enable: &dindEnable,
 				Mode:   "isolated",
 			},
 		},
-	}
-
-	UnsetValue(cfg, "docker.cpus")
-	if cfg.Docker.CPUs != "" {
-		t.Errorf("CPUs should be empty after unset")
-	}
-
-	UnsetValue(cfg, "docker.memory")
-	if cfg.Docker.Memory != "" {
-		t.Errorf("Memory should be empty after unset")
 	}
 
 	UnsetValue(cfg, "docker.dind.enable")
@@ -119,8 +92,6 @@ func TestDockerGetDefaultValue(t *testing.T) {
 		key      string
 		expected string
 	}{
-		{"docker.cpus", ""},
-		{"docker.memory", ""},
 		{"docker.dind.enable", "false"},
 		{"docker.dind.mode", "isolated"},
 	}

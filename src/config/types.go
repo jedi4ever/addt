@@ -20,11 +20,21 @@ type DindSettings struct {
 	Mode   string `yaml:"mode,omitempty"`
 }
 
-// DockerSettings holds Docker/container resource configuration
+// DockerSettings holds Docker-specific configuration (DinD)
 type DockerSettings struct {
-	Dind   *DindSettings `yaml:"dind,omitempty"`
-	CPUs   string        `yaml:"cpus,omitempty"`
-	Memory string        `yaml:"memory,omitempty"`
+	Dind *DindSettings `yaml:"dind,omitempty"`
+}
+
+// ContainerSettings holds container resource limits
+type ContainerSettings struct {
+	CPUs   string `yaml:"cpus,omitempty"`
+	Memory string `yaml:"memory,omitempty"`
+}
+
+// VmSettings holds VM resource configuration (Podman machine, Docker Desktop)
+type VmSettings struct {
+	CPUs   string `yaml:"cpus,omitempty"`
+	Memory string `yaml:"memory,omitempty"`
 }
 
 // PortsSettings holds port forwarding configuration
@@ -84,9 +94,9 @@ type WorkdirSettings struct {
 
 // GlobalConfig represents the persistent configuration stored in ~/.addt/config.yaml
 type GlobalConfig struct {
-	Docker           *DockerSettings   `yaml:"docker,omitempty"`
-	VmMemory         string            `yaml:"vm_memory,omitempty"` // Podman VM memory in MB (default: 8192)
-	VmCpus           string            `yaml:"vm_cpus,omitempty"`   // Podman VM CPUs (default: 4)
+	Container        *ContainerSettings `yaml:"container,omitempty"`
+	Docker           *DockerSettings    `yaml:"docker,omitempty"`
+	Vm               *VmSettings        `yaml:"vm,omitempty"`
 	Firewall         *FirewallSettings `yaml:"firewall,omitempty"`
 	GitHub           *GitHubSettings `yaml:"github,omitempty"`
 	EnvFileLoad      *bool           `yaml:"env_file_load,omitempty"`
@@ -164,8 +174,8 @@ type Config struct {
 	ExtensionVersions        map[string]string          // Per-extension versions (e.g., {"claude": "1.0.5", "codex": "latest"})
 	ExtensionAutomount       map[string]bool            // Per-extension automount control (e.g., {"claude": true, "codex": false})
 	ExtensionFlagSettings    map[string]map[string]bool // Per-extension flag settings from config (e.g., {"claude": {"yolo": true}})
-	DockerCPUs               string                     // CPU limit (e.g., "2", "0.5", "1.5")
-	DockerMemory             string                     // Memory limit (e.g., "512m", "2g", "4gb")
+	ContainerCPUs            string                     // Container CPU limit (e.g., "2", "0.5", "1.5")
+	ContainerMemory          string                     // Container memory limit (e.g., "512m", "2g", "4gb")
 
 	// Security settings
 	Security security.Config

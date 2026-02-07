@@ -307,13 +307,13 @@ There are three ways to configure addt:
 
 ```bash
 # Environment variable (highest priority)
-export ADDT_DOCKER_MEMORY=4g
+export ADDT_CONTAINER_MEMORY=4g
 
 # Project config (.addt.yaml)
-addt config project set docker.memory 4g
+addt config project set container.memory 4g
 
 # Global config (~/.addt/config.yaml)
-addt config global set docker.memory 4g
+addt config global set container.memory 4g
 ```
 
 All three set the same thing. Environment wins if multiple are set.
@@ -324,7 +324,7 @@ Use `addt config project` to manage `.addt.yaml` (commit to git for team sharing
 
 ```bash
 addt config project set persistent true
-addt config project set docker.memory 4g
+addt config project set container.memory 4g
 addt config project set firewall true
 addt config project list
 ```
@@ -334,8 +334,8 @@ addt config project list
 ```bash
 # Global settings (all projects)
 addt config global list
-addt config global set docker.memory 4g
-addt config global unset docker.memory
+addt config global set container.memory 4g
+addt config global unset container.memory
 
 # Project settings (this directory only)
 addt config project list
@@ -500,7 +500,7 @@ Rule evaluation: `Defaults → Extension → Global → Project` (most specific 
 
 ```bash
 export ADDT_DOCKER_CPUS=2
-export ADDT_DOCKER_MEMORY=4g
+export ADDT_CONTAINER_MEMORY=4g
 addt run claude
 ```
 
@@ -733,7 +733,7 @@ addt cli update                   # Update addt
 | `ADDT_PORTS_FORWARD` | true | Enable port forwarding |
 | `ADDT_PORTS` | - | Ports to expose: `3000,8080` |
 | `ADDT_DOCKER_CPUS` | - | CPU limit: `2` |
-| `ADDT_DOCKER_MEMORY` | - | Memory limit: `4g` |
+| `ADDT_CONTAINER_MEMORY` | - | Memory limit: `4g` |
 | `ADDT_WORKDIR` | `.` | Working directory to mount |
 | `ADDT_WORKDIR_READONLY` | false | Mount workspace as read-only |
 | `ADDT_HISTORY_PERSIST` | false | Persist shell history between sessions |

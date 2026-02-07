@@ -190,11 +190,11 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	}
 
 	// Add resource limits
-	if spec.DockerCPUs != "" {
-		podmanArgs = append(podmanArgs, "--cpus", spec.DockerCPUs)
+	if spec.ContainerCPUs != "" {
+		podmanArgs = append(podmanArgs, "--cpus", spec.ContainerCPUs)
 	}
-	if spec.DockerMemory != "" {
-		podmanArgs = append(podmanArgs, "--memory", spec.DockerMemory)
+	if spec.ContainerMemory != "" {
+		podmanArgs = append(podmanArgs, "--memory", spec.ContainerMemory)
 	}
 
 	// Add security settings

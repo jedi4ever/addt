@@ -175,11 +175,11 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 	}
 
 	// Add resource limits
-	if spec.DockerCPUs != "" {
-		dockerArgs = append(dockerArgs, "--cpus", spec.DockerCPUs)
+	if spec.ContainerCPUs != "" {
+		dockerArgs = append(dockerArgs, "--cpus", spec.ContainerCPUs)
 	}
-	if spec.DockerMemory != "" {
-		dockerArgs = append(dockerArgs, "--memory", spec.DockerMemory)
+	if spec.ContainerMemory != "" {
+		dockerArgs = append(dockerArgs, "--memory", spec.ContainerMemory)
 	}
 
 	// Add security settings

@@ -409,28 +409,28 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.GitHubTokenSource = v
 	}
 
-	// CPUs: default (2) -> global -> project -> env
-	cfg.DockerCPUs = "2" // Secure default: limit CPU usage
-	if globalCfg.Docker != nil && globalCfg.Docker.CPUs != "" {
-		cfg.DockerCPUs = globalCfg.Docker.CPUs
+	// Container CPUs: default (2) -> global -> project -> env
+	cfg.ContainerCPUs = "2" // Secure default: limit CPU usage
+	if globalCfg.Container != nil && globalCfg.Container.CPUs != "" {
+		cfg.ContainerCPUs = globalCfg.Container.CPUs
 	}
-	if projectCfg.Docker != nil && projectCfg.Docker.CPUs != "" {
-		cfg.DockerCPUs = projectCfg.Docker.CPUs
+	if projectCfg.Container != nil && projectCfg.Container.CPUs != "" {
+		cfg.ContainerCPUs = projectCfg.Container.CPUs
 	}
-	if v := os.Getenv("ADDT_DOCKER_CPUS"); v != "" {
-		cfg.DockerCPUs = v
+	if v := os.Getenv("ADDT_CONTAINER_CPUS"); v != "" {
+		cfg.ContainerCPUs = v
 	}
 
-	// Memory: default (4g) -> global -> project -> env
-	cfg.DockerMemory = "4g" // Secure default: limit memory usage
-	if globalCfg.Docker != nil && globalCfg.Docker.Memory != "" {
-		cfg.DockerMemory = globalCfg.Docker.Memory
+	// Container Memory: default (4g) -> global -> project -> env
+	cfg.ContainerMemory = "4g" // Secure default: limit memory usage
+	if globalCfg.Container != nil && globalCfg.Container.Memory != "" {
+		cfg.ContainerMemory = globalCfg.Container.Memory
 	}
-	if projectCfg.Docker != nil && projectCfg.Docker.Memory != "" {
-		cfg.DockerMemory = projectCfg.Docker.Memory
+	if projectCfg.Container != nil && projectCfg.Container.Memory != "" {
+		cfg.ContainerMemory = projectCfg.Container.Memory
 	}
-	if v := os.Getenv("ADDT_DOCKER_MEMORY"); v != "" {
-		cfg.DockerMemory = v
+	if v := os.Getenv("ADDT_CONTAINER_MEMORY"); v != "" {
+		cfg.ContainerMemory = v
 	}
 
 	// Workdir path: default (empty = current dir) -> global -> project -> env

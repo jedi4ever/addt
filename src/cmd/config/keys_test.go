@@ -9,7 +9,8 @@ import (
 
 func TestKeyValidation(t *testing.T) {
 	validKeys := []string{
-		"docker.cpus", "docker.memory", "docker.dind.enable", "docker.dind.mode",
+		"container.cpus", "container.memory",
+		"docker.dind.enable", "docker.dind.mode",
 		"env_file_load", "env_file",
 		"firewall.enabled", "firewall.mode",
 		"github.forward_token", "github.token_source",
@@ -18,6 +19,7 @@ func TestKeyValidation(t *testing.T) {
 		"log.rotate", "log.max_size", "log.max_files",
 		"node_version", "go_version",
 		"persistent", "ports.forward", "ports.expose", "ports.inject_system_prompt", "ports.range_start",
+		"vm.cpus", "vm.memory",
 		"workdir.path", "workdir.automount", "workdir.readonly",
 	}
 
@@ -118,7 +120,7 @@ func TestGetValue(t *testing.T) {
 	portsInjectSystemPrompt := true
 	cfg := &cfgtypes.GlobalConfig{
 		NodeVersion: "20",
-		Docker: &cfgtypes.DockerSettings{
+		Container: &cfgtypes.ContainerSettings{
 			CPUs: "4",
 		},
 		Persistent: &persistent,
@@ -135,7 +137,7 @@ func TestGetValue(t *testing.T) {
 		expected string
 	}{
 		{"node_version", "20"},
-		{"docker.cpus", "4"},
+		{"container.cpus", "4"},
 		{"persistent", "true"},
 		{"ports.forward", "true"},
 		{"ports.expose", "3000,8080"},

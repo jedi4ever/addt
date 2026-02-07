@@ -83,8 +83,8 @@ func HandleShellCommand(args []string, version, defaultNodeVersion, defaultGoVer
 		Provider:                cfg.Provider,
 		Extensions:              cfg.Extensions,
 		Command:                 cfg.Command,
-		DockerCPUs:              cfg.DockerCPUs,
-		DockerMemory:            cfg.DockerMemory,
+		ContainerCPUs:              cfg.ContainerCPUs,
+		ContainerMemory:            cfg.ContainerMemory,
 		Security:                cfg.Security,
 		Otel:                    cfg.Otel,
 	}

@@ -72,8 +72,10 @@ Container management (via agent):
 	fmt.Print(`
 Environment Variables:
   Container Resources:
-    ADDT_DOCKER_CPUS       CPU limit (e.g., "2", "0.5")
-    ADDT_DOCKER_MEMORY     Memory limit (e.g., "512m", "2g")
+    ADDT_CONTAINER_CPUS    Container CPU limit (e.g., "2", "0.5")
+    ADDT_CONTAINER_MEMORY  Container memory limit (e.g., "512m", "2g")
+    ADDT_VM_CPUS           VM CPU allocation (default: 4)
+    ADDT_VM_MEMORY         VM memory in MB (default: 8192)
     ADDT_PERSISTENT        Persistent container mode (default: false)
     ADDT_WORKDIR           Override working directory (default: .)
     ADDT_WORKDIR_AUTOMOUNT Auto-mount workdir to /workspace (default: true)
@@ -126,8 +128,8 @@ Configuration:
   Use 'addt config' to manage persistent settings:
     addt config list                                # Show project config (default)
     addt config list -g                             # Show global config
-    addt config set docker.cpus 2                   # Set in project config
-    addt config set docker.cpus 2 -g                # Set in global config
+    addt config set container.cpus 2                 # Set in project config
+    addt config set container.cpus 2 -g              # Set in global config
     addt config extension claude set version 1.0.5  # Set extension version
 
   Precedence: env vars > project (.addt.yaml) > global (~/.addt/config.yaml) > defaults

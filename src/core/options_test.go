@@ -129,20 +129,20 @@ func TestBuildRunOptions_DockerDindMode(t *testing.T) {
 func TestBuildRunOptions_Resources(t *testing.T) {
 	cfg := &provider.Config{
 		ImageName:        "test-image",
-		DockerCPUs:       "2",
-		DockerMemory:     "4g",
+		ContainerCPUs:       "2",
+		ContainerMemory:     "4g",
 		WorkdirAutomount: true,
 		PortRangeStart:   30000,
 	}
 
 	opts := BuildRunOptions(&mockOptionsProvider{}, cfg, "test-container", []string{}, false)
 
-	if opts.DockerCPUs != "2" {
-		t.Errorf("DockerCPUs = %q, want '2'", opts.DockerCPUs)
+	if opts.ContainerCPUs != "2" {
+		t.Errorf("ContainerCPUs = %q, want '2'", opts.ContainerCPUs)
 	}
 
-	if opts.DockerMemory != "4g" {
-		t.Errorf("DockerMemory = %q, want '4g'", opts.DockerMemory)
+	if opts.ContainerMemory != "4g" {
+		t.Errorf("ContainerMemory = %q, want '4g'", opts.ContainerMemory)
 	}
 }
 
