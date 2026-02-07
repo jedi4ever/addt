@@ -52,6 +52,7 @@ func printAddtSubcommandUsage() {
 	fmt.Println("Usage: <agent> addt <command>")
 	fmt.Println()
 	fmt.Println("Commands:")
+	fmt.Println("  update <ext> [version]    Update extension to latest or specific version")
 	fmt.Println("  build [--build-arg ...]   Build the container image")
 	fmt.Println("  shell                     Open bash shell in container")
 	fmt.Println("  containers <subcommand>   Manage containers (list, stop, rm, clean)")

@@ -60,7 +60,7 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		}
 		// Check if first arg is a known addt command (matches switch cases below)
 		switch args[0] {
-		case "run", "build", "shell", "containers", "firewall",
+		case "run", "build", "update", "shell", "containers", "firewall",
 			"extensions", "cli", "config", "version", "completion", "doctor", "init":
 			// Known command, continue processing
 		default:
@@ -102,6 +102,10 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 			}
 			args = remainingArgs
 
+		case "update":
+			HandleUpdateCommand(args[1:], version, defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
+			return
+
 		case "build", "shell", "containers", "firewall":
 			// Top-level subcommands (work for both plain addt and via "addt" namespace)
 			subCmd := args[0]
@@ -121,6 +125,8 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 			switch subCmd {
 			case "extensions":
 				extcmd.HandleCommandAgent(subArgs)
+			case "update":
+				HandleUpdateCommand(subArgs, version, defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
 			case "cli":
 				handleCliCommand(subArgs, version)
 			case "config":

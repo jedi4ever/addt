@@ -92,7 +92,7 @@ _addt_completions() {
         cword=$COMP_CWORD
     fi
 
-    local commands="run build shell containers config extensions firewall completion doctor version cli"
+    local commands="run update build shell containers config extensions firewall completion doctor version cli"
     local config_cmds="list get set unset extension path"
     local containers_cmds="list clean"
     local firewall_cmds="global project"
@@ -107,7 +107,7 @@ _addt_completions() {
             ;;
         2)
             case "${prev}" in
-                run|build|shell)
+                run|update|build|shell)
                     COMPREPLY=($(compgen -W "${extensions}" -- "${cur}"))
                     ;;
                 config)
@@ -169,6 +169,7 @@ _addt() {
 
     commands=(
         'run:Run an agent in a container'
+        'update:Update extension to latest or specific version'
         'build:Build container image for an agent'
         'shell:Open a shell in a container'
         'containers:Manage containers'
@@ -229,7 +230,7 @@ _addt() {
             ;;
         subcommand)
             case "$words[2]" in
-                run|build|shell)
+                run|update|build|shell)
                     _describe -t extensions 'extensions' extensions
                     ;;
                 config)
@@ -292,6 +293,7 @@ func fishCompletion() string {
 	// Main commands
 	sb.WriteString("# Main commands\n")
 	sb.WriteString("complete -c addt -n '__fish_use_subcommand' -a 'run' -d 'Run an agent in a container'\n")
+	sb.WriteString("complete -c addt -n '__fish_use_subcommand' -a 'update' -d 'Update extension to latest or specific version'\n")
 	sb.WriteString("complete -c addt -n '__fish_use_subcommand' -a 'build' -d 'Build container image for an agent'\n")
 	sb.WriteString("complete -c addt -n '__fish_use_subcommand' -a 'shell' -d 'Open a shell in a container'\n")
 	sb.WriteString("complete -c addt -n '__fish_use_subcommand' -a 'containers' -d 'Manage containers'\n")
@@ -307,7 +309,7 @@ func fishCompletion() string {
 	// Extensions for run/build/shell
 	sb.WriteString("# Extensions\n")
 	for _, ext := range extensions {
-		sb.WriteString(fmt.Sprintf("complete -c addt -n '__fish_seen_subcommand_from run build shell' -a '%s'\n", ext))
+		sb.WriteString(fmt.Sprintf("complete -c addt -n '__fish_seen_subcommand_from run update build shell' -a '%s'\n", ext))
 	}
 	sb.WriteString("\n")
 

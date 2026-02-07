@@ -16,6 +16,7 @@ Version: %s
 Commands:
   addt run <extension> [args...]     Run a specific extension
   addt init [-y] [-f]                Initialize project config
+  addt update <extension> [version]  Update extension to latest/specific version
   addt build <extension>             Build the container image
   addt shell <extension>             Open bash shell in container
   addt containers [list|stop|rm]     Manage containers
@@ -46,6 +47,7 @@ Version: %s
 Usage: <agent> [options] [prompt]
 
 Container management (via agent):
+  <agent> addt update [version]               Update extension to latest/specific version
   <agent> addt build                         Build the container image
   <agent> addt shell                         Open bash shell in container
   <agent> addt containers [list|stop|rm]     Manage persistent containers
