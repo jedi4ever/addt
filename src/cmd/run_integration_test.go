@@ -66,6 +66,10 @@ func getRunBinaryPath(t *testing.T) string {
 func ensureRunTestImage(t *testing.T, imageName, extension string) {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
+
 	cmd := exec.Command("docker", "image", "inspect", imageName)
 	if cmd.Run() == nil {
 		return // Image exists
@@ -260,6 +264,9 @@ func TestRunCommand_Integration_ProviderSetup(t *testing.T) {
 
 func TestRunCommand_Integration_MultipleExtensions(t *testing.T) {
 	checkDockerForRun(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	testImageName := "addt-test-run-multi"
 

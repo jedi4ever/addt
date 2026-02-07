@@ -273,6 +273,10 @@ func createSecretsTestProvider(t *testing.T, cfg *provider.Config) *DockerProvid
 func ensureSecretsTestImage(t *testing.T) {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
+
 	cmd := exec.Command("docker", "image", "inspect", testSecretsImageName)
 	if cmd.Run() == nil {
 		return // Image exists

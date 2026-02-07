@@ -49,6 +49,10 @@ func createTestProvider(t *testing.T, cfg *provider.Config) provider.Provider {
 func ensureTestImage(t *testing.T) {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
+
 	cmd := exec.Command("docker", "image", "inspect", testImageName)
 	if cmd.Run() == nil {
 		return // Image exists

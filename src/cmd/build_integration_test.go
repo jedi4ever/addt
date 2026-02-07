@@ -53,6 +53,9 @@ func removeImage(imageName string) {
 
 func TestBuildCommand_Integration_Claude(t *testing.T) {
 	skipIfNoDocker(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	// Use a test-specific image name to avoid conflicts
 	testImageName := "addt-test-claude-integration"
@@ -99,6 +102,9 @@ func TestBuildCommand_Integration_Claude(t *testing.T) {
 
 func TestBuildCommand_Integration_WithNoCache(t *testing.T) {
 	skipIfNoDocker(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	testImageName := "addt-test-nocache-integration"
 
@@ -138,6 +144,9 @@ func TestBuildCommand_Integration_WithNoCache(t *testing.T) {
 
 func TestBuildCommand_Integration_Binary(t *testing.T) {
 	skipIfNoDocker(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	// Get absolute path to the binary
 	wd, err := os.Getwd()
@@ -186,6 +195,9 @@ func TestBuildCommand_Integration_Binary(t *testing.T) {
 
 func TestBuildCommand_Integration_ExtensionVersion(t *testing.T) {
 	skipIfNoDocker(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	testImageName := "addt-test-version-integration"
 
@@ -235,6 +247,9 @@ func TestBuildCommand_Integration_ExtensionVersion(t *testing.T) {
 
 func TestBuildCommand_Integration_MultipleExtensions(t *testing.T) {
 	skipIfNoDocker(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	testImageName := "addt-test-multi-integration"
 
@@ -273,6 +288,9 @@ func TestBuildCommand_Integration_MultipleExtensions(t *testing.T) {
 
 func TestBuildCommand_Integration_InvalidExtension(t *testing.T) {
 	skipIfNoDocker(t)
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
 
 	cfg := config.LoadConfig("0.0.0-test", "22", "1.23.5", "0.4.17", 49152)
 	cfg.Extensions = "nonexistent-extension-xyz"

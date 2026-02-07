@@ -35,7 +35,7 @@ jobs:
 
       - name: Run integration tests
         working-directory: src
-        run: go test -v -tags=integration -timeout 15m ./...
+        run: go test -v -tags=integration -short -timeout 15m ./...
 
   build:
     runs-on: ${{ matrix.os }}

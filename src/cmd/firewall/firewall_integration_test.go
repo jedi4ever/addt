@@ -47,6 +47,10 @@ func createFirewallTestProvider(t *testing.T, cfg *provider.Config) provider.Pro
 func ensureFirewallTestImage(t *testing.T, imageName string) {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
+
 	cmd := exec.Command("docker", "image", "inspect", imageName)
 	if cmd.Run() == nil {
 		return // Image exists

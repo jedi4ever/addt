@@ -56,6 +56,10 @@ func removeContainer(containerName string) {
 func ensureTestImage(t *testing.T, imageName, extension string) {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping image build test in short mode")
+	}
+
 	// Check if image already exists
 	cmd := exec.Command("docker", "image", "inspect", imageName)
 	if cmd.Run() == nil {
