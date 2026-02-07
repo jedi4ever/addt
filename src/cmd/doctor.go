@@ -229,7 +229,36 @@ func checkAnthropicKey() DoctorCheck {
 func checkGitHubToken() DoctorCheck {
 	check := DoctorCheck{Name: "GitHub Token"}
 
-	// Check GH_TOKEN first
+	// Load config to check github settings
+	globalCfg, _ := config.LoadGlobalConfigFile()
+	projectCfg, _ := config.LoadProjectConfigFile()
+
+	// Resolve forward_token: default (true) -> global -> project
+	forwardToken := true
+	if globalCfg != nil && globalCfg.GitHub != nil && globalCfg.GitHub.ForwardToken != nil {
+		forwardToken = *globalCfg.GitHub.ForwardToken
+	}
+	if projectCfg != nil && projectCfg.GitHub != nil && projectCfg.GitHub.ForwardToken != nil {
+		forwardToken = *projectCfg.GitHub.ForwardToken
+	}
+
+	// Resolve token_source: default (gh_auth) -> global -> project
+	tokenSource := "gh_auth"
+	if globalCfg != nil && globalCfg.GitHub != nil && globalCfg.GitHub.TokenSource != "" {
+		tokenSource = globalCfg.GitHub.TokenSource
+	}
+	if projectCfg != nil && projectCfg.GitHub != nil && projectCfg.GitHub.TokenSource != "" {
+		tokenSource = projectCfg.GitHub.TokenSource
+	}
+
+	// If forwarding is disabled, nothing to check
+	if !forwardToken {
+		check.Status = "ok"
+		check.Message = "forwarding disabled (github.forward_token=false)"
+		return check
+	}
+
+	// Check GH_TOKEN in env
 	token := os.Getenv("GH_TOKEN")
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
@@ -245,20 +274,33 @@ func checkGitHubToken() DoctorCheck {
 		return check
 	}
 
-	// Try to detect from gh CLI
-	ghPath, err := exec.LookPath("gh")
-	if err == nil {
-		cmd := exec.Command(ghPath, "auth", "status")
-		if err := cmd.Run(); err == nil {
-			check.Status = "ok"
-			check.Message = "available via gh CLI"
+	// Token source: gh_auth (default) or env
+	if tokenSource == "gh_auth" {
+		ghPath, err := exec.LookPath("gh")
+		if err != nil {
+			check.Status = "warn"
+			check.Message = "gh CLI not installed (token_source=gh_auth)"
+			check.Fix = "Install gh CLI: https://cli.github.com/ and run 'gh auth login'"
 			return check
 		}
+
+		cmd := exec.Command(ghPath, "auth", "status")
+		if err := cmd.Run(); err != nil {
+			check.Status = "warn"
+			check.Message = "gh CLI not authenticated (token_source=gh_auth)"
+			check.Fix = "Run 'gh auth login'"
+			return check
+		}
+
+		check.Status = "ok"
+		check.Message = "available via gh CLI (token_source=gh_auth)"
+		return check
 	}
 
+	// token_source=env but no GH_TOKEN set
 	check.Status = "warn"
-	check.Message = "not configured"
-	check.Fix = "Set GH_TOKEN or run 'gh auth login'"
+	check.Message = "GH_TOKEN not set (token_source=env)"
+	check.Fix = "Set GH_TOKEN or switch to gh_auth: addt config set github.token_source gh_auth"
 	return check
 }
 
@@ -371,14 +413,15 @@ func checkNetworkConnectivity() DoctorCheck {
 	}
 
 	statusCode := strings.TrimSpace(string(output))
-	if statusCode == "401" || statusCode == "200" || statusCode == "403" {
-		// Any response means network is working
+	// Any HTTP response means network is working
+	if len(statusCode) == 3 && statusCode[0] >= '1' && statusCode[0] <= '5' {
 		check.Status = "ok"
 		check.Message = "can reach api.anthropic.com"
 		return check
 	}
 
 	check.Status = "warn"
-	check.Message = fmt.Sprintf("unexpected response from api.anthropic.com (%s)", statusCode)
+	check.Message = "could not reach api.anthropic.com"
+	check.Fix = "Check your internet connection or firewall settings"
 	return check
 }

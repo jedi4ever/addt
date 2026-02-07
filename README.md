@@ -802,7 +802,7 @@ addt doctor
 This checks Docker/Podman, API keys, disk space, and network connectivity.
 
 ### Shell completions
-Enable tab completion for commands and extensions:
+Enable tab completion for commands, extensions, and config keys (including namespaced keys like `github.token_source`, `security.pids_limit`, etc.):
 ```bash
 # Bash (add to ~/.bashrc)
 eval "$(addt completion bash)"
@@ -810,8 +810,15 @@ eval "$(addt completion bash)"
 # Zsh (add to ~/.zshrc)
 eval "$(addt completion zsh)"
 
-# Fish
+# Fish (run once)
 addt completion fish > ~/.config/fish/completions/addt.fish
+```
+
+Config keys use dot notation for namespaced settings:
+```bash
+addt config set github.token_source env
+addt config set security.pids_limit 300
+addt config get ports.forward
 ```
 
 ### macOS: "Killed: 9"

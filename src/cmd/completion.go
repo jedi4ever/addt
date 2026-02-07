@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	cfgcmd "github.com/jedi4ever/addt/cmd/config"
 	extcmd "github.com/jedi4ever/addt/cmd/extensions"
 )
 
@@ -64,22 +65,41 @@ func getExtensionNames() []string {
 	return names
 }
 
+// getConfigKeyNames returns all valid config key names for completion
+func getConfigKeyNames() []string {
+	keys := cfgcmd.GetKeys()
+	var names []string
+	for _, k := range keys {
+		names = append(names, k.Key)
+	}
+	return names
+}
+
 func bashCompletion() string {
 	extensions := strings.Join(getExtensionNames(), " ")
+	configKeys := strings.Join(getConfigKeyNames(), " ")
 
 	return fmt.Sprintf(`# addt bash completion
 _addt_completions() {
     local cur prev words cword
-    _init_completion || return
+    if declare -F _init_completion >/dev/null 2>&1; then
+        _init_completion || return
+    else
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    fi
 
     local commands="run build shell containers config extensions firewall completion doctor version cli"
-    local config_cmds="global project extension"
+    local config_cmds="list get set unset extension path"
     local containers_cmds="list clean"
     local firewall_cmds="global project"
     local firewall_actions="list allow deny remove"
     local extensions_cmds="list info new"
     local extensions="%s"
-    local config_keys="persistent ports ssh.forward_keys ssh.forward_mode ssh.allowed_keys gpg_forward dind firewall firewall_mode docker_cpus docker_memory workdir workdir_automount workdir_readonly provider node_version go_version uv_version"
+    local config_keys="%s"
 
     case "${cword}" in
         1)
@@ -111,8 +131,8 @@ _addt_completions() {
             case "${words[1]}" in
                 config)
                     case "${prev}" in
-                        global|project)
-                            COMPREPLY=($(compgen -W "list set unset" -- "${cur}"))
+                        get|set|unset)
+                            COMPREPLY=($(compgen -W "${config_keys}" -- "${cur}"))
                             ;;
                         extension)
                             COMPREPLY=($(compgen -W "${extensions}" -- "${cur}"))
@@ -131,26 +151,16 @@ _addt_completions() {
                     ;;
             esac
             ;;
-        4)
-            case "${words[1]}" in
-                config)
-                    case "${words[3]}" in
-                        set|unset)
-                            COMPREPLY=($(compgen -W "${config_keys}" -- "${cur}"))
-                            ;;
-                    esac
-                    ;;
-            esac
-            ;;
     esac
 }
 
 complete -F _addt_completions addt
-`, extensions)
+`, extensions, configKeys)
 }
 
 func zshCompletion() string {
 	extensions := strings.Join(getExtensionNames(), " ")
+	configKeys := strings.Join(getConfigKeyNames(), " ")
 
 	return fmt.Sprintf(`#compdef addt
 
@@ -174,9 +184,12 @@ _addt() {
     extensions=(%s)
 
     config_cmds=(
-        'global:Manage global configuration'
-        'project:Manage project configuration'
+        'list:List configuration values'
+        'get:Get a configuration value'
+        'set:Set a configuration value'
+        'unset:Remove a configuration value'
         'extension:Manage extension configuration'
+        'path:Show config file paths'
     )
 
     containers_cmds=(
@@ -202,18 +215,12 @@ _addt() {
         'new:Create a new extension'
     )
 
-    config_keys=(
-        'persistent' 'ports' 'ssh.forward_keys' 'ssh.forward_mode' 'ssh.allowed_keys'
-        'gpg_forward' 'dind' 'firewall' 'firewall_mode' 'docker_cpus' 'docker_memory'
-        'workdir' 'workdir_automount' 'workdir_readonly' 'provider'
-        'node_version' 'go_version' 'uv_version'
-    )
+    config_keys=(%s)
 
     _arguments -C \
         '1: :->command' \
         '2: :->subcommand' \
         '3: :->arg3' \
-        '4: :->arg4' \
         '*::arg:->args'
 
     case "$state" in
@@ -246,8 +253,8 @@ _addt() {
             case "$words[2]" in
                 config)
                     case "$words[3]" in
-                        global|project)
-                            _values 'action' 'list' 'set' 'unset'
+                        get|set|unset)
+                            _describe -t config_keys 'config keys' config_keys
                             ;;
                         extension)
                             _describe -t extensions 'extensions' extensions
@@ -266,22 +273,11 @@ _addt() {
                     ;;
             esac
             ;;
-        arg4)
-            case "$words[2]" in
-                config)
-                    case "$words[4]" in
-                        set|unset)
-                            _describe -t config_keys 'config keys' config_keys
-                            ;;
-                    esac
-                    ;;
-            esac
-            ;;
     esac
 }
 
 _addt "$@"
-`, extensions)
+`, extensions, configKeys)
 }
 
 func fishCompletion() string {
@@ -317,9 +313,20 @@ func fishCompletion() string {
 
 	// Config subcommands
 	sb.WriteString("# Config subcommands\n")
-	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'global' -d 'Manage global configuration'\n")
-	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'project' -d 'Manage project configuration'\n")
+	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'list' -d 'List configuration values'\n")
+	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'get' -d 'Get a configuration value'\n")
+	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'set' -d 'Set a configuration value'\n")
+	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'unset' -d 'Remove a configuration value'\n")
 	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'extension' -d 'Manage extension configuration'\n")
+	sb.WriteString("complete -c addt -n '__fish_seen_subcommand_from config' -a 'path' -d 'Show config file paths'\n")
+	sb.WriteString("\n")
+
+	// Config keys for get/set/unset
+	sb.WriteString("# Config keys\n")
+	configKeys := getConfigKeyNames()
+	for _, key := range configKeys {
+		sb.WriteString(fmt.Sprintf("complete -c addt -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from get set unset' -a '%s'\n", key))
+	}
 	sb.WriteString("\n")
 
 	// Containers subcommands
