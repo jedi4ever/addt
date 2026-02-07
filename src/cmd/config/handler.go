@@ -22,6 +22,20 @@ func parseGlobalFlag(args []string) ([]string, bool) {
 	return filtered, useGlobal
 }
 
+// parseVerboseFlag extracts -v/--verbose flag from args and returns filtered args
+func parseVerboseFlag(args []string) ([]string, bool) {
+	verbose := false
+	var filtered []string
+	for _, arg := range args {
+		if arg == "-v" || arg == "--verbose" {
+			verbose = true
+		} else {
+			filtered = append(filtered, arg)
+		}
+	}
+	return filtered, verbose
+}
+
 // HandleCommand handles the config subcommand
 func HandleCommand(args []string) {
 	if len(args) == 0 {
@@ -31,6 +45,8 @@ func HandleCommand(args []string) {
 
 	// Parse -g/--global flag
 	args, useGlobal := parseGlobalFlag(args)
+	// Parse -v/--verbose flag
+	args, verbose := parseVerboseFlag(args)
 	if len(args) == 0 {
 		printHelp()
 		return
@@ -39,9 +55,9 @@ func HandleCommand(args []string) {
 	switch args[0] {
 	case "list":
 		if useGlobal {
-			listGlobal()
+			listGlobal(verbose)
 		} else {
-			listProject()
+			listProject(verbose)
 		}
 	case "get":
 		if len(args) < 2 {
@@ -97,6 +113,8 @@ func handleExtension(args []string, useGlobal bool) {
 	if globalFromExt {
 		useGlobal = true
 	}
+	// Parse -v/--verbose flag from remaining args
+	args, verbose := parseVerboseFlag(args)
 
 	if len(args) == 0 {
 		printExtensionHelp()
@@ -122,13 +140,13 @@ func handleExtension(args []string, useGlobal bool) {
 
 	if len(args) < 2 {
 		// Default to list for extension
-		listExtension(extName, useGlobal)
+		listExtension(extName, useGlobal, verbose)
 		return
 	}
 
 	switch args[1] {
 	case "list":
-		listExtension(extName, useGlobal)
+		listExtension(extName, useGlobal, verbose)
 	case "get":
 		if len(args) < 3 {
 			fmt.Println("Usage: addt config extension <name> get <key> [-g]")
@@ -187,6 +205,7 @@ func printHelp() {
 	fmt.Println()
 	fmt.Println("Flags:")
 	fmt.Println("  -g, --global    Use global config instead of project config")
+	fmt.Println("  -v, --verbose   Show descriptions for each config key")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  addt config list                                # project config")

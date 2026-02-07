@@ -8,7 +8,7 @@ import (
 	cfgtypes "github.com/jedi4ever/addt/config"
 )
 
-func listGlobal() {
+func listGlobal(verbose bool) {
 	globalCfg, err := cfgtypes.LoadGlobalConfigFile()
 	if err != nil {
 		fmt.Printf("Error loading global config: %v\n", err)
@@ -24,7 +24,7 @@ func listGlobal() {
 	fmt.Printf("Global config:  %s\n", cfgtypes.GetGlobalConfigPath())
 	fmt.Printf("Project config: %s\n\n", cfgtypes.GetProjectConfigPath())
 
-	printConfigTable(projectCfg, globalCfg)
+	printConfigTable(projectCfg, globalCfg, verbose)
 }
 
 func getGlobal(key string) {

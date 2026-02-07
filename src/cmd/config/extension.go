@@ -9,7 +9,7 @@ import (
 	"github.com/jedi4ever/addt/extensions"
 )
 
-func listExtension(extName string, useGlobal bool) {
+func listExtension(extName string, useGlobal, verbose bool) {
 	// Get extension defaults from extension's config.yaml
 	var extDefaults *extensions.ExtensionConfig
 	exts, err := extensions.GetExtensions()
@@ -121,10 +121,11 @@ func listExtension(extName string, useGlobal bool) {
 			Default:      def,
 			Source:       source,
 			IsOverridden: source == "env" || source == scope,
+			Description:  k.Description,
 		})
 	}
 
-	printRows(rows)
+	printRows(rows, verbose)
 }
 
 func getExtension(extName, key string, useGlobal bool) {
