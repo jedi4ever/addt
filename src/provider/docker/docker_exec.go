@@ -120,8 +120,9 @@ func (p *DockerProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *pr
 	// by the claude extension via AddExtensionMounts above.
 	// Use ADDT_MOUNT_CLAUDE_CONFIG=false to disable them.
 
-	// Add env file if exists
-	if spec.Env["ADDT_ENV_FILE"] != "" {
+	// Add env file if exists (skip when isolate_secrets is on — values are
+	// already in spec.Env and will go through the secrets file instead)
+	if spec.Env["ADDT_ENV_FILE"] != "" && !p.config.Security.IsolateSecrets {
 		dockerArgs = append(dockerArgs, "--env-file", spec.Env["ADDT_ENV_FILE"])
 	}
 
@@ -256,6 +257,8 @@ func (p *DockerProvider) Run(spec *provider.RunSpec) error {
 		if err == nil && json != "" {
 			secretsJSON = json
 			p.filterSecretEnvVars(spec.Env, secretVarNames)
+			// ADDT_CREDENTIAL_VARS is no longer needed — secrets are in the file
+			delete(spec.Env, "ADDT_CREDENTIAL_VARS")
 		}
 	}
 

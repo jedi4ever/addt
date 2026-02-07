@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // prepareSecretsJSON collects secret environment variables and returns them as JSON
@@ -12,6 +13,14 @@ import (
 func (p *PodmanProvider) prepareSecretsJSON(imageName string, env map[string]string) (string, []string, error) {
 	// Get extension env vars (these are the "secrets")
 	secretVarNames := p.GetExtensionEnvVars(imageName)
+
+	// Also include credential script vars (e.g. CLAUDE_OAUTH_CREDENTIALS)
+	if credVars, ok := env["ADDT_CREDENTIAL_VARS"]; ok && credVars != "" {
+		for _, v := range strings.Split(credVars, ",") {
+			secretVarNames = append(secretVarNames, strings.TrimSpace(v))
+		}
+	}
+
 	if len(secretVarNames) == 0 {
 		return "", nil, nil
 	}

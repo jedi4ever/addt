@@ -124,8 +124,9 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 		podmanArgs = append(podmanArgs, "-v", fmt.Sprintf("%s:/home/%s/.gitconfig:ro", gitconfigPath, ctx.username))
 	}
 
-	// Add env file if exists
-	if spec.Env["ADDT_ENV_FILE"] != "" {
+	// Add env file if exists (skip when isolate_secrets is on — values are
+	// already in spec.Env and will go through the secrets file instead)
+	if spec.Env["ADDT_ENV_FILE"] != "" && !p.config.Security.IsolateSecrets {
 		podmanArgs = append(podmanArgs, "--env-file", spec.Env["ADDT_ENV_FILE"])
 	}
 
@@ -251,6 +252,8 @@ func (p *PodmanProvider) Run(spec *provider.RunSpec) error {
 		if err == nil && json != "" {
 			secretsJSON = json
 			p.filterSecretEnvVars(spec.Env, secretVarNames)
+			// ADDT_CREDENTIAL_VARS is no longer needed — secrets are in the file
+			delete(spec.Env, "ADDT_CREDENTIAL_VARS")
 			podmanLogger.Debugf("Secrets prepared, %d secret variables filtered", len(secretVarNames))
 		} else if err != nil {
 			podmanLogger.Debugf("Failed to prepare secrets: %v", err)
