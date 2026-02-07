@@ -1,6 +1,6 @@
 //go:build integration
 
-package docker
+package podman
 
 import (
 	"os"
@@ -9,31 +9,33 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jedi4ever/addt/config"
 	"github.com/jedi4ever/addt/provider"
 )
 
-// checkDockerForSSH verifies Docker is available
-func checkDockerForSSH(t *testing.T) {
+// checkPodmanForSSH verifies Podman is available
+func checkPodmanForSSH(t *testing.T) {
 	t.Helper()
-	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not found in PATH, skipping integration test")
+	podmanPath := config.GetPodmanPath()
+	if podmanPath == "" {
+		t.Skip("Podman not found, skipping integration test")
 	}
-	cmd := exec.Command("docker", "info")
+	cmd := exec.Command(podmanPath, "info")
 	if err := cmd.Run(); err != nil {
-		t.Skip("Docker daemon not running, skipping integration test")
+		t.Skip("Podman not running, skipping integration test")
 	}
 }
 
-// createTestProvider creates a minimal DockerProvider for testing
-func createTestProvider(t *testing.T) *DockerProvider {
+// createTestProvider creates a minimal PodmanProvider for testing
+func createTestProvider(t *testing.T) *PodmanProvider {
 	t.Helper()
-	return &DockerProvider{
+	return &PodmanProvider{
 		tempDirs: []string{},
 	}
 }
 
 func TestSSHForwarding_Integration_NoForwarding(t *testing.T) {
-	checkDockerForSSH(t)
+	checkPodmanForSSH(t)
 
 	prov := createTestProvider(t)
 	args := prov.HandleSSHForwarding(false, "", "/home/test", "testuser", nil)
@@ -44,7 +46,7 @@ func TestSSHForwarding_Integration_NoForwarding(t *testing.T) {
 }
 
 func TestSSHForwarding_Integration_InvalidMode(t *testing.T) {
-	checkDockerForSSH(t)
+	checkPodmanForSSH(t)
 
 	prov := createTestProvider(t)
 	args := prov.HandleSSHForwarding(true, "invalid", "/home/test", "testuser", nil)
@@ -55,7 +57,7 @@ func TestSSHForwarding_Integration_InvalidMode(t *testing.T) {
 }
 
 func TestSSHForwarding_Integration_NonExistentSSHDir(t *testing.T) {
-	checkDockerForSSH(t)
+	checkPodmanForSSH(t)
 
 	prov := createTestProvider(t)
 	args := prov.HandleSSHForwarding(true, "keys", "/nonexistent/path", "testuser", nil)
@@ -66,9 +68,8 @@ func TestSSHForwarding_Integration_NonExistentSSHDir(t *testing.T) {
 }
 
 func TestSSHForwarding_Integration_MountSafeFiles(t *testing.T) {
-	checkDockerForSSH(t)
+	checkPodmanForSSH(t)
 
-	// Create a temp home directory with .ssh containing sensitive and safe files
 	tmpHome, err := os.MkdirTemp("", "ssh-safe-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp home: %v", err)
@@ -80,20 +81,17 @@ func TestSSHForwarding_Integration_MountSafeFiles(t *testing.T) {
 		t.Fatalf("Failed to create .ssh dir: %v", err)
 	}
 
-	// Create safe and unsafe files
 	safeFiles := []string{"config", "known_hosts", "id_rsa.pub", "id_ed25519.pub"}
 	unsafeFiles := []string{"id_rsa", "id_ed25519"}
 
 	for _, name := range safeFiles {
-		path := filepath.Join(sshDir, name)
-		if err := os.WriteFile(path, []byte("safe content"), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(sshDir, name), []byte("safe content"), 0600); err != nil {
 			t.Fatalf("Failed to create %s: %v", name, err)
 		}
 	}
 
 	for _, name := range unsafeFiles {
-		path := filepath.Join(sshDir, name)
-		if err := os.WriteFile(path, []byte("private key content"), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(sshDir, name), []byte("private key content"), 0600); err != nil {
 			t.Fatalf("Failed to create %s: %v", name, err)
 		}
 	}
@@ -107,7 +105,6 @@ func TestSSHForwarding_Integration_MountSafeFiles(t *testing.T) {
 
 	args := prov.mountSafeSSHFiles(tmpHome, "testuser")
 
-	// Should have created a temp dir and mounted it
 	if len(prov.tempDirs) == 0 {
 		t.Fatal("Expected temp dir to be created")
 	}
@@ -115,23 +112,15 @@ func TestSSHForwarding_Integration_MountSafeFiles(t *testing.T) {
 	tmpDir := prov.tempDirs[0]
 
 	// Check safe files were copied
-	for _, name := range []string{"config", "known_hosts"} {
-		path := filepath.Join(tmpDir, name)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+	for _, name := range []string{"config", "known_hosts", "id_rsa.pub"} {
+		if _, err := os.Stat(filepath.Join(tmpDir, name)); os.IsNotExist(err) {
 			t.Errorf("Expected safe file %s to be copied", name)
 		}
 	}
 
-	// Check public keys were copied
-	pubKeyPath := filepath.Join(tmpDir, "id_rsa.pub")
-	if _, err := os.Stat(pubKeyPath); os.IsNotExist(err) {
-		t.Error("Expected public key to be copied")
-	}
-
 	// Check private keys were NOT copied
 	for _, name := range unsafeFiles {
-		path := filepath.Join(tmpDir, name)
-		if _, err := os.Stat(path); err == nil {
+		if _, err := os.Stat(filepath.Join(tmpDir, name)); err == nil {
 			t.Errorf("Private key %s should NOT be copied", name)
 		}
 	}
@@ -146,16 +135,14 @@ func TestSSHForwarding_Integration_MountSafeFiles(t *testing.T) {
 			}
 		}
 	}
-
 	if !foundMount {
 		t.Errorf("Expected temp dir mount in args, got: %v", args)
 	}
 }
 
 func TestSSHForwarding_Integration_SafeFilesInContainer(t *testing.T) {
-	checkDockerForSSH(t)
+	checkPodmanForSSH(t)
 
-	// Create temp home with safe and unsafe SSH files
 	tmpHome, err := os.MkdirTemp("", "ssh-container-safe-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp home: %v", err)
@@ -182,7 +169,6 @@ func TestSSHForwarding_Integration_SafeFilesInContainer(t *testing.T) {
 		t.Fatal("Expected temp dir to be created")
 	}
 
-	// Build docker args to mount the safe dir
 	mountArg := ""
 	for i, arg := range args {
 		if arg == "-v" && i+1 < len(args) {
@@ -195,7 +181,8 @@ func TestSSHForwarding_Integration_SafeFilesInContainer(t *testing.T) {
 	}
 
 	// Run container and verify only safe files exist
-	cmd := exec.Command("docker", "run", "--rm",
+	podmanPath := config.GetPodmanPath()
+	cmd := exec.Command(podmanPath, "run", "--rm",
 		"-v", mountArg,
 		"alpine:latest",
 		"ls", "-1", "/home/testuser/.ssh/")
@@ -206,22 +193,19 @@ func TestSSHForwarding_Integration_SafeFilesInContainer(t *testing.T) {
 	}
 
 	files := string(output)
-	// Safe files should be present
 	for _, expected := range []string{"config", "known_hosts", "id_rsa.pub"} {
 		if !strings.Contains(files, expected) {
 			t.Errorf("Expected %s in container .ssh dir, got: %s", expected, files)
 		}
 	}
-	// Private key should NOT be present
 	if strings.Contains(files, "id_rsa\n") {
 		t.Errorf("Private key id_rsa should NOT be in container .ssh dir, got: %s", files)
 	}
 }
 
 func TestSSHForwarding_Integration_FullProviderWithSSH(t *testing.T) {
-	checkDockerForSSH(t)
+	checkPodmanForSSH(t)
 
-	// Create temp SSH dir
 	tmpHome, err := os.MkdirTemp("", "ssh-provider-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp home: %v", err)
@@ -237,7 +221,6 @@ func TestSSHForwarding_Integration_FullProviderWithSSH(t *testing.T) {
 		t.Fatalf("Failed to create config: %v", err)
 	}
 
-	// Create a full provider config
 	cfg := &provider.Config{
 		Extensions:     "claude",
 		SSHForwardKeys: true,
@@ -247,7 +230,7 @@ func TestSSHForwarding_Integration_FullProviderWithSSH(t *testing.T) {
 		UvVersion:      "0.4.17",
 	}
 
-	prov := &DockerProvider{
+	prov := &PodmanProvider{
 		config:   cfg,
 		tempDirs: []string{},
 	}
