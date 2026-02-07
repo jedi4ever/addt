@@ -24,8 +24,6 @@ func GetKeys() []KeyInfo {
 		{Key: "env_file_load", Description: "Load .env file (default: true)", Type: "bool", EnvVar: "ADDT_ENV_FILE_LOAD"},
 		{Key: "env_file", Description: "Path to .env file (default: .env)", Type: "string", EnvVar: "ADDT_ENV_FILE"},
 		{Key: "go_version", Description: "Go version", Type: "string", EnvVar: "ADDT_GO_VERSION"},
-		{Key: "log", Description: "Enable command logging", Type: "bool", EnvVar: "ADDT_LOG"},
-		{Key: "log_file", Description: "Log file path", Type: "string", EnvVar: "ADDT_LOG_FILE"},
 		{Key: "node_version", Description: "Node.js version", Type: "string", EnvVar: "ADDT_NODE_VERSION"},
 		{Key: "persistent", Description: "Enable persistent container mode", Type: "bool", EnvVar: "ADDT_PERSISTENT"},
 		{Key: "history_persist", Description: "Persist shell history between sessions (default: false)", Type: "bool", EnvVar: "ADDT_HISTORY_PERSIST"},
@@ -37,6 +35,8 @@ func GetKeys() []KeyInfo {
 	keys = append(keys, GetGitHubKeys()...)
 	// Add GPG keys
 	keys = append(keys, GetGPGKeys()...)
+	// Add log keys
+	keys = append(keys, GetLogKeys()...)
 	// Add ports keys
 	keys = append(keys, GetPortsKeys()...)
 	// Add SSH keys
@@ -87,10 +87,24 @@ func GetDefaultValue(key string) string {
 		return ""
 	case "gpg.allowed_key_ids":
 		return ""
-	case "log":
+	case "log.enabled":
 		return "false"
-	case "log_file":
+	case "log.output":
+		return "stderr"
+	case "log.file":
 		return "addt.log"
+	case "log.dir":
+		return ""
+	case "log.level":
+		return "INFO"
+	case "log.modules":
+		return "*"
+	case "log.rotate":
+		return "false"
+	case "log.max_size":
+		return "10m"
+	case "log.max_files":
+		return "5"
 	case "docker.memory":
 		return ""
 	case "node_version":
@@ -268,12 +282,6 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 		return cfg.EnvFile
 	case "go_version":
 		return cfg.GoVersion
-	case "log":
-		if cfg.Log != nil {
-			return fmt.Sprintf("%v", *cfg.Log)
-		}
-	case "log_file":
-		return cfg.LogFile
 	case "node_version":
 		return cfg.NodeVersion
 	case "persistent":
@@ -302,6 +310,10 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 	// Check GPG keys
 	if strings.HasPrefix(key, "gpg.") {
 		return GetGPGValue(cfg.GPG, key)
+	}
+	// Check log keys
+	if strings.HasPrefix(key, "log.") {
+		return GetLogValue(cfg.Log, key)
 	}
 	// Check ports keys
 	if strings.HasPrefix(key, "ports.") {
@@ -336,11 +348,6 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 		cfg.EnvFile = value
 	case "go_version":
 		cfg.GoVersion = value
-	case "log":
-		b := value == "true"
-		cfg.Log = &b
-	case "log_file":
-		cfg.LogFile = value
 	case "node_version":
 		cfg.NodeVersion = value
 	case "persistent":
@@ -379,6 +386,13 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 				cfg.GPG = &cfgtypes.GPGSettings{}
 			}
 			SetGPGValue(cfg.GPG, key, value)
+		}
+		// Check log keys
+		if strings.HasPrefix(key, "log.") {
+			if cfg.Log == nil {
+				cfg.Log = &cfgtypes.LogSettings{}
+			}
+			SetLogValue(cfg.Log, key, value)
 		}
 		// Check ports keys
 		if strings.HasPrefix(key, "ports.") {
@@ -427,10 +441,6 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 		cfg.EnvFile = ""
 	case "go_version":
 		cfg.GoVersion = ""
-	case "log":
-		cfg.Log = nil
-	case "log_file":
-		cfg.LogFile = ""
 	case "node_version":
 		cfg.NodeVersion = ""
 	case "persistent":
@@ -455,6 +465,10 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 		// Check GPG keys
 		if strings.HasPrefix(key, "gpg.") && cfg.GPG != nil {
 			UnsetGPGValue(cfg.GPG, key)
+		}
+		// Check log keys
+		if strings.HasPrefix(key, "log.") && cfg.Log != nil {
+			UnsetLogValue(cfg.Log, key)
 		}
 		// Check ports keys
 		if strings.HasPrefix(key, "ports.") && cfg.Ports != nil {

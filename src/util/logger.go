@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,19 +22,29 @@ const (
 )
 
 // Logger is the singleton logger that writes to stderr by default,
-// or to a file if one is specified
+// or to a file/stdout if configured
 type Logger struct {
 	mu               sync.Mutex
+	output           string // "stderr", "stdout", "file"
 	logFile          string
+	logDir           string
 	enabled          bool
 	file             *os.File
 	logLevel         LogLevel
 	levelInitialized bool // Track if we've initialized from env var
+	modules          string
+	rotate           bool
+	maxSize          int64 // in bytes
+	maxFiles         int
 }
 
 var defaultLogger = &Logger{
 	enabled:  true,         // Enabled by default, logs go to stderr
+	output:   "stderr",
 	logLevel: LogLevelInfo, // Default to INFO level
+	modules:  "*",
+	maxSize:  10 * 1024 * 1024, // 10MB
+	maxFiles: 5,
 }
 
 // parseLogLevel parses the log level from environment variable or string
@@ -52,6 +64,30 @@ func parseLogLevel(levelStr string) LogLevel {
 	}
 }
 
+// parseMaxSize parses a human-readable size string (e.g., "10m", "1g", "500k")
+func parseMaxSize(s string) int64 {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return 10 * 1024 * 1024 // default 10MB
+	}
+	multiplier := int64(1)
+	if strings.HasSuffix(s, "g") || strings.HasSuffix(s, "gb") {
+		multiplier = 1024 * 1024 * 1024
+		s = strings.TrimRight(s, "gb")
+	} else if strings.HasSuffix(s, "m") || strings.HasSuffix(s, "mb") {
+		multiplier = 1024 * 1024
+		s = strings.TrimRight(s, "mb")
+	} else if strings.HasSuffix(s, "k") || strings.HasSuffix(s, "kb") {
+		multiplier = 1024
+		s = strings.TrimRight(s, "kb")
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || n <= 0 {
+		return 10 * 1024 * 1024 // default 10MB
+	}
+	return n * multiplier
+}
+
 // initLogLevel initializes the log level from environment variable.
 // Must be called with defaultLogger.mu locked.
 func initLogLevel() {
@@ -63,12 +99,33 @@ func initLogLevel() {
 	}
 }
 
+// logFilePath returns the full path to the log file
+func (l *Logger) logFilePath() string {
+	if l.logFile == "" {
+		return ""
+	}
+	if l.logDir != "" {
+		return filepath.Join(l.logDir, l.logFile)
+	}
+	return l.logFile
+}
+
 // InitLogger initializes the singleton logger with the log file path.
 // If logFile is empty, logs will go to stderr. If logFile is specified,
 // logs will be written to that file.
 // The log level is read from ADDT_LOG_LEVEL environment variable (default: INFO).
 // If enabled is false, logging is disabled regardless of other settings.
 func InitLogger(logFile string, enabled bool) {
+	output := "stderr"
+	if logFile != "" {
+		output = "file"
+	}
+	InitLoggerFull(logFile, "", output, enabled, "", "*", false, "10m", 5)
+}
+
+// InitLoggerFull initializes the logger with all configuration options.
+// output can be "stderr", "stdout", or "file".
+func InitLoggerFull(logFile, logDir, output string, enabled bool, level, modules string, rotate bool, maxSize string, maxFiles int) {
 	defaultLogger.mu.Lock()
 	defer defaultLogger.mu.Unlock()
 
@@ -79,12 +136,73 @@ func InitLogger(logFile string, enabled bool) {
 	}
 
 	defaultLogger.logFile = logFile
+	defaultLogger.logDir = logDir
+	defaultLogger.output = output
+	if defaultLogger.output == "" {
+		defaultLogger.output = "stderr"
+	}
 	defaultLogger.enabled = enabled
+	defaultLogger.modules = modules
+	defaultLogger.rotate = rotate
+	defaultLogger.maxSize = parseMaxSize(maxSize)
+	if maxFiles > 0 {
+		defaultLogger.maxFiles = maxFiles
+	}
 
-	// Reset level initialization flag so we re-read env var
+	// Ensure log directory exists if specified
+	if logDir != "" {
+		os.MkdirAll(logDir, 0755)
+	}
+
+	// Set level from parameter first, then allow env var override
+	if level != "" {
+		defaultLogger.logLevel = parseLogLevel(level)
+	}
+	// Reset level initialization flag so we re-read env var (env overrides config)
 	defaultLogger.levelInitialized = false
 	// Initialize log level from environment variable
 	initLogLevel()
+}
+
+// isModuleAllowed checks if a module name passes the module filter.
+func (l *Logger) isModuleAllowed(module string) bool {
+	if l.modules == "" || l.modules == "*" {
+		return true
+	}
+	for _, m := range strings.Split(l.modules, ",") {
+		if strings.TrimSpace(m) == module {
+			return true
+		}
+	}
+	return false
+}
+
+// rotateIfNeeded checks the current log file size and rotates if necessary.
+// Must be called with l.mu locked.
+func (l *Logger) rotateIfNeeded() {
+	if !l.rotate || l.file == nil {
+		return
+	}
+	info, err := l.file.Stat()
+	if err != nil || info.Size() < l.maxSize {
+		return
+	}
+
+	// Close current file
+	l.file.Close()
+	l.file = nil
+
+	logPath := l.logFilePath()
+
+	// Rotate: remove oldest, shift others
+	oldest := fmt.Sprintf("%s.%d", logPath, l.maxFiles)
+	os.Remove(oldest)
+	for i := l.maxFiles - 1; i >= 1; i-- {
+		src := fmt.Sprintf("%s.%d", logPath, i)
+		dst := fmt.Sprintf("%s.%d", logPath, i+1)
+		os.Rename(src, dst)
+	}
+	os.Rename(logPath, logPath+".1")
 }
 
 // Log returns a module-scoped handle for the singleton logger
@@ -114,33 +232,43 @@ func (m *ModuleLogger) log(level LogLevel, levelStr, format string, args ...inte
 		return
 	}
 
+	// Check module filter
+	if !m.logger.isModuleAllowed(m.module) {
+		return
+	}
+
+	// Rotate if needed before writing
+	m.logger.rotateIfNeeded()
+
 	var writer io.Writer
 
-	// If logFile is specified, write to file
-	if m.logger.logFile != "" {
-		// Open file if not already open
-		if m.logger.file == nil {
-			f, err := os.OpenFile(m.logger.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				// Fallback to stderr if file can't be opened
-				writer = os.Stderr
+	switch m.logger.output {
+	case "stdout":
+		writer = os.Stdout
+	case "file":
+		logPath := m.logger.logFilePath()
+		if logPath != "" {
+			if m.logger.file == nil {
+				f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					writer = os.Stderr // fallback
+				} else {
+					m.logger.file = f
+					writer = f
+				}
 			} else {
-				m.logger.file = f
-				writer = f
+				writer = m.logger.file
 			}
 		} else {
-			writer = m.logger.file
+			writer = os.Stderr // fallback if no file specified
 		}
-	} else {
-		// Default to stderr
+	default: // "stderr"
 		writer = os.Stderr
 	}
 
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	msg := fmt.Sprintf(format, args...)
 	fmt.Fprintf(writer, "[%s] %s [%s] %s\n", timestamp, levelStr, m.module, msg)
-	// Note: fmt.Fprintf flushes automatically on newlines for terminal output
-	// For file output, buffering is acceptable for performance
 }
 
 // Debug logs a debug message (only if log level is DEBUG)

@@ -401,3 +401,183 @@ func TestModuleLogger_LogLevelFiltering_InvalidLevel(t *testing.T) {
 		t.Error("ERROR message should be logged with invalid level (defaults to INFO)")
 	}
 }
+
+func TestModuleLogger_ModuleFilter(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test.log")
+
+	InitLoggerFull(logFile, "", "file", true, "INFO", "docker,root", false, "10m", 5)
+	defer func() { defaultLogger.enabled = false }()
+
+	Log("docker").Info("docker message")
+	Log("root").Info("root message")
+	Log("env").Info("env message")
+
+	content, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	output := string(content)
+	if !strings.Contains(output, "docker message") {
+		t.Error("docker module should be logged when in filter")
+	}
+	if !strings.Contains(output, "root message") {
+		t.Error("root module should be logged when in filter")
+	}
+	if strings.Contains(output, "env message") {
+		t.Error("env module should be filtered out")
+	}
+}
+
+func TestModuleLogger_ModuleFilter_Wildcard(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test.log")
+
+	InitLoggerFull(logFile, "", "file", true, "INFO", "*", false, "10m", 5)
+	defer func() { defaultLogger.enabled = false }()
+
+	Log("docker").Info("docker message")
+	Log("env").Info("env message")
+
+	content, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	output := string(content)
+	if !strings.Contains(output, "docker message") {
+		t.Error("all modules should be logged with wildcard filter")
+	}
+	if !strings.Contains(output, "env message") {
+		t.Error("all modules should be logged with wildcard filter")
+	}
+}
+
+func TestModuleLogger_LogDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	logDir := filepath.Join(tmpDir, "logs")
+
+	InitLoggerFull("test.log", logDir, "file", true, "INFO", "*", false, "10m", 5)
+	defer func() { defaultLogger.enabled = false }()
+
+	Log("test").Info("dir test message")
+
+	logPath := filepath.Join(logDir, "test.log")
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read log file at %s: %v", logPath, err)
+	}
+
+	if !strings.Contains(string(content), "dir test message") {
+		t.Error("log message should be written to log dir")
+	}
+}
+
+func TestModuleLogger_Rotation(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test.log")
+
+	// Use tiny max size (100 bytes) to trigger rotation quickly
+	InitLoggerFull(logFile, "", "file", true, "INFO", "*", true, "100", 3)
+	defer func() { defaultLogger.enabled = false }()
+
+	// Write enough messages to trigger rotation
+	for i := 0; i < 20; i++ {
+		Log("test").Info("rotation test message number %d padding", i)
+	}
+
+	// Check that rotated files exist
+	if _, err := os.Stat(logFile + ".1"); os.IsNotExist(err) {
+		t.Error("Expected rotated file test.log.1 to exist")
+	}
+}
+
+func TestParseMaxSize(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"10m", 10 * 1024 * 1024},
+		{"1g", 1024 * 1024 * 1024},
+		{"500k", 500 * 1024},
+		{"", 10 * 1024 * 1024},
+		{"invalid", 10 * 1024 * 1024},
+		{"100", 100},
+	}
+
+	for _, tt := range tests {
+		got := parseMaxSize(tt.input)
+		if got != tt.expected {
+			t.Errorf("parseMaxSize(%q) = %d, want %d", tt.input, got, tt.expected)
+		}
+	}
+}
+
+func TestModuleLogger_LevelFromConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "test.log")
+
+	// Clear env var so config level takes effect
+	oldEnv := os.Getenv("ADDT_LOG_LEVEL")
+	os.Unsetenv("ADDT_LOG_LEVEL")
+	defer func() {
+		if oldEnv != "" {
+			os.Setenv("ADDT_LOG_LEVEL", oldEnv)
+		}
+		defaultLogger.enabled = false
+	}()
+
+	InitLoggerFull(logFile, "", "file", true, "WARN", "*", false, "10m", 5)
+
+	Log("test").Debug("debug msg")
+	Log("test").Info("info msg")
+	Log("test").Warning("warn msg")
+
+	content, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	output := string(content)
+	if strings.Contains(output, "debug msg") {
+		t.Error("DEBUG should be filtered at WARN level set via config")
+	}
+	if strings.Contains(output, "info msg") {
+		t.Error("INFO should be filtered at WARN level set via config")
+	}
+	if !strings.Contains(output, "warn msg") {
+		t.Error("WARN should be logged at WARN level set via config")
+	}
+}
+
+func TestModuleLogger_OutputStdout(t *testing.T) {
+	oldEnv := os.Getenv("ADDT_LOG_LEVEL")
+	os.Unsetenv("ADDT_LOG_LEVEL")
+	defer func() {
+		if oldEnv != "" {
+			os.Setenv("ADDT_LOG_LEVEL", oldEnv)
+		}
+		defaultLogger.enabled = false
+	}()
+
+	InitLoggerFull("", "", "stdout", true, "INFO", "*", false, "10m", 5)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	Log("test").Info("stdout test message")
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	if !strings.Contains(output, "stdout test message") {
+		t.Errorf("Expected stdout to contain 'stdout test message', got: %s", output)
+	}
+}

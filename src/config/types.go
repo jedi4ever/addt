@@ -62,6 +62,19 @@ type GPGSettings struct {
 	AllowedKeyIDs []string `yaml:"allowed_key_ids,omitempty"` // GPG key IDs allowed
 }
 
+// LogSettings holds logging configuration
+type LogSettings struct {
+	Enabled  *bool  `yaml:"enabled,omitempty"`   // Enable command logging
+	Output   string `yaml:"output,omitempty"`    // Output target: stderr, stdout, file (default: stderr)
+	File     string `yaml:"file,omitempty"`      // Log file name (default: addt.log)
+	Dir      string `yaml:"dir,omitempty"`       // Log directory (default: ~/.addt/logs)
+	Level    string `yaml:"level,omitempty"`     // Log level: DEBUG, INFO, WARN, ERROR (default: INFO)
+	Modules  string `yaml:"modules,omitempty"`   // Comma-separated module filter (default: * for all)
+	Rotate   *bool  `yaml:"rotate,omitempty"`    // Enable log rotation (default: false)
+	MaxSize  string `yaml:"max_size,omitempty"`  // Max file size before rotating (e.g. "10m", default: 10m)
+	MaxFiles *int   `yaml:"max_files,omitempty"` // Number of rotated files to keep (default: 5)
+}
+
 // WorkdirSettings holds working directory configuration
 type WorkdirSettings struct {
 	Path      string `yaml:"path,omitempty"`      // Override working directory (default: current directory)
@@ -80,8 +93,7 @@ type GlobalConfig struct {
 	EnvFile          string          `yaml:"env_file,omitempty"`
 	GoVersion        string          `yaml:"go_version,omitempty"`
 	GPG              *GPGSettings    `yaml:"gpg,omitempty"`
-	Log              *bool           `yaml:"log,omitempty"`
-	LogFile          string          `yaml:"log_file,omitempty"`
+	Log              *LogSettings    `yaml:"log,omitempty"`
 	NodeVersion      string          `yaml:"node_version,omitempty"`
 	Persistent       *bool           `yaml:"persistent,omitempty"`
 	Ports            *PortsSettings  `yaml:"ports,omitempty"`
@@ -124,7 +136,14 @@ type Config struct {
 	EnvFileLoad              bool
 	EnvFile                  string
 	LogEnabled               bool
+	LogOutput                string // stderr, stdout, file (default: stderr)
 	LogFile                  string
+	LogLevel                 string // DEBUG, INFO, WARN, ERROR (default: INFO)
+	LogDir                   string // Log directory (default: ~/.addt/logs)
+	LogModules               string // Comma-separated module filter (default: * for all)
+	LogRotate                bool   // Enable log rotation
+	LogMaxSize               string // Max file size before rotating (e.g. "10m")
+	LogMaxFiles              int    // Number of rotated files to keep
 	ImageName                string
 	Persistent               bool                       // Enable persistent container mode
 	WorkdirAutomount         bool                       // Auto-mount working directory

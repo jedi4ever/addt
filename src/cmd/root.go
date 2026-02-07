@@ -144,9 +144,9 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 	cfg := config.LoadConfig(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion, defaultPortRangeStart)
 
 	// Initialize logger
-	util.InitLogger(cfg.LogFile, cfg.LogEnabled)
+	util.InitLoggerFull(cfg.LogFile, cfg.LogDir, cfg.LogOutput, cfg.LogEnabled, cfg.LogLevel, cfg.LogModules, cfg.LogRotate, cfg.LogMaxSize, cfg.LogMaxFiles)
 	logger := util.Log("root")
-	logger.Debugf("Initializing logger with file: %s, enabled: %v", cfg.LogFile, cfg.LogEnabled)
+	logger.Debugf("Initializing logger with file: %s, dir: %s, enabled: %v, level: %s, modules: %s", cfg.LogFile, cfg.LogDir, cfg.LogEnabled, cfg.LogLevel, cfg.LogModules)
 	// Note: --yolo and other agent-specific arg transformations are handled
 	// by each extension's args.sh script in the container
 

@@ -14,6 +14,8 @@ func TestKeyValidation(t *testing.T) {
 		"firewall.enabled", "firewall.mode",
 		"github.forward_token", "github.token_source",
 		"gpg.forward", "gpg.allowed_key_ids",
+		"log.enabled", "log.output", "log.file", "log.dir", "log.level", "log.modules",
+		"log.rotate", "log.max_size", "log.max_files",
 		"node_version", "go_version",
 		"persistent", "ports.forward", "ports.expose", "ports.inject_system_prompt", "ports.range_start",
 		"workdir.path", "workdir.automount", "workdir.readonly",

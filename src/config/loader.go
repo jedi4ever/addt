@@ -198,14 +198,26 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.DockerDindMode = v
 	}
 
+	// Log output: default (stderr) -> global -> project -> env
+	cfg.LogOutput = "stderr"
+	if globalCfg.Log != nil && globalCfg.Log.Output != "" {
+		cfg.LogOutput = globalCfg.Log.Output
+	}
+	if projectCfg.Log != nil && projectCfg.Log.Output != "" {
+		cfg.LogOutput = projectCfg.Log.Output
+	}
+	if v := os.Getenv("ADDT_LOG_OUTPUT"); v != "" {
+		cfg.LogOutput = v
+	}
+
 	// Log file: default -> global -> project -> env
 	// Check this first because setting ADDT_LOG_FILE should auto-enable logging
 	cfg.LogFile = "addt.log"
-	if globalCfg.LogFile != "" {
-		cfg.LogFile = globalCfg.LogFile
+	if globalCfg.Log != nil && globalCfg.Log.File != "" {
+		cfg.LogFile = globalCfg.Log.File
 	}
-	if projectCfg.LogFile != "" {
-		cfg.LogFile = projectCfg.LogFile
+	if projectCfg.Log != nil && projectCfg.Log.File != "" {
+		cfg.LogFile = projectCfg.Log.File
 	}
 	// Check if ADDT_LOG_FILE is set (even if empty, to allow stderr logging)
 	logFileEnvSet := false
@@ -217,14 +229,88 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 	// Log enabled: default (false) -> global -> project -> env
 	// Auto-enable if ADDT_LOG_FILE is set (even if empty)
 	cfg.LogEnabled = logFileEnvSet
-	if globalCfg.Log != nil {
-		cfg.LogEnabled = *globalCfg.Log
+	if globalCfg.Log != nil && globalCfg.Log.Enabled != nil {
+		cfg.LogEnabled = *globalCfg.Log.Enabled
 	}
-	if projectCfg.Log != nil {
-		cfg.LogEnabled = *projectCfg.Log
+	if projectCfg.Log != nil && projectCfg.Log.Enabled != nil {
+		cfg.LogEnabled = *projectCfg.Log.Enabled
 	}
 	if v := os.Getenv("ADDT_LOG"); v != "" {
 		cfg.LogEnabled = v == "true"
+	}
+
+	// Log dir: default (~/.addt/logs) -> global -> project -> env
+	cfg.LogDir = ""
+	if globalCfg.Log != nil && globalCfg.Log.Dir != "" {
+		cfg.LogDir = globalCfg.Log.Dir
+	}
+	if projectCfg.Log != nil && projectCfg.Log.Dir != "" {
+		cfg.LogDir = projectCfg.Log.Dir
+	}
+	if v := os.Getenv("ADDT_LOG_DIR"); v != "" {
+		cfg.LogDir = v
+	}
+
+	// Log level: default (INFO) -> global -> project -> env
+	cfg.LogLevel = "INFO"
+	if globalCfg.Log != nil && globalCfg.Log.Level != "" {
+		cfg.LogLevel = globalCfg.Log.Level
+	}
+	if projectCfg.Log != nil && projectCfg.Log.Level != "" {
+		cfg.LogLevel = projectCfg.Log.Level
+	}
+	if v := os.Getenv("ADDT_LOG_LEVEL"); v != "" {
+		cfg.LogLevel = v
+	}
+
+	// Log modules: default (*) -> global -> project -> env
+	cfg.LogModules = "*"
+	if globalCfg.Log != nil && globalCfg.Log.Modules != "" {
+		cfg.LogModules = globalCfg.Log.Modules
+	}
+	if projectCfg.Log != nil && projectCfg.Log.Modules != "" {
+		cfg.LogModules = projectCfg.Log.Modules
+	}
+	if v := os.Getenv("ADDT_LOG_MODULES"); v != "" {
+		cfg.LogModules = v
+	}
+
+	// Log rotate: default (false) -> global -> project -> env
+	cfg.LogRotate = false
+	if globalCfg.Log != nil && globalCfg.Log.Rotate != nil {
+		cfg.LogRotate = *globalCfg.Log.Rotate
+	}
+	if projectCfg.Log != nil && projectCfg.Log.Rotate != nil {
+		cfg.LogRotate = *projectCfg.Log.Rotate
+	}
+	if v := os.Getenv("ADDT_LOG_ROTATE"); v != "" {
+		cfg.LogRotate = v == "true"
+	}
+
+	// Log max size: default (10m) -> global -> project -> env
+	cfg.LogMaxSize = "10m"
+	if globalCfg.Log != nil && globalCfg.Log.MaxSize != "" {
+		cfg.LogMaxSize = globalCfg.Log.MaxSize
+	}
+	if projectCfg.Log != nil && projectCfg.Log.MaxSize != "" {
+		cfg.LogMaxSize = projectCfg.Log.MaxSize
+	}
+	if v := os.Getenv("ADDT_LOG_MAX_SIZE"); v != "" {
+		cfg.LogMaxSize = v
+	}
+
+	// Log max files: default (5) -> global -> project -> env
+	cfg.LogMaxFiles = 5
+	if globalCfg.Log != nil && globalCfg.Log.MaxFiles != nil {
+		cfg.LogMaxFiles = *globalCfg.Log.MaxFiles
+	}
+	if projectCfg.Log != nil && projectCfg.Log.MaxFiles != nil {
+		cfg.LogMaxFiles = *projectCfg.Log.MaxFiles
+	}
+	if v := os.Getenv("ADDT_LOG_MAX_FILES"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.LogMaxFiles = i
+		}
 	}
 
 	// Persistent: default (false) -> global -> project -> env
