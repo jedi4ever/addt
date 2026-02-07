@@ -27,6 +27,7 @@ func GetKeys() []KeyInfo {
 		{Key: "node_version", Description: "Node.js version", Type: "string", EnvVar: "ADDT_NODE_VERSION"},
 		{Key: "persistent", Description: "Enable persistent container mode", Type: "bool", EnvVar: "ADDT_PERSISTENT"},
 		{Key: "history_persist", Description: "Persist shell history between sessions (default: false)", Type: "bool", EnvVar: "ADDT_HISTORY_PERSIST"},
+		{Key: "tmux_forward", Description: "Forward tmux socket to container (default: false)", Type: "bool", EnvVar: "ADDT_TMUX_FORWARD"},
 		{Key: "uv_version", Description: "UV Python package manager version", Type: "string", EnvVar: "ADDT_UV_VERSION"},
 	}
 	// Add firewall keys
@@ -144,6 +145,8 @@ func GetDefaultValue(key string) string {
 	case "ssh.dir":
 		return ""
 	case "history_persist":
+		return "false"
+	case "tmux_forward":
 		return "false"
 	case "uv_version":
 		return "latest"
@@ -310,6 +313,10 @@ func GetValue(cfg *cfgtypes.GlobalConfig, key string) string {
 		if cfg.HistoryPersist != nil {
 			return fmt.Sprintf("%v", *cfg.HistoryPersist)
 		}
+	case "tmux_forward":
+		if cfg.TmuxForward != nil {
+			return fmt.Sprintf("%v", *cfg.TmuxForward)
+		}
 	case "uv_version":
 		return cfg.UvVersion
 	}
@@ -386,6 +393,9 @@ func SetValue(cfg *cfgtypes.GlobalConfig, key, value string) {
 	case "history_persist":
 		b := value == "true"
 		cfg.HistoryPersist = &b
+	case "tmux_forward":
+		b := value == "true"
+		cfg.TmuxForward = &b
 	case "uv_version":
 		cfg.UvVersion = value
 	default:
@@ -498,6 +508,8 @@ func UnsetValue(cfg *cfgtypes.GlobalConfig, key string) {
 		cfg.Persistent = nil
 	case "history_persist":
 		cfg.HistoryPersist = nil
+	case "tmux_forward":
+		cfg.TmuxForward = nil
 	case "uv_version":
 		cfg.UvVersion = ""
 	default:
