@@ -36,6 +36,22 @@ if [ "$(id -u)" = "0" ]; then
         /usr/local/bin/init-firewall.sh
     fi
 
+    # Set up nested Podman if in DinD mode (needs root for subuid/subgid)
+    if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
+        debug_log "DinD mode enabled, setting up Podman-in-Podman (as root)"
+        echo "Setting up Podman-in-Podman (isolated mode)..."
+        # Ensure subuid/subgid for addt user
+        if ! grep -q "^addt:" /etc/subuid 2>/dev/null; then
+            echo "addt:100000:65536" >> /etc/subuid
+            echo "addt:100000:65536" >> /etc/subgid
+        fi
+        # Fix storage directory ownership
+        PODMAN_STORAGE="/home/addt/.local/share/containers"
+        mkdir -p "$PODMAN_STORAGE"
+        chown -R "$(id -u addt):$(id -g addt)" "$PODMAN_STORAGE"
+        echo "Podman-in-Podman ready (isolated environment)"
+    fi
+
     # Fix secrets ownership so addt user can read/delete them
     # Use numeric IDs to avoid group name resolution issues (on macOS, host GID
     # may conflict with an existing Debian group, so 'addt' group may not exist)
@@ -133,16 +149,14 @@ if [ -f /run/secrets/.secrets ]; then
     debug_log "Secrets loaded and file removed"
 fi
 
-# Start nested Podman if in nested mode (Podman-in-Podman)
+# Validate nested Podman if in DinD mode (Podman-in-Podman)
 if [ "$ADDT_DOCKER_DIND_ENABLE" = "true" ]; then
-    debug_log "DinD mode enabled (Podman-in-Podman)"
-    echo "Nested Podman mode enabled..."
-    # Podman doesn't need a daemon - it's daemonless
-    # Just verify podman is available
-    if command -v podman >/dev/null 2>&1; then
+    debug_log "DinD mode enabled (Podman-in-Podman), validating..."
+    if podman info >/dev/null 2>&1; then
         echo "Podman available for nested containers"
     else
-        echo "Warning: Podman not available in container"
+        echo "Warning: Podman nested containers not available"
+        podman info 2>&1 | head -5 || true
     fi
 fi
 

@@ -64,6 +64,10 @@ RUN userdel -r node 2>/dev/null || true \
     && useradd -m -u ${USER_ID} -g ${GROUP_ID} -s /bin/bash ${USERNAME} \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
+# Configure subuid/subgid for rootless Podman-in-Podman
+RUN echo "${USERNAME}:100000:65536" >> /etc/subuid && \
+    echo "${USERNAME}:100000:65536" >> /etc/subgid
+
 # Configure Podman for rootless operation
 RUN mkdir -p /etc/containers && \
     echo '[storage]' > /etc/containers/storage.conf && \

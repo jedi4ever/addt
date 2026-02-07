@@ -197,6 +197,11 @@ func (p *PodmanProvider) addContainerVolumesAndEnv(podmanArgs []string, spec *pr
 	// Podman-in-Podman support (similar to DinD)
 	podmanArgs = append(podmanArgs, p.HandlePodmanForwarding(spec.DockerDindMode, spec.Name)...)
 
+	// Start as root for DinD so entrypoint can set up nested Podman
+	if spec.DockerDindMode == "isolated" || spec.DockerDindMode == "true" {
+		podmanArgs = append(podmanArgs, "--user", "root")
+	}
+
 	// Add ports
 	for _, port := range spec.Ports {
 		podmanArgs = append(podmanArgs, "-p", fmt.Sprintf("%d:%d", port.Host, port.Container))
@@ -641,34 +646,3 @@ func (p *PodmanProvider) addSecuritySettings(podmanArgs []string) []string {
 	return podmanArgs
 }
 
-// HandlePodmanForwarding configures Podman-in-Podman (nested containers) support
-func (p *PodmanProvider) HandlePodmanForwarding(mode string, containerName string) []string {
-	var args []string
-
-	switch mode {
-	case "isolated", "true":
-		// Podman doesn't need a daemon, so "isolated" mode is simpler
-		// We enable fuse-overlayfs and podman socket
-		args = append(args,
-			"-e", "ADDT_DOCKER_DIND_ENABLE=true",
-			"--device", "/dev/fuse",
-			"--security-opt", "label=disable",
-		)
-	case "host":
-		// Share host's Podman socket (dangerous but useful for some workflows)
-		podmanSocket := os.Getenv("XDG_RUNTIME_DIR")
-		if podmanSocket == "" {
-			podmanSocket = fmt.Sprintf("/run/user/%d", os.Getuid())
-		}
-		socketPath := filepath.Join(podmanSocket, "podman", "podman.sock")
-
-		if _, err := os.Stat(socketPath); err == nil {
-			args = append(args,
-				"-v", fmt.Sprintf("%s:/run/podman/podman.sock", socketPath),
-				"-e", "DOCKER_HOST=unix:///run/podman/podman.sock",
-			)
-		}
-	}
-
-	return args
-}
