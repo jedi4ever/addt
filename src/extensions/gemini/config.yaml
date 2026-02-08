@@ -2,6 +2,7 @@ name: gemini
 description: Gemini CLI - AI coding agent by Google
 entrypoint: gemini
 default_version: latest
+auto_mount: false
 dependencies: []
 env_vars:
   - GEMINI_API_KEY
