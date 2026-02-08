@@ -3,16 +3,12 @@
 # Transforms generic addt args to Claude-specific args
 
 ARGS=()
-
-#??
-#   "bypassPermissionsModeAccepted": true,
-# IS_SANDBOX=1 - for sandbox mode
+YOLO=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --yolo)
-            # Transform generic --yolo to Claude's flag
-            ARGS+=(--dangerously-skip-permissions)
+            YOLO=true
             shift
             ;;
         *)
@@ -22,19 +18,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# If ADDT_EXTENSION_CLAUDE_YOLO or global ADDT_SECURITY_YOLO is set via config/env
-# and --dangerously-skip-permissions wasn't already added by a --yolo CLI flag, inject it now
-if [ "${ADDT_EXTENSION_CLAUDE_YOLO}" = "true" ] || [ "${ADDT_SECURITY_YOLO}" = "true" ]; then
-    already_set=false
-    for arg in "${ARGS[@]}"; do
-        if [ "$arg" = "--dangerously-skip-permissions" ]; then
-            already_set=true
-            break
-        fi
-    done
-    if [ "$already_set" = "false" ]; then
-        ARGS+=(--dangerously-skip-permissions)
-    fi
+# Enable yolo from any source: CLI flag, per-extension env, or global security.yolo
+if [ "$YOLO" = "true" ] || [ "${ADDT_EXTENSION_CLAUDE_YOLO}" = "true" ] || [ "${ADDT_SECURITY_YOLO}" = "true" ]; then
+    ARGS+=(--dangerously-skip-permissions)
 fi
 
 # Add system prompt if set (for port mappings, etc.)
