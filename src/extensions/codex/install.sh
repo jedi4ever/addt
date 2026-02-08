@@ -10,11 +10,7 @@ echo "Extension [codex]: Installing OpenAI Codex CLI..."
 CODEX_VERSION="${CODEX_VERSION:-latest}"
 
 # Install codex globally via npm
-if [ "$CODEX_VERSION" = "latest" ]; then
-    npm install -g @openai/codex
-else
-    npm install -g @openai/codex@$CODEX_VERSION
-fi
+npm install -g @openai/codex@$CODEX_VERSION
 
 # Verify installation
 INSTALLED_VERSION=$(codex --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")

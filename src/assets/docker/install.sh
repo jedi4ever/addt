@@ -443,7 +443,7 @@ echo "Extensions: Writing metadata to $METADATA_FILE"
         # Add nested auth object if either field is set
         if [ -n "$auth_autologin" ] || [ -n "$auth_method" ]; then
             printf ',"auth":{'
-            local auth_first=true
+            auth_first=true
             if [ -n "$auth_autologin" ]; then
                 printf '"autologin":%s' "$auth_autologin"
                 auth_first=false

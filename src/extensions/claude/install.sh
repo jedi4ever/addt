@@ -17,7 +17,12 @@ echo "Extension [claude]: Installing Claude Code Native Installer"
 # this has precedence over the npm install
 # simple removing it selects the npm install
 # https://code.claude.com/docs/en/setup#install-a-specific-version
-curl -fsSL https://claude.ai/install.sh | bash -s $CLAUDE_VERSION
+# The native installer only accepts semver versions; "latest"/"stable" mean no version arg
+if [ "$CLAUDE_VERSION" = "latest" ] || [ "$CLAUDE_VERSION" = "stable" ]; then
+    curl -fsSL https://claude.ai/install.sh | bash
+else
+    curl -fsSL https://claude.ai/install.sh | bash -s $CLAUDE_VERSION
+fi
 
 #TODO - figure how to set the version
 
