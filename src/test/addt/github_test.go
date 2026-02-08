@@ -299,11 +299,13 @@ func TestGitHub_Addt_TokenForwarded(t *testing.T) {
 github:
   forward_token: true
   token_source: "env"
+  scope_token: false
 `)
 			defer cleanup()
 			ensureAddtImage(t, dir, "debug")
 
-			// gh auth status checks if the token works
+			// With scope_token: false, GH_TOKEN stays as a plain env var
+			// that gh auth status detects automatically
 			output, err := runRunSubcommand(t, dir, "debug",
 				"-c", "gh auth status")
 			if err != nil {
