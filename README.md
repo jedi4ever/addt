@@ -251,6 +251,41 @@ To disable token forwarding entirely:
 addt config set github.forward_token false
 ```
 
+**Token scoping** (enabled by default):
+
+By default, `GH_TOKEN` is scoped to only the workspace repo (and optionally additional repos) using `github.scope_token`. This prevents the agent from accessing other repos.
+
+To disable scoping (allow access to all repos the token is authorized for):
+```bash
+addt config set github.scope_token false
+```
+
+When scoping is enabled:
+1. The workspace repo is auto-detected from `git remote` and cached in `git credential-cache`
+2. `gh` CLI is authenticated via `gh auth login --with-token` (PRs, issues still work)
+3. `GH_TOKEN` is scrubbed from the container environment (overwritten with random data, then unset)
+4. Git operations to non-allowed repos will fail (no credential cached)
+
+To allow additional repos beyond the workspace:
+```yaml
+# .addt.yaml
+github:
+  scope_token: true
+  scope_repos:
+    - "myorg/shared-lib"
+    - "myorg/common-config"
+```
+
+Or via CLI/env vars:
+```bash
+addt config set github.scope_repos "myorg/shared-lib,myorg/common-config"
+export ADDT_GITHUB_SCOPE_REPOS="myorg/shared-lib,myorg/common-config"
+```
+
+**Note:** Permission-level scoping (read-only, no-admin) cannot be enforced at the container level. Use [GitHub fine-grained PATs](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with restricted permissions for that.
+
+Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
+
 ### SSH Keys (git over SSH)
 
 SSH forwarding is enabled by default using agent mode. You can choose a forwarding mode:
@@ -753,6 +788,8 @@ addt cli update                   # Update addt
 | `ADDT_DOCKER_DIND_MODE` | isolated | DinD mode: `isolated` or `host` |
 | `ADDT_GITHUB_FORWARD_TOKEN` | true | Forward `GH_TOKEN` to container |
 | `ADDT_GITHUB_TOKEN_SOURCE` | gh_auth | Token source: `gh_auth` (requires `gh` CLI) or `env` |
+| `ADDT_GITHUB_SCOPE_TOKEN` | true | Scope `GH_TOKEN` to workspace repo via git credential-cache |
+| `ADDT_GITHUB_SCOPE_REPOS` | - | Additional repos for scoping: `myorg/repo1,myorg/repo2` |
 
 ### Security
 | Variable | Default | Description |

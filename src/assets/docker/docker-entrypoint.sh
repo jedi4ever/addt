@@ -201,6 +201,70 @@ if [ -n "$ADDT_CREDENTIAL_VARS" ]; then
     unset ADDT_CREDENTIAL_VARS
 fi
 
+# Scope GH_TOKEN to allowed repos via git credential-cache
+# Inspired by: https://github.com/IngmarKrusch/claude-docker
+if [ "$ADDT_GITHUB_SCOPE_TOKEN" = "true" ] && [ -n "$GH_TOKEN" ]; then
+    debug_log "Scoping GH_TOKEN to allowed repos via git credential-cache"
+
+    # Configure git credential-cache with useHttpPath (scopes by repo path)
+    git config --global credential.helper 'cache --timeout=86400'
+    git config --global credential.useHttpPath true
+
+    # Helper: cache a credential for a given owner/repo on github.com
+    cache_repo_credential() {
+        local repo_path="$1"
+        printf 'protocol=https\nhost=github.com\npath=%s\nusername=x-access-token\npassword=%s\n\n' \
+            "$repo_path" "$GH_TOKEN" | git credential-cache store
+        debug_log "Cached credential for github.com/$repo_path"
+    }
+
+    # 1. Auto-detect and cache workspace repo (default scope)
+    if [ -d /workspace/.git ] || git -C /workspace rev-parse --git-dir >/dev/null 2>&1; then
+        REPO_URL=$(git -C /workspace remote get-url origin 2>/dev/null || echo "")
+        if [ -n "$REPO_URL" ]; then
+            REPO_PATH=""
+            case "$REPO_URL" in
+                https://github.com/*)
+                    REPO_PATH=$(echo "$REPO_URL" | sed 's|https://github.com/||' | sed 's/\.git$//')
+                    ;;
+                git@github.com:*)
+                    REPO_PATH=$(echo "$REPO_URL" | sed 's|git@github.com:||' | sed 's/\.git$//')
+                    ;;
+            esac
+            if [ -n "$REPO_PATH" ]; then
+                cache_repo_credential "$REPO_PATH"
+            fi
+        fi
+    fi
+
+    # 2. Cache additional repos from ADDT_GITHUB_SCOPE_REPOS (comma-separated owner/repo)
+    if [ -n "$ADDT_GITHUB_SCOPE_REPOS" ]; then
+        IFS=',' read -ra EXTRA_REPOS <<< "$ADDT_GITHUB_SCOPE_REPOS"
+        for repo in "${EXTRA_REPOS[@]}"; do
+            repo=$(echo "$repo" | xargs)  # trim whitespace
+            if [ -n "$repo" ]; then
+                cache_repo_credential "$repo"
+            fi
+        done
+    fi
+
+    # 3. Store token in gh CLI config (so gh pr/issue/api still work)
+    echo "$GH_TOKEN" | gh auth login --with-token 2>/dev/null || true
+
+    # 4. Scrub GH_TOKEN from environment (overwrite with random data then unset)
+    token_len=${#GH_TOKEN}
+    if [ "$token_len" -gt 0 ]; then
+        random_data=$(head -c "$token_len" /dev/urandom | base64 | head -c "$token_len")
+        export GH_TOKEN="$random_data"
+    fi
+    unset GH_TOKEN 2>/dev/null || true
+
+    # Scrub control vars
+    unset ADDT_GITHUB_SCOPE_TOKEN 2>/dev/null || true
+    unset ADDT_GITHUB_SCOPE_REPOS 2>/dev/null || true
+    debug_log "GH_TOKEN scoped and scrubbed"
+fi
+
 # Build system prompt for port mappings (exported for args.sh to use)
 export ADDT_SYSTEM_PROMPT=""
 

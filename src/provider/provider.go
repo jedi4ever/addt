@@ -46,6 +46,8 @@ type Config struct {
 	EnvVars                 []string
 	GitHubForwardToken      bool
 	GitHubTokenSource       string
+	GitHubScopeToken        bool
+	GitHubScopeRepos        []string
 	Ports                   []string
 	PortRangeStart          int
 	PortsInjectSystemPrompt bool

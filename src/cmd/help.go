@@ -105,6 +105,8 @@ Environment Variables:
     ADDT_CONFIG_DIR        Global config directory (overrides ADDT_HOME for config only)
     ADDT_GITHUB_FORWARD_TOKEN  Forward GH_TOKEN to container (default: true)
     ADDT_GITHUB_TOKEN_SOURCE   Token source: env or gh_auth (default: gh_auth)
+    ADDT_GITHUB_SCOPE_TOKEN    Scope GH_TOKEN to workspace repo (default: true)
+    ADDT_GITHUB_SCOPE_REPOS    Additional repos for scoping (comma-separated owner/repo)
     ADDT_PORTS_FORWARD     Enable port forwarding (default: true)
     ADDT_PORTS             Comma-separated container ports to expose
     ADDT_PORTS_INJECT_SYSTEM_PROMPT  Inject port mappings into AI system prompt (default: true)

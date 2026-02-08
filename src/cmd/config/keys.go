@@ -94,6 +94,10 @@ func GetDefaultValue(key string) string {
 		return "true"
 	case "github.token_source":
 		return "gh_auth"
+	case "github.scope_token":
+		return "true"
+	case "github.scope_repos":
+		return ""
 	case "go_version":
 		return "latest"
 	case "gpg.forward":

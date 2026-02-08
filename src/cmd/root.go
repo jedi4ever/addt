@@ -165,6 +165,8 @@ func Execute(version, defaultNodeVersion, defaultGoVersion, defaultUvVersion str
 		EnvVars:                 cfg.EnvVars,
 		GitHubForwardToken:      cfg.GitHubForwardToken,
 		GitHubTokenSource:       cfg.GitHubTokenSource,
+		GitHubScopeToken:        cfg.GitHubScopeToken,
+		GitHubScopeRepos:        cfg.GitHubScopeRepos,
 		Ports:                   cfg.Ports,
 		PortRangeStart:          cfg.PortRangeStart,
 		PortsInjectSystemPrompt: cfg.PortsInjectSystemPrompt,

@@ -55,8 +55,10 @@ type SSHSettings struct {
 
 // GitHubSettings holds GitHub token forwarding configuration
 type GitHubSettings struct {
-	ForwardToken *bool  `yaml:"forward_token,omitempty"`
-	TokenSource  string `yaml:"token_source,omitempty"`
+	ForwardToken *bool    `yaml:"forward_token,omitempty"`
+	TokenSource  string   `yaml:"token_source,omitempty"`
+	ScopeToken   *bool    `yaml:"scope_token,omitempty"`
+	ScopeRepos   []string `yaml:"scope_repos,omitempty"`
 }
 
 // FirewallSettings holds network firewall configuration
@@ -141,6 +143,8 @@ type Config struct {
 	EnvVars                  []string
 	GitHubForwardToken       bool
 	GitHubTokenSource        string
+	GitHubScopeToken         bool
+	GitHubScopeRepos         []string
 	Ports                    []string
 	PortRangeStart           int
 	PortsInjectSystemPrompt  bool

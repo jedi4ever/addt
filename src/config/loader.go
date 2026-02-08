@@ -457,6 +457,30 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.GitHubTokenSource = v
 	}
 
+	// GitHub scope token: default (true) -> global -> project -> env
+	cfg.GitHubScopeToken = true
+	if globalCfg.GitHub != nil && globalCfg.GitHub.ScopeToken != nil {
+		cfg.GitHubScopeToken = *globalCfg.GitHub.ScopeToken
+	}
+	if projectCfg.GitHub != nil && projectCfg.GitHub.ScopeToken != nil {
+		cfg.GitHubScopeToken = *projectCfg.GitHub.ScopeToken
+	}
+	if v := os.Getenv("ADDT_GITHUB_SCOPE_TOKEN"); v != "" {
+		cfg.GitHubScopeToken = v == "true"
+	}
+
+	// GitHub scope repos: default ([]) -> global -> project -> env
+	cfg.GitHubScopeRepos = nil
+	if globalCfg.GitHub != nil && len(globalCfg.GitHub.ScopeRepos) > 0 {
+		cfg.GitHubScopeRepos = globalCfg.GitHub.ScopeRepos
+	}
+	if projectCfg.GitHub != nil && len(projectCfg.GitHub.ScopeRepos) > 0 {
+		cfg.GitHubScopeRepos = projectCfg.GitHub.ScopeRepos
+	}
+	if v := os.Getenv("ADDT_GITHUB_SCOPE_REPOS"); v != "" {
+		cfg.GitHubScopeRepos = strings.Split(v, ",")
+	}
+
 	// Container CPUs: default (2) -> global -> project -> env
 	cfg.ContainerCPUs = "2" // Secure default: limit CPU usage
 	if globalCfg.Container != nil && globalCfg.Container.CPUs != "" {

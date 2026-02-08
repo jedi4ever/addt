@@ -34,6 +34,9 @@ func BuildEnvironment(p provider.Provider, cfg *provider.Config) map[string]stri
 	// Add firewall configuration
 	addFirewallEnvVars(env, cfg)
 
+	// Add GitHub scope configuration
+	addGitHubScopeEnvVars(env, cfg)
+
 	// Add command override
 	addCommandEnvVar(env, cfg)
 
@@ -226,6 +229,16 @@ func addFirewallEnvVars(env map[string]string, cfg *provider.Config) {
 func addCommandEnvVar(env map[string]string, cfg *provider.Config) {
 	if cfg.Command != "" {
 		env["ADDT_COMMAND"] = cfg.Command
+	}
+}
+
+// addGitHubScopeEnvVars adds GitHub token scoping environment variables
+func addGitHubScopeEnvVars(env map[string]string, cfg *provider.Config) {
+	if cfg.GitHubScopeToken {
+		env["ADDT_GITHUB_SCOPE_TOKEN"] = "true"
+	}
+	if len(cfg.GitHubScopeRepos) > 0 {
+		env["ADDT_GITHUB_SCOPE_REPOS"] = strings.Join(cfg.GitHubScopeRepos, ",")
 	}
 }
 

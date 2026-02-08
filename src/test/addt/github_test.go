@@ -130,6 +130,154 @@ github:
 	}
 }
 
+func TestGitHub_Addt_ScopeTokenDefault(t *testing.T) {
+	// Scenario: User starts with no GitHub scope config and checks defaults.
+	// github.scope_token should default to true, scope_repos should be empty.
+	_, cleanup := setupAddtDir(t, "", ``)
+	defer cleanup()
+
+	output := captureOutput(t, func() {
+		configcmd.HandleCommand([]string{"list"})
+	})
+
+	lines := strings.Split(output, "\n")
+	foundScope := false
+	foundRepos := false
+	for _, line := range lines {
+		if strings.Contains(line, "github.scope_token") {
+			foundScope = true
+			if !strings.Contains(line, "true") {
+				t.Errorf("Expected github.scope_token default=true, got line: %s", line)
+			}
+			if !strings.Contains(line, "default") {
+				t.Errorf("Expected github.scope_token source=default, got line: %s", line)
+			}
+		}
+		if strings.Contains(line, "github.scope_repos") {
+			foundRepos = true
+			if !strings.Contains(line, "default") {
+				t.Errorf("Expected github.scope_repos source=default, got line: %s", line)
+			}
+		}
+	}
+	if !foundScope {
+		t.Errorf("Expected output to contain github.scope_token, got:\n%s", output)
+	}
+	if !foundRepos {
+		t.Errorf("Expected output to contain github.scope_repos, got:\n%s", output)
+	}
+}
+
+func TestGitHub_Addt_ScopeTokenConfigSet(t *testing.T) {
+	// Scenario: User enables token scoping and sets additional repos via config set,
+	// then verifies both appear correctly in config list.
+	_, cleanup := setupAddtDir(t, "", ``)
+	defer cleanup()
+
+	captureOutput(t, func() {
+		configcmd.HandleCommand([]string{"set", "github.scope_token", "true"})
+	})
+	captureOutput(t, func() {
+		configcmd.HandleCommand([]string{"set", "github.scope_repos", "org/repo1,org/repo2"})
+	})
+
+	output := captureOutput(t, func() {
+		configcmd.HandleCommand([]string{"list"})
+	})
+
+	lines := strings.Split(output, "\n")
+	foundScope := false
+	foundRepos := false
+	for _, line := range lines {
+		if strings.Contains(line, "github.scope_token") {
+			foundScope = true
+			if !strings.Contains(line, "true") {
+				t.Errorf("Expected github.scope_token=true after config set, got line: %s", line)
+			}
+			if !strings.Contains(line, "project") {
+				t.Errorf("Expected github.scope_token source=project, got line: %s", line)
+			}
+		}
+		if strings.Contains(line, "github.scope_repos") {
+			foundRepos = true
+			if !strings.Contains(line, "org/repo1,org/repo2") {
+				t.Errorf("Expected github.scope_repos=org/repo1,org/repo2, got line: %s", line)
+			}
+			if !strings.Contains(line, "project") {
+				t.Errorf("Expected github.scope_repos source=project, got line: %s", line)
+			}
+		}
+	}
+	if !foundScope {
+		t.Errorf("Expected output to contain github.scope_token, got:\n%s", output)
+	}
+	if !foundRepos {
+		t.Errorf("Expected output to contain github.scope_repos, got:\n%s", output)
+	}
+}
+
+func TestGitHub_Addt_ScopeTokenGHTokenScrubbed(t *testing.T) {
+	// Scenario: User enables github.scope_token. Inside the container,
+	// GH_TOKEN should be scrubbed from the environment.
+	providers := requireProviders(t)
+	requireGitHubToken(t)
+
+	for _, prov := range providers {
+		t.Run(prov, func(t *testing.T) {
+			dir, cleanup := setupAddtDir(t, prov, `
+github:
+  forward_token: true
+  token_source: "env"
+  scope_token: true
+`)
+			defer cleanup()
+			ensureAddtImage(t, dir, "claude")
+
+			// Check that GH_TOKEN env var is not set inside container
+			output, err := runShellCommand(t, dir,
+				"claude", "-c", "echo ${GH_TOKEN:-NOTSET}")
+			if err != nil {
+				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+			}
+
+			if !strings.Contains(output, "NOTSET") {
+				t.Errorf("Expected GH_TOKEN to be scrubbed (NOTSET), got:\n%s", output)
+			}
+		})
+	}
+}
+
+func TestGitHub_Addt_ScopeTokenCredentialCacheActive(t *testing.T) {
+	// Scenario: User enables github.scope_token. Inside the container,
+	// git credential.useHttpPath should be set to true.
+	providers := requireProviders(t)
+	requireGitHubToken(t)
+
+	for _, prov := range providers {
+		t.Run(prov, func(t *testing.T) {
+			dir, cleanup := setupAddtDir(t, prov, `
+github:
+  forward_token: true
+  token_source: "env"
+  scope_token: true
+`)
+			defer cleanup()
+			ensureAddtImage(t, dir, "claude")
+
+			// Verify git credential.useHttpPath is configured
+			output, err := runShellCommand(t, dir,
+				"claude", "-c", "git config --global credential.useHttpPath")
+			if err != nil {
+				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+			}
+
+			if !strings.Contains(output, "true") {
+				t.Errorf("Expected git credential.useHttpPath=true, got:\n%s", output)
+			}
+		})
+	}
+}
+
 func TestGitHub_Addt_TokenForwarded(t *testing.T) {
 	providers := requireProviders(t)
 	requireGitHubToken(t)
