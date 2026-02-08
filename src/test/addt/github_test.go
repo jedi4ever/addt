@@ -224,20 +224,23 @@ func TestGitHub_Addt_ScopeTokenGHTokenScrubbed(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			dir, cleanup := setupAddtDir(t, prov, `
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
+
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 github:
   forward_token: true
   token_source: "env"
   scope_token: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
 			// Check that GH_TOKEN env var is not set inside container
-			output, err := runShellCommand(t, dir,
-				"claude", "-c", "echo ${GH_TOKEN:-NOTSET}")
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c", "echo ${GH_TOKEN:-NOTSET}")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			if !strings.Contains(output, "NOTSET") {
@@ -255,20 +258,23 @@ func TestGitHub_Addt_ScopeTokenCredentialCacheActive(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			dir, cleanup := setupAddtDir(t, prov, `
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
+
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 github:
   forward_token: true
   token_source: "env"
   scope_token: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
 			// Verify git credential.useHttpPath is configured
-			output, err := runShellCommand(t, dir,
-				"claude", "-c", "git config --global credential.useHttpPath")
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c", "git config --global credential.useHttpPath")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			if !strings.Contains(output, "true") {
@@ -279,22 +285,27 @@ github:
 }
 
 func TestGitHub_Addt_TokenForwarded(t *testing.T) {
+	// Scenario: User enables github.forward_token. Inside the container,
+	// gh auth status should show the user is logged in.
 	providers := requireProviders(t)
 	requireGitHubToken(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			dir, cleanup := setupAddtDir(t, prov, `
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
+
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 github:
   forward_token: true
   token_source: "env"
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
 			// gh auth status checks if the token works
-			output, err := runShellCommand(t, dir,
-				"claude", "-c", "gh auth status")
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c", "gh auth status")
 			if err != nil {
 				t.Fatalf("gh auth status failed: %v\nOutput: %s", err, output)
 			}
@@ -308,24 +319,29 @@ github:
 }
 
 func TestGitHub_Addt_TokenDisabled(t *testing.T) {
+	// Scenario: User disables github.forward_token. Inside the container,
+	// gh auth status should NOT show the user as logged in.
 	providers := requireProviders(t)
 	requireGitHubToken(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			dir, cleanup := setupAddtDir(t, prov, `
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
+
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 github:
   forward_token: false
   token_source: "env"
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
 			// With token forwarding disabled, gh auth status should fail
-			output, err := runShellCommand(t, dir,
-				"claude", "-c", "gh auth status 2>&1 || true")
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c", "gh auth status 2>&1 || true")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			// Should NOT be logged in.

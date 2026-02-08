@@ -1,6 +1,6 @@
-//go:build addt
+//go:build extension
 
-package addt
+package extension
 
 import (
 	"os"

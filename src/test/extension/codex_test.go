@@ -1,18 +1,11 @@
-//go:build addt
+//go:build extension
 
-package addt
+package extension
 
 import (
 	"os"
 	"testing"
 )
-
-// procEnvLeakCommand returns a shell command that checks whether a given
-// env var name appears in /proc/1/environ. Outputs "PROC_RESULT:LEAKED"
-// or "PROC_RESULT:ISOLATED".
-func procEnvLeakCommand(envVar string) string {
-	return "if grep -q " + envVar + " /proc/1/environ 2>/dev/null; then echo PROC_RESULT:LEAKED; else echo PROC_RESULT:ISOLATED; fi"
-}
 
 // Scenario: A user has OPENAI_API_KEY set in their host environment
 // and runs the codex extension. The key should be available inside

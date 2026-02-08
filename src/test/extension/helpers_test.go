@@ -1,6 +1,6 @@
-//go:build addt
+//go:build extension
 
-package addt
+package extension
 
 import (
 	"os"
@@ -10,10 +10,6 @@ import (
 	"github.com/jedi4ever/addt/cmd"
 	testutil "github.com/jedi4ever/addt/test/util"
 )
-
-// --- Constants ---
-
-const testVersion = testutil.TestVersion
 
 // --- Convenience aliases so test files can use short names ---
 

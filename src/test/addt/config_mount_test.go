@@ -13,20 +13,21 @@ func TestConfigMount_Addt_GlobalAutomountEnabled(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
 
-			dir, cleanup := setupAddtDir(t, prov, `
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 config:
   automount: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
-			output, err := runShellCommand(t, dir,
-				"claude", "-c",
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c",
 				"echo AUTOMOUNT:${ADDT_CONFIG_AUTOMOUNT:-UNSET} && echo READONLY:${ADDT_CONFIG_READONLY:-UNSET}")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			automount := extractMarker(output, "AUTOMOUNT:")
@@ -44,17 +45,18 @@ func TestConfigMount_Addt_AutomountDefaultDisabled(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
 
-			dir, cleanup := setupAddtDir(t, prov, ``)
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
-			output, err := runShellCommand(t, dir,
-				"claude", "-c",
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c",
 				"echo AUTOMOUNT:${ADDT_CONFIG_AUTOMOUNT:-UNSET}")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			automount := extractMarker(output, "AUTOMOUNT:")
@@ -73,21 +75,22 @@ func TestConfigMount_Addt_GlobalReadonlyEnabled(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
 
-			dir, cleanup := setupAddtDir(t, prov, `
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 config:
   automount: true
   readonly: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
-			output, err := runShellCommand(t, dir,
-				"claude", "-c",
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c",
 				"echo READONLY:${ADDT_CONFIG_READONLY:-UNSET}")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			readonly := extractMarker(output, "READONLY:")
@@ -105,17 +108,18 @@ func TestConfigMount_Addt_ReadonlyDefaultDisabled(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
 
-			dir, cleanup := setupAddtDir(t, prov, ``)
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
-			output, err := runShellCommand(t, dir,
-				"claude", "-c",
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c",
 				"echo READONLY:${ADDT_CONFIG_READONLY:-UNSET}")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			readonly := extractMarker(output, "READONLY:")
@@ -133,21 +137,22 @@ func TestConfigMount_Addt_PerExtensionAutomountEnvVar(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
 
 			// Global config automount is off
-			dir, cleanup := setupAddtDir(t, prov, ``)
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
 			// Per-extension env var turns it on
-			t.Setenv("ADDT_CLAUDE_CONFIG_AUTOMOUNT", "true")
+			defer saveRestoreEnv(t, "ADDT_DEBUG_CONFIG_AUTOMOUNT", "true")()
 
-			output, err := runShellCommand(t, dir,
-				"claude", "-c",
-				"echo AUTOMOUNT_OVERRIDE:${ADDT_CLAUDE_CONFIG_AUTOMOUNT:-UNSET}")
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c",
+				"echo AUTOMOUNT_OVERRIDE:${ADDT_DEBUG_CONFIG_AUTOMOUNT:-UNSET}")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			result := extractMarker(output, "AUTOMOUNT_OVERRIDE:")
@@ -159,34 +164,32 @@ func TestConfigMount_Addt_PerExtensionAutomountEnvVar(t *testing.T) {
 	}
 }
 
-// Scenario: When config.automount is enabled for claude, the ~/.claude
-// directory from the host should be mounted into the container.
-func TestConfigMount_Addt_ClaudeConfigMounted(t *testing.T) {
+// Scenario: When config.automount is enabled but the extension defines
+// no config mounts, the container should still start successfully.
+func TestConfigMount_Addt_AutomountNoMountsStillRuns(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
+			addtHome := t.TempDir()
+			defer saveRestoreEnv(t, "ADDT_HOME", addtHome)()
 
-			dir, cleanup := setupAddtDir(t, prov, `
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 config:
   automount: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "debug")
 
-			// Check if ~/.claude exists as a mount point
-			// When automount is on, the entrypoint should detect the mounted config
-			output, err := runShellCommand(t, dir,
-				"claude", "-c",
-				"if [ -d ~/.claude ]; then echo MOUNT_RESULT:EXISTS; else echo MOUNT_RESULT:MISSING; fi")
+			output, err := runRunSubcommand(t, dir, "debug",
+				"-c", "echo MOUNT_RESULT:OK")
 			if err != nil {
-				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
+				t.Fatalf("run failed: %v\nOutput: %s", err, output)
 			}
 
 			result := extractMarker(output, "MOUNT_RESULT:")
-			if result != "EXISTS" {
-				t.Errorf("Expected ~/.claude to exist when automount=true, got MOUNT_RESULT:%s\nFull output:\n%s",
+			if result != "OK" {
+				t.Errorf("Expected container to run successfully with automount=true, got MOUNT_RESULT:%s\nFull output:\n%s",
 					result, output)
 			}
 		})

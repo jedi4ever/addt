@@ -1,6 +1,6 @@
-//go:build addt
+//go:build extension
 
-package addt
+package extension
 
 import (
 	"os"
@@ -8,24 +8,24 @@ import (
 	"testing"
 )
 
-// Scenario: A user enables yolo mode for codex via project config.
-// The env var ADDT_EXTENSION_CODEX_YOLO should be set inside the container.
-func TestCodexYolo_Addt_ConfigSetsEnvVar(t *testing.T) {
+// Scenario: A user enables yolo mode for gemini via project config.
+// The env var ADDT_EXTENSION_GEMINI_YOLO should be set inside the container.
+func TestGeminiYolo_Addt_ConfigSetsEnvVar(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
 			dir, cleanup := setupAddtDir(t, prov, `
 extensions:
-  codex:
+  gemini:
     flags:
       yolo: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "codex")
+			ensureAddtImage(t, dir, "gemini")
 
 			output, err := runShellCommand(t, dir,
-				"codex", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CODEX_YOLO:-UNSET}")
+				"gemini", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_GEMINI_YOLO:-UNSET}")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
@@ -39,19 +39,19 @@ extensions:
 	}
 }
 
-// Scenario: A user does NOT enable yolo mode for codex. The env var
+// Scenario: A user does NOT enable yolo mode for gemini. The env var
 // should not be set inside the container.
-func TestCodexYolo_Addt_NotSetByDefault(t *testing.T) {
+func TestGeminiYolo_Addt_NotSetByDefault(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
 			dir, cleanup := setupAddtDir(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "codex")
+			ensureAddtImage(t, dir, "gemini")
 
 			output, err := runShellCommand(t, dir,
-				"codex", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CODEX_YOLO:-UNSET}")
+				"gemini", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_GEMINI_YOLO:-UNSET}")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
@@ -65,31 +65,27 @@ func TestCodexYolo_Addt_NotSetByDefault(t *testing.T) {
 	}
 }
 
-// Scenario: The codex extension's args.sh transforms --yolo into
-// --full-auto so that codex runs in full autonomous mode.
-func TestCodexYolo_Addt_ArgsTransformation(t *testing.T) {
+// Scenario: The gemini extension's args.sh passes --yolo through natively
+// since gemini CLI supports --yolo directly.
+func TestGeminiYolo_Addt_ArgsTransformation(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
 			dir, cleanup := setupAddtDir(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "codex")
+			ensureAddtImage(t, dir, "gemini")
 
 			output, err := runShellCommand(t, dir,
-				"codex", "-c",
-				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/codex/args.sh --yolo 2>/dev/null | tr '\\0' ' ')")
+				"gemini", "-c",
+				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/gemini/args.sh --yolo 2>/dev/null | tr '\\0' ' ')")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
 
 			result := extractMarker(output, "ARGS_RESULT:")
-			if !strings.Contains(result, "--full-auto") {
-				t.Errorf("Expected args.sh to transform --yolo to --full-auto, got ARGS_RESULT:%s\nFull output:\n%s",
-					result, output)
-			}
-			if strings.Contains(result, "--yolo") {
-				t.Errorf("Expected --yolo to be removed after transformation, got ARGS_RESULT:%s\nFull output:\n%s",
+			if !strings.Contains(result, "--yolo") {
+				t.Errorf("Expected args.sh to pass --yolo through, got ARGS_RESULT:%s\nFull output:\n%s",
 					result, output)
 			}
 		})
@@ -97,59 +93,59 @@ func TestCodexYolo_Addt_ArgsTransformation(t *testing.T) {
 }
 
 // Scenario: When yolo is enabled via config, args.sh should inject
-// --full-auto even without --yolo on the command line.
-func TestCodexYolo_Addt_ArgsTransformationViaConfig(t *testing.T) {
+// --yolo even without --yolo on the command line.
+func TestGeminiYolo_Addt_ArgsTransformationViaConfig(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
 			dir, cleanup := setupAddtDir(t, prov, `
 extensions:
-  codex:
+  gemini:
     flags:
       yolo: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "codex")
+			ensureAddtImage(t, dir, "gemini")
 
 			output, err := runShellCommand(t, dir,
-				"codex", "-c",
-				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/codex/args.sh 2>/dev/null | tr '\\0' ' ')")
+				"gemini", "-c",
+				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/gemini/args.sh 2>/dev/null | tr '\\0' ' ')")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
 
 			result := extractMarker(output, "ARGS_RESULT:")
-			if !strings.Contains(result, "--full-auto") {
-				t.Errorf("Expected args.sh to inject --full-auto from env var, got ARGS_RESULT:%s\nFull output:\n%s",
+			if !strings.Contains(result, "--yolo") {
+				t.Errorf("Expected args.sh to inject --yolo from env var, got ARGS_RESULT:%s\nFull output:\n%s",
 					result, output)
 			}
 		})
 	}
 }
 
-// Scenario: A user sets yolo via env var for codex.
-func TestCodexYolo_Addt_EnvVarOverride(t *testing.T) {
+// Scenario: A user sets yolo via env var for gemini.
+func TestGeminiYolo_Addt_EnvVarOverride(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
 			dir, cleanup := setupAddtDir(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "codex")
+			ensureAddtImage(t, dir, "gemini")
 
-			origVal := os.Getenv("ADDT_EXTENSION_CODEX_YOLO")
-			os.Setenv("ADDT_EXTENSION_CODEX_YOLO", "true")
+			origVal := os.Getenv("ADDT_EXTENSION_GEMINI_YOLO")
+			os.Setenv("ADDT_EXTENSION_GEMINI_YOLO", "true")
 			defer func() {
 				if origVal != "" {
-					os.Setenv("ADDT_EXTENSION_CODEX_YOLO", origVal)
+					os.Setenv("ADDT_EXTENSION_GEMINI_YOLO", origVal)
 				} else {
-					os.Unsetenv("ADDT_EXTENSION_CODEX_YOLO")
+					os.Unsetenv("ADDT_EXTENSION_GEMINI_YOLO")
 				}
 			}()
 
 			output, err := runShellCommand(t, dir,
-				"codex", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CODEX_YOLO:-UNSET}")
+				"gemini", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_GEMINI_YOLO:-UNSET}")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}

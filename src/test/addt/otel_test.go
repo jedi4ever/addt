@@ -131,21 +131,6 @@ func TestOtel_Addt_ConfigViaSet(t *testing.T) {
 
 // --- Container tests (subprocess, both providers) ---
 
-// saveRestoreEnv saves the current value of an environment variable and returns
-// a cleanup function that restores it.
-func saveRestoreEnv(t *testing.T, key, newValue string) func() {
-	t.Helper()
-	orig := os.Getenv(key)
-	os.Setenv(key, newValue)
-	return func() {
-		if orig != "" {
-			os.Setenv(key, orig)
-		} else {
-			os.Unsetenv(key)
-		}
-	}
-}
-
 func TestOtel_Addt_EnvVarsInjected(t *testing.T) {
 	// Scenario: User enables OTEL in config. When running a container,
 	// the standard OTEL env vars should be injected into the container
