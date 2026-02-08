@@ -86,6 +86,8 @@ func GetDefaultValue(key string) string {
 		return "false"
 	case "firewall.mode":
 		return "strict"
+	case "git.disable_hooks":
+		return "true"
 	case "git.forward_config":
 		return "true"
 	case "git.config_path":

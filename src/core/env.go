@@ -37,6 +37,9 @@ func BuildEnvironment(p provider.Provider, cfg *provider.Config) map[string]stri
 	// Add GitHub scope configuration
 	addGitHubScopeEnvVars(env, cfg)
 
+	// Add git hooks neutralization
+	addGitHooksEnvVars(env, cfg)
+
 	// Add command override
 	addCommandEnvVar(env, cfg)
 
@@ -239,6 +242,13 @@ func addGitHubScopeEnvVars(env map[string]string, cfg *provider.Config) {
 	}
 	if len(cfg.GitHubScopeRepos) > 0 {
 		env["ADDT_GITHUB_SCOPE_REPOS"] = strings.Join(cfg.GitHubScopeRepos, ",")
+	}
+}
+
+// addGitHooksEnvVars passes the git hooks neutralization flag to the container
+func addGitHooksEnvVars(env map[string]string, cfg *provider.Config) {
+	if cfg.GitDisableHooks {
+		env["ADDT_GIT_DISABLE_HOOKS"] = "true"
 	}
 }
 

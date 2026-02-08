@@ -563,6 +563,10 @@ Containers run with security defaults enabled:
 | `memory_swap` | "" | Memory swap limit: "-1" to disable swap |
 | `isolate_secrets` | false | Isolate secrets from child processes via tmpfs |
 
+**Git hooks neutralization** (enabled by default): A compromised agent can plant git hooks (e.g., `.git/hooks/pre-commit`) that execute arbitrary code on `git commit`. When `git.disable_hooks` is true, a git wrapper sets `core.hooksPath=/dev/null` via `GIT_CONFIG_COUNT` on every invocation, which overrides all file-based config and cannot be bypassed by writing to `.git/config` or `~/.gitconfig`. Disable with `addt config set git.disable_hooks false` if you need pre-commit/lint-staged hooks.
+
+Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
+
 **Credential scrubbing**: Credential environment variables (e.g., API keys from credential scripts) are overwritten with random data before being unset inside the container. This prevents recovery from `/proc/*/environ` snapshots or process memory dumps. Similarly, the secrets file (`/run/secrets/.secrets`) is overwritten with random data before deletion, and host-side temporary files used during `docker cp`/`podman cp` are scrubbed before removal.
 
 Configure in `~/.addt/config.yaml`:
@@ -794,6 +798,7 @@ addt cli update                   # Update addt
 ### Security
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `ADDT_GIT_DISABLE_HOOKS` | true | Neutralize git hooks inside container |
 | `ADDT_FIREWALL` | false | Enable network firewall |
 | `ADDT_FIREWALL_MODE` | strict | Mode: `strict`, `permissive`, `off` |
 | `ADDT_SECURITY_PIDS_LIMIT` | 200 | Max processes in container |

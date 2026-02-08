@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Git hooks neutralization**: `git.disable_hooks` (default: true) creates a git wrapper that sets `core.hooksPath=/dev/null` via `GIT_CONFIG_COUNT`, preventing malicious git hooks from executing inside the container. Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
 - **GitHub token scoping**: `github.scope_token` scopes GH_TOKEN to workspace repo (+ configurable `github.scope_repos`) via git credential-cache. Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
 - **Credential scrubbing**: Credential env vars are overwritten with random data before unsetting inside containers, preventing recovery from `/proc/*/environ` or memory dumps. Secrets files are similarly scrubbed before deletion. Host-side temp files used during `docker cp`/`podman cp` are scrubbed before removal. Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
 

@@ -171,6 +171,30 @@ func TestBuildEnvironment_OtelDisabled(t *testing.T) {
 	}
 }
 
+func TestBuildEnvironment_GitDisableHooksEnabled(t *testing.T) {
+	cfg := &provider.Config{
+		GitDisableHooks: true,
+	}
+
+	env := BuildEnvironment(&mockEnvProvider{}, cfg)
+
+	if env["ADDT_GIT_DISABLE_HOOKS"] != "true" {
+		t.Errorf("ADDT_GIT_DISABLE_HOOKS = %q, want 'true'", env["ADDT_GIT_DISABLE_HOOKS"])
+	}
+}
+
+func TestBuildEnvironment_GitDisableHooksDisabled(t *testing.T) {
+	cfg := &provider.Config{
+		GitDisableHooks: false,
+	}
+
+	env := BuildEnvironment(&mockEnvProvider{}, cfg)
+
+	if _, ok := env["ADDT_GIT_DISABLE_HOOKS"]; ok {
+		t.Error("ADDT_GIT_DISABLE_HOOKS should not be set when git hooks neutralization is disabled")
+	}
+}
+
 func TestAddFlagEnvVars_FlagPresent(t *testing.T) {
 	env := make(map[string]string)
 	cfg := &provider.Config{Extensions: "claude"}

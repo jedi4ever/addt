@@ -57,6 +57,7 @@ type Config struct {
 	SSHDir                  string
 	TmuxForward             bool
 	HistoryPersist          bool
+	GitDisableHooks         bool     // Neutralize git hooks inside container (default: true)
 	GitForwardConfig        bool     // Forward .gitconfig to container (default: true)
 	GitConfigPath           string   // Custom .gitconfig file path
 	GPGForward              string   // "proxy", "agent", "keys", or "off"

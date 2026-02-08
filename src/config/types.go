@@ -78,6 +78,7 @@ type GPGSettings struct {
 
 // GitSettings holds git config forwarding configuration
 type GitSettings struct {
+	DisableHooks  *bool  `yaml:"disable_hooks,omitempty"`
 	ForwardConfig *bool  `yaml:"forward_config,omitempty"`
 	ConfigPath    string `yaml:"config_path,omitempty"`
 }
@@ -154,6 +155,7 @@ type Config struct {
 	TmuxForward              bool
 	HistoryPersist           bool     // Persist shell history between sessions (default: false)
 	SSHDir                   string   // SSH directory path (default: ~/.ssh)
+	GitDisableHooks          bool     // Neutralize git hooks inside container (default: true)
 	GitForwardConfig         bool     // Forward .gitconfig to container (default: true)
 	GitConfigPath            string   // Custom .gitconfig file path
 	GPGForward               string   // "proxy", "agent", "keys", or "off"

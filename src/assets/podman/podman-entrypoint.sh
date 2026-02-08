@@ -312,6 +312,27 @@ export NPM_CONFIG_CACHE="$NPM_CONFIG_PREFIX/.cache"
 # Ensure ~/.local/bin, npm-global/bin and ~/go/bin are in PATH
 export PATH="$HOME/.local/bin:$NPM_CONFIG_PREFIX/bin:$HOME/go/bin:$PATH"
 
+# Neutralize git hooks if enabled (prevents malicious .git/hooks/* execution)
+# Creates a wrapper that forces core.hooksPath=/dev/null via GIT_CONFIG_COUNT
+# Inspired by: https://github.com/IngmarKrusch/claude-docker
+if [ "$ADDT_GIT_DISABLE_HOOKS" = "true" ]; then
+    debug_log "Git hooks neutralization enabled, creating wrapper"
+    REAL_GIT=$(command -v git 2>/dev/null || echo "/usr/bin/git")
+    mkdir -p "$HOME/.local/bin"
+    cat > "$HOME/.local/bin/git" <<WRAPPER
+#!/bin/sh
+export GIT_CONFIG_COUNT=\${GIT_CONFIG_COUNT:-0}
+n=\$GIT_CONFIG_COUNT
+export GIT_CONFIG_KEY_\$n=core.hooksPath
+export GIT_CONFIG_VALUE_\$n=/dev/null
+export GIT_CONFIG_COUNT=\$((n + 1))
+exec "$REAL_GIT" "\$@"
+WRAPPER
+    chmod +x "$HOME/.local/bin/git"
+    debug_log "Git wrapper created at $HOME/.local/bin/git (real git: $REAL_GIT)"
+    unset ADDT_GIT_DISABLE_HOOKS
+fi
+
 # Determine which command to run (entrypoint can be array: ["bash", "-i"])
 ADDT_CMD=""
 ADDT_CMD_ARGS=()

@@ -421,6 +421,18 @@ func LoadConfig(addtVersion, defaultNodeVersion, defaultGoVersion, defaultUvVers
 		cfg.GitHubForwardToken = v == "true"
 	}
 
+	// Git disable hooks: default (true) -> global -> project -> env
+	cfg.GitDisableHooks = true
+	if globalCfg.Git != nil && globalCfg.Git.DisableHooks != nil {
+		cfg.GitDisableHooks = *globalCfg.Git.DisableHooks
+	}
+	if projectCfg.Git != nil && projectCfg.Git.DisableHooks != nil {
+		cfg.GitDisableHooks = *projectCfg.Git.DisableHooks
+	}
+	if v := os.Getenv("ADDT_GIT_DISABLE_HOOKS"); v != "" {
+		cfg.GitDisableHooks = v == "true"
+	}
+
 	// Git forward config: default (true) -> global -> project -> env
 	cfg.GitForwardConfig = true
 	if globalCfg.Git != nil && globalCfg.Git.ForwardConfig != nil {

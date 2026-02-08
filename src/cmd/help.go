@@ -92,6 +92,7 @@ Environment Variables:
     ADDT_SSH_FORWARD_KEYS  SSH key forwarding: true or false (default: true)
     ADDT_SSH_FORWARD_MODE  SSH forwarding mode: agent, keys, or proxy (default: proxy)
     ADDT_SSH_ALLOWED_KEYS  Comma-separated key filters for proxy mode (e.g., "github,work")
+    ADDT_GIT_DISABLE_HOOKS Neutralize git hooks in container (default: true)
     ADDT_GPG_FORWARD       Enable GPG forwarding (default: false)
 
   Tool Versions:
