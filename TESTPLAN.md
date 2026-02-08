@@ -5,6 +5,9 @@
 - [ ] CLAUDE ENV / API
 - [ ] CLAUDE AUTOMOUNT
 - [ ] RESUME SESSION CLAUDE
+- [ ] versions latest, stable
+- [ ] auth versions
+
 
 - [ ] OPENAI env (codex)
 

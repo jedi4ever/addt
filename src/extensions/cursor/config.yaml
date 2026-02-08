@@ -12,5 +12,9 @@ config:
   mounts:
     - source: ~/.cursor
       target: /home/addt/.cursor
+flags:
+  - flag: "--yolo"
+    description: "Enable force mode (bypass approval prompts)"
+    env_var: ADDT_EXTENSION_CURSOR_YOLO
 env_vars:
   - CURSOR_API_KEY

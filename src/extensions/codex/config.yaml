@@ -12,5 +12,9 @@ config:
   mounts:
     - source: ~/.codex
       target: /home/addt/.codex
+flags:
+  - flag: "--yolo"
+    description: "Enable full-auto mode (bypass approval prompts)"
+    env_var: ADDT_EXTENSION_CODEX_YOLO
 env_vars:
   - OPENAI_API_KEY

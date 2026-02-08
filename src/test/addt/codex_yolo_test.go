@@ -3,31 +3,29 @@
 package addt
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
 
-// Scenario: A user enables yolo mode via project config so that
-// claude receives --dangerously-skip-permissions. The env var
-// ADDT_EXTENSION_CLAUDE_YOLO should be set inside the container.
-func TestClaudeYolo_Addt_ConfigSetsEnvVar(t *testing.T) {
+// Scenario: A user enables yolo mode for codex via project config.
+// The env var ADDT_EXTENSION_CODEX_YOLO should be set inside the container.
+func TestCodexYolo_Addt_ConfigSetsEnvVar(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
-
 			dir, cleanup := setupAddtDir(t, prov, `
 extensions:
-  claude:
+  codex:
     flags:
       yolo: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "codex")
 
 			output, err := runShellCommand(t, dir,
-				"claude", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CLAUDE_YOLO:-UNSET}")
+				"codex", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CODEX_YOLO:-UNSET}")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
@@ -41,21 +39,19 @@ extensions:
 	}
 }
 
-// Scenario: A user does NOT enable yolo mode. The env var
-// ADDT_EXTENSION_CLAUDE_YOLO should not be set inside the container.
-func TestClaudeYolo_Addt_NotSetByDefault(t *testing.T) {
+// Scenario: A user does NOT enable yolo mode for codex. The env var
+// should not be set inside the container.
+func TestCodexYolo_Addt_NotSetByDefault(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
-
 			dir, cleanup := setupAddtDir(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "codex")
 
 			output, err := runShellCommand(t, dir,
-				"claude", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CLAUDE_YOLO:-UNSET}")
+				"codex", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CODEX_YOLO:-UNSET}")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
@@ -69,30 +65,27 @@ func TestClaudeYolo_Addt_NotSetByDefault(t *testing.T) {
 	}
 }
 
-// Scenario: Inside the container, the claude extension's args.sh script
-// transforms --yolo into --dangerously-skip-permissions so that claude
-// receives the correct flag. Verify the transformation works.
-func TestClaudeYolo_Addt_ArgsTransformation(t *testing.T) {
+// Scenario: The codex extension's args.sh transforms --yolo into
+// --full-auto so that codex runs in full autonomous mode.
+func TestCodexYolo_Addt_ArgsTransformation(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
-
 			dir, cleanup := setupAddtDir(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "codex")
 
 			output, err := runShellCommand(t, dir,
-				"claude", "-c",
-				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/claude/args.sh --yolo 2>/dev/null | tr '\\0' ' ')")
+				"codex", "-c",
+				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/codex/args.sh --yolo 2>/dev/null | tr '\\0' ' ')")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
 
 			result := extractMarker(output, "ARGS_RESULT:")
-			if !strings.Contains(result, "--dangerously-skip-permissions") {
-				t.Errorf("Expected args.sh to transform --yolo to --dangerously-skip-permissions, got ARGS_RESULT:%s\nFull output:\n%s",
+			if !strings.Contains(result, "--full-auto") {
+				t.Errorf("Expected args.sh to transform --yolo to --full-auto, got ARGS_RESULT:%s\nFull output:\n%s",
 					result, output)
 			}
 			if strings.Contains(result, "--yolo") {
@@ -103,61 +96,60 @@ func TestClaudeYolo_Addt_ArgsTransformation(t *testing.T) {
 	}
 }
 
-// Scenario: When yolo is enabled via config (env var), args.sh should
-// inject --dangerously-skip-permissions even without --yolo on the command
-// line. This is the config-driven path.
-func TestClaudeYolo_Addt_ArgsTransformationViaEnv(t *testing.T) {
+// Scenario: When yolo is enabled via config, args.sh should inject
+// --full-auto even without --yolo on the command line.
+func TestCodexYolo_Addt_ArgsTransformationViaConfig(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
-
 			dir, cleanup := setupAddtDir(t, prov, `
 extensions:
-  claude:
+  codex:
     flags:
       yolo: true
 `)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "codex")
 
 			output, err := runShellCommand(t, dir,
-				"claude", "-c",
-				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/claude/args.sh 2>/dev/null | tr '\\0' ' ')")
+				"codex", "-c",
+				"echo ARGS_RESULT:$(bash /usr/local/share/addt/extensions/codex/args.sh 2>/dev/null | tr '\\0' ' ')")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}
 
 			result := extractMarker(output, "ARGS_RESULT:")
-			if !strings.Contains(result, "--dangerously-skip-permissions") {
-				t.Errorf("Expected args.sh to inject --dangerously-skip-permissions from env var, got ARGS_RESULT:%s\nFull output:\n%s",
+			if !strings.Contains(result, "--full-auto") {
+				t.Errorf("Expected args.sh to inject --full-auto from env var, got ARGS_RESULT:%s\nFull output:\n%s",
 					result, output)
 			}
 		})
 	}
 }
 
-// Scenario: A user sets yolo via the ADDT_EXTENSION_CLAUDE_YOLO env var
-// directly, without any config file setting. The env var should propagate
-// to the container and args.sh should pick it up.
-func TestClaudeYolo_Addt_EnvVarOverride(t *testing.T) {
+// Scenario: A user sets yolo via env var for codex.
+func TestCodexYolo_Addt_EnvVarOverride(t *testing.T) {
 	providers := requireProviders(t)
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
-			defer setDummyAnthropicKey(t)()
-
-			// No yolo in config
 			dir, cleanup := setupAddtDir(t, prov, ``)
 			defer cleanup()
-			ensureAddtImage(t, dir, "claude")
+			ensureAddtImage(t, dir, "codex")
 
-			// Set yolo via env var
-			t.Setenv("ADDT_EXTENSION_CLAUDE_YOLO", "true")
+			origVal := os.Getenv("ADDT_EXTENSION_CODEX_YOLO")
+			os.Setenv("ADDT_EXTENSION_CODEX_YOLO", "true")
+			defer func() {
+				if origVal != "" {
+					os.Setenv("ADDT_EXTENSION_CODEX_YOLO", origVal)
+				} else {
+					os.Unsetenv("ADDT_EXTENSION_CODEX_YOLO")
+				}
+			}()
 
 			output, err := runShellCommand(t, dir,
-				"claude", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CLAUDE_YOLO:-UNSET}")
+				"codex", "-c", "echo YOLO_RESULT:${ADDT_EXTENSION_CODEX_YOLO:-UNSET}")
 			if err != nil {
 				t.Fatalf("shell command failed: %v\nOutput: %s", err, output)
 			}

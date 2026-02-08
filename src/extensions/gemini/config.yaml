@@ -12,6 +12,10 @@ config:
   mounts:
     - source: ~/.gemini
       target: /home/addt/.gemini
+flags:
+  - flag: "--yolo"
+    description: "Enable yolo mode (auto-approve all tool calls)"
+    env_var: ADDT_EXTENSION_GEMINI_YOLO
 env_vars:
   - GEMINI_API_KEY
   - GOOGLE_API_KEY

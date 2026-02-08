@@ -12,6 +12,10 @@ config:
   mounts:
     - source: ~/.copilot
       target: /home/addt/.copilot
+flags:
+  - flag: "--yolo"
+    description: "Enable yolo mode (auto-approve all tool calls)"
+    env_var: ADDT_EXTENSION_COPILOT_YOLO
 env_vars:
   - GH_TOKEN
   - GITHUB_TOKEN
