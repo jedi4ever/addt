@@ -7,13 +7,13 @@ import (
 
 // ExtensionSettings holds per-extension configuration settings
 type ExtensionSettings struct {
-	Version         string           `yaml:"version,omitempty"`
-	Auth            *AuthSettings    `yaml:"auth,omitempty"`
-	Config          *ConfigSettings  `yaml:"config,omitempty"`
+	Version         string                    `yaml:"version,omitempty"`
+	Auth            *AuthSettings             `yaml:"auth,omitempty"`
+	Config          *ConfigSettings           `yaml:"config,omitempty"`
 	Workdir         *ExtensionWorkdirSettings `yaml:"workdir,omitempty"`
-	FirewallAllowed []string         `yaml:"firewall_allowed,omitempty"`
-	FirewallDenied  []string         `yaml:"firewall_denied,omitempty"`
-	Flags           map[string]*bool `yaml:"flags,omitempty"`
+	FirewallAllowed []string                  `yaml:"firewall_allowed,omitempty"`
+	FirewallDenied  []string                  `yaml:"firewall_denied,omitempty"`
+	Flags           map[string]*bool          `yaml:"flags,omitempty"`
 }
 
 // ExtensionWorkdirSettings holds per-extension workdir overrides
