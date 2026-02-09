@@ -12,19 +12,9 @@ brew install jedi4ever/tap/addt
 addt run claude "Fix the bug in app.js"
 ```
 
-That's it. First run auto-downloads Podman (if needed) and builds the container (~2 min), then you're coding.
+That's it. First run auto-downloads Podman (if needed) and builds the container, then you're coding.
 
----
-
-## Why?
-
-AI agents can read, write, and execute code. Running them in containers means:
-- **Isolation** - Agents can't accidentally modify your system
-- **Reproducibility** - Same environment every time
-- **Security** - Network firewall, resource limits, no host access
-- **No daemon required** - Podman runs rootless without a background service
-
-All your normal agent commands work identically - it's a drop-in replacement.
+**What happens:** addt mounts your current directory at `/workspace` inside a container, forwards your API keys, and runs the agent. Your files are editable by the agent, but your system is protected. All normal agent flags work - it's a drop-in replacement.
 
 ---
 
@@ -60,12 +50,9 @@ chmod +x addt && sudo mv addt /usr/local/bin/
 
 **Verify:** `addt version`
 
-**Container runtime:** Podman is auto-downloaded if not available. You can also use Docker if preferred.
-
-**Using Docker or OrbStack instead of Podman:**
+**Container runtime:** Podman is auto-downloaded if not available. To use Docker or OrbStack instead:
 ```bash
 export ADDT_PROVIDER=docker    # or orbstack
-addt run claude "Fix the bug"
 ```
 
 ---
@@ -83,9 +70,165 @@ addt run claude --model opus "Refactor this"
 addt run claude --continue
 ```
 
-**Available agents:** Every agent is loaded as an extension. Built-in: `claude` `codex` `gemini` `copilot` `cursor` `tessl`. Experimental (install to `~/.addt/extensions/`): `amp` `kiro` `claude-flow` `gastown` `beads` `openclaw` `claude-sneakpeek` `backlog-md`. Run `addt extensions list` for details.
+**Available agents:** Built-in: `claude` `codex` `gemini` `copilot` `cursor` `tessl`. Experimental: `amp` `kiro` `claude-flow` `gastown` `beads` `openclaw` `claude-sneakpeek` `backlog-md`. Run `addt extensions list` for details.
 
-When the agent starts, your current directory is auto-mounted (read-write) at `/workspace` in the container.
+### Set up aliases (recommended)
+
+Add to your `~/.bashrc` or `~/.zshrc` for a seamless experience:
+```bash
+alias claude='addt run claude'
+alias codex='addt run codex'
+alias gemini='addt run gemini'
+
+# Now use directly
+claude "Fix the bug"
+codex "Add unit tests"
+```
+
+Alternatively, create symlinks:
+```bash
+ln -s /usr/local/bin/addt /usr/local/bin/addt-claude
+addt-claude "Fix the bug"
+```
+
+### Set up shell completions
+
+```bash
+# Bash (add to ~/.bashrc)
+eval "$(addt completion bash)"
+
+# Zsh (add to ~/.zshrc)
+eval "$(addt completion zsh)"
+
+# Fish (run once)
+addt completion fish > ~/.config/fish/completions/addt.fish
+```
+
+---
+
+## Authentication
+
+Each agent uses its own API key via environment variable:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."   # Claude
+export OPENAI_API_KEY="sk-..."          # Codex
+export GEMINI_API_KEY="..."             # Gemini
+```
+
+When `ANTHROPIC_API_KEY` is set, the container auto-configures Claude Code to skip onboarding and trust the workspace.
+
+**Using a Claude subscription instead of API key?** Run `claude login` on your host first, then enable auto-mount:
+```bash
+addt config extension claude set automount true
+```
+This mounts `~/.claude` into the container. With auto-mount, `--continue` and `--resume` work for session resumption. If you see config conflicts, pin the container version with `ADDT_CLAUDE_VERSION` to match your local version.
+
+---
+
+## Common Workflows
+
+Quick recipes for the most common scenarios:
+
+| I want to... | Command |
+|--------------|---------|
+| Run Claude on my project | `addt run claude "Fix the bug"` |
+| Give the agent GitHub access | `addt config set github.forward_token true` |
+| Use git over SSH in container | `export ADDT_SSH_FORWARD_KEYS=true` |
+| Expose a dev server port | `ADDT_PORTS=3000 addt run claude "Start the server"` |
+| Keep the container between runs | `export ADDT_PERSISTENT=true` |
+| Enable network firewall | `addt config set firewall.enabled true` |
+| Restrict to specific domains | `addt firewall global allow api.example.com` |
+| Enable yolo/auto-accept mode | `addt config set security.yolo true -g` |
+| Limit CPU and memory | `addt config set container.cpus 2 -g && addt config set container.memory 4g -g` |
+| Rebuild a stale container | `addt build claude --force` |
+| Debug inside the container | `addt shell claude` |
+| Check system health | `addt doctor` |
+
+### GitHub Access (private repos, PRs)
+
+Enable token forwarding to give the agent access to private repos and PRs:
+
+```bash
+addt config set github.forward_token true
+addt run claude "Create a PR for this feature"
+```
+
+addt auto-detects your token via `gh auth token` (requires [GitHub CLI](https://cli.github.com/) and `gh auth login`). Or set a token explicitly:
+```bash
+export GH_TOKEN="ghp_..."
+```
+
+By default, `GH_TOKEN` is scoped to only the workspace repo. To allow additional repos:
+```yaml
+# .addt.yaml
+github:
+  scope_token: true
+  scope_repos:
+    - "myorg/shared-lib"
+    - "myorg/common-config"
+```
+
+To disable scoping (allow all repos): `addt config set github.scope_token false`
+
+Token source options (`github.token_source`): `gh_auth` (default, uses `gh` CLI) or `env` (uses `GH_TOKEN` directly).
+
+### SSH Keys (git over SSH)
+
+SSH forwarding uses proxy mode by default - private keys never enter the container:
+
+```bash
+export ADDT_SSH_FORWARD_KEYS=true
+addt run claude "Clone git@github.com:org/private-repo.git"
+
+# Filter which keys are accessible
+export ADDT_SSH_ALLOWED_KEYS="github,work"
+```
+
+Other modes: `proxy` (default, most secure), `agent` (Linux only), `keys` (mounts ~/.ssh read-only).
+
+### Web Development (port mapping)
+
+```bash
+ADDT_PORTS="3000,8080" addt run claude "Create an Express server on port 3000"
+```
+
+Or configure permanently:
+```bash
+addt config set ports.expose "3000,8080" -g
+```
+
+Container ports are mapped starting at host port 30000 by default (configurable with `ports.range_start`).
+
+### Persistent Mode
+
+By default, containers are ephemeral. For faster startup, keep them running:
+```bash
+export ADDT_PERSISTENT=true
+claude "Start a feature"     # Creates container
+claude "Continue working"    # Reuses container
+```
+
+### Network Firewall
+
+Control which domains the agent can access:
+
+```bash
+addt config set firewall.enabled true -g
+
+# Manage allowed/denied domains
+addt firewall global allow api.example.com
+addt firewall global deny malware.com
+addt firewall global list
+```
+
+Project rules override global rules:
+```bash
+addt firewall global deny registry.npmjs.org    # Deny globally
+addt firewall project allow registry.npmjs.org  # But allow for this project
+```
+
+Rule evaluation order: `Defaults -> Extension -> Global -> Project` (most specific wins).
 
 ---
 
@@ -99,18 +242,9 @@ addt init -y        # Quick setup with smart defaults
 addt init -y -f     # Overwrite existing config
 ```
 
-The interactive setup asks:
-1. Which AI agent to use (claude, codex, gemini, copilot, cursor, tessl)
-2. Git operations needed (enables SSH forwarding)
-3. Network access level (restricted, open, strict, air-gapped)
-4. Workspace permissions (read-write or read-only)
-5. Container persistence (ephemeral or persistent)
+The interactive setup asks about your agent, git needs, network access, workspace permissions, and container persistence.
 
-**Smart defaults** based on your project:
-- Detects project type (Node.js, Python, Go, Rust, etc.)
-- Enables SSH proxy if Git is detected
-- Adds appropriate package registries to firewall allowlist
-- Sets GitHub integration if `.github` or GitHub remote found
+**Smart defaults** detect your project type (Node.js, Python, Go, etc.) and configure appropriate package registries, SSH proxy, and GitHub integration.
 
 Example generated config:
 ```yaml
@@ -136,202 +270,9 @@ Commit `.addt.yaml` to version control for team-wide consistency.
 
 ---
 
-## Authentication
-
-Each agent uses its own API key via environment variable:
-
-```bash
-# Claude
-export ANTHROPIC_API_KEY="sk-ant-..."
-
-# Codex (OpenAI)
-export OPENAI_API_KEY="sk-..."
-
-# Gemini
-export GEMINI_API_KEY="..."
-```
-
-**Claude with API key:** When `ANTHROPIC_API_KEY` is set, the container auto-configures Claude Code to skip onboarding and trust the workspace - no interactive prompts.
-
-**Claude with a subscription:** If you use Claude with a subscription (OAuth, not API), you need to:
-1. Run `claude login` on your host machine first
-2. Enable auto-mount to share your Claude config with the container:
-
-```bash
-addt config extension claude set automount true
-```
-
-This mounts `~/.claude` and `~/.claude.json` into the container.
-
-⚠️ **Version caveat:** Auto-mount shares your local Claude config with the container. If the Claude Code version in the container differs from your local version, you may see config conflicts or unexpected behavior. Use version pinning (`ADDT_CLAUDE_VERSION`) to match versions if needed.
-
-**Session resumption:** With auto-mount enabled, Claude can resume previous sessions using `--continue` or `--resume`. Your session history in `~/.claude` is mounted into the container.
-
-**Your code:** Your current directory is automatically mounted at `/workspace` in the container. The agent can read and edit your files directly.
-
-**For GitHub operations:** If the agent needs to create PRs, push commits, or access private repos, enable GitHub token forwarding first. addt picks up your token from `gh auth token` (requires [GitHub CLI](https://cli.github.com/) installed and `gh auth login` done). You can also set a token explicitly:
-```bash
-export GH_TOKEN="ghp_..."
-```
-
----
-
-## Everyday Usage
-
-### Aliases (recommended)
-
-Add to your `~/.bashrc` or `~/.zshrc`:
-```bash
-alias claude='addt run claude'
-alias codex='addt run codex'
-alias gemini='addt run gemini'
-
-# Now use directly
-claude "Fix the bug"
-```
-
-### Symlinks
-
-Alternatively, create symlinks. Use the `addt-` prefix to make it clear:
-```bash
-ln -s /usr/local/bin/addt /usr/local/bin/addt-claude
-ln -s /usr/local/bin/addt /usr/local/bin/addt-codex
-
-# Use with prefix
-addt-claude "Fix the bug"
-```
-
-You can also symlink directly to the agent name (e.g., `claude`), but the prefix avoids confusion with the real CLI if installed.
-
-### Web Development (port mapping)
-
-```bash
-export ADDT_PORTS="8080"
-addt run claude "Create an Express server on port 8080"
-# Agent tells you: "Visit http://localhost:30000"
-```
-
-Or configure via YAML (`~/.addt/config.yaml` or `.addt.yaml`):
-```yaml
-ports:
-  forward: true
-  expose:
-    - "3000"
-    - "8080"
-  range_start: 30000
-```
-
-Or via CLI:
-```bash
-addt config set ports.expose "3000,8080" -g
-addt config set ports.range_start 40000 -g
-addt config set ports.forward false -g   # disable port forwarding
-```
-
-### GitHub Access (private repos, PRs)
-
-GitHub token forwarding is disabled by default. Enable it to give the agent access to private repos and PRs. When enabled, addt auto-detects your token via `gh auth token` (requires [GitHub CLI](https://cli.github.com/) and `gh auth login`):
-
-```bash
-# Enable token forwarding
-addt config set github.forward_token true
-addt run claude "Clone git@github.com:org/private-repo.git"
-```
-
-Or set a token explicitly:
-```bash
-export GH_TOKEN="ghp_..."
-addt run claude "Clone the private repo and create a PR"
-```
-
-Token source options (`github.token_source`):
-- **`gh_auth`** (default) — runs `gh auth token` on the host. Requires `gh` CLI installed and authenticated via `gh auth login`
-- **`env`** — uses the `GH_TOKEN` environment variable as-is
-
-To disable token forwarding entirely:
-```bash
-addt config set github.forward_token false
-```
-
-**Token scoping** (enabled by default):
-
-By default, `GH_TOKEN` is scoped to only the workspace repo (and optionally additional repos) using `github.scope_token`. This prevents the agent from accessing other repos.
-
-To disable scoping (allow access to all repos the token is authorized for):
-```bash
-addt config set github.scope_token false
-```
-
-When scoping is enabled:
-1. The workspace repo is auto-detected from `git remote` and cached in `git credential-cache`
-2. `gh` CLI is authenticated via `gh auth login --with-token` (PRs, issues still work)
-3. `GH_TOKEN` is scrubbed from the container environment (overwritten with random data, then unset)
-4. Git operations to non-allowed repos will fail (no credential cached)
-
-To allow additional repos beyond the workspace:
-```yaml
-# .addt.yaml
-github:
-  scope_token: true
-  scope_repos:
-    - "myorg/shared-lib"
-    - "myorg/common-config"
-```
-
-Or via CLI/env vars:
-```bash
-addt config set github.scope_repos "myorg/shared-lib,myorg/common-config"
-export ADDT_GITHUB_SCOPE_REPOS="myorg/shared-lib,myorg/common-config"
-```
-
-**Note:** Permission-level scoping (read-only, no-admin) cannot be enforced at the container level. Use [GitHub fine-grained PATs](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with restricted permissions for that.
-
-Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
-
-### SSH Keys (git over SSH)
-
-SSH forwarding is disabled by default. Enable it and choose a forwarding mode:
-
-```bash
-# Enable SSH forwarding (proxy mode is the default mode)
-export ADDT_SSH_FORWARD_KEYS=true
-addt run claude "Clone git@github.com:org/private-repo.git"
-
-# Filter which keys are accessible
-export ADDT_SSH_ALLOWED_KEYS="github,work"
-addt run claude "Clone the repo"
-
-# Alternative modes
-export ADDT_SSH_FORWARD_MODE=proxy   # SSH proxy (keys never enter container)
-export ADDT_SSH_FORWARD_MODE=keys    # Mount ~/.ssh read-only (less secure)
-export ADDT_SSH_FORWARD_KEYS=false   # Disable SSH forwarding
-```
-
-### Rebuild Container
-
-```bash
-addt build claude --force    # Rebuild from scratch
-```
-
-### Complete Isolation (no workdir mount)
-
-```bash
-export ADDT_WORKDIR_AUTOMOUNT=false
-addt run claude "Work without access to host files"
-```
-
-### Network Firewall
-
-```bash
-export ADDT_FIREWALL=true
-addt run claude "Only allowed domains are accessible"
-```
-
----
-
 ## Configuration
 
-There are three ways to configure addt:
+Three ways to configure addt:
 
 | Method | Location | Use case |
 |--------|----------|----------|
@@ -339,92 +280,61 @@ There are three ways to configure addt:
 | **Project config** | `.addt.yaml` in project | Team-shared settings, per-project defaults |
 | **Global config** | `~/.addt/config.yaml` | Personal defaults across all projects |
 
-**Precedence** (highest to lowest): Environment → Project → Global → Defaults
-
-### Example: Setting memory limit
-
-```bash
-# Environment variable (highest priority)
-export ADDT_CONTAINER_MEMORY=4g
-
-# Project config (.addt.yaml)
-addt config set container.memory 4g
-
-# Global config (~/.addt/config.yaml)
-addt config set container.memory 4g -g
-```
-
-All three set the same thing. Environment wins if multiple are set.
-
-### Project Config File
-
-Use `addt config` to manage `.addt.yaml` (commit to git for team sharing):
-
-```bash
-addt config set persistent true
-addt config set container.memory 4g
-addt config set firewall.enabled true
-addt config list
-```
+**Precedence** (highest to lowest): Environment -> Project -> Global -> Defaults
 
 ### Config Commands
 
 ```bash
-# Project settings (this directory, default)
+# Project settings (.addt.yaml)
 addt config list
 addt config set firewall.enabled true
 addt config unset firewall.enabled
 
-# Global settings (all projects)
+# Global settings (~/.addt/config.yaml)
 addt config list -g
 addt config set container.memory 4g -g
 addt config unset container.memory -g
 
-# Per-extension
+# Per-extension settings
 addt config extension claude set version 1.0.5
+addt config extension claude list
 ```
 
 ### Security Profiles
 
-Apply preconfigured security profiles to quickly set multiple settings at once:
+Apply preconfigured profiles to quickly set multiple settings:
 
 ```bash
-# List available profiles
-addt profile list
-
-# Apply a profile
-addt profile apply strict
-addt profile apply paranoia
-addt profile apply develop
+addt profile list              # List available profiles
+addt profile apply strict      # Apply a profile
 ```
 
 Built-in profiles:
-- **develop** — Relaxed settings for development (firewall off, no read-only rootfs)
-- **strict** — Tighter security (firewall on, reduced capabilities, secrets isolation)
-- **paranoia** — Maximum lockdown (read-only rootfs, air-gapped network, time limits)
+- **develop** -- Relaxed settings for development (firewall off, no read-only rootfs)
+- **strict** -- Tighter security (firewall on, reduced capabilities, secrets isolation)
+- **paranoia** -- Maximum lockdown (read-only rootfs, air-gapped network, time limits)
 
 ### Config Audit
 
-Review your current security posture with a colored summary:
-
+Review your current security posture:
 ```bash
 addt config audit
 ```
 
-Shows which security settings are enabled/disabled across global and project config, with color-coded severity levels.
+Shows which security settings are enabled/disabled with color-coded severity levels.
 
 ### Common Environment Variables
 
 | Variable | Description |
 |----------|-------------|
+| `ADDT_PROVIDER=docker` | Container runtime: `podman`, `docker`, or `orbstack` |
 | `ADDT_PERSISTENT=true` | Keep container running between sessions |
-| `ADDT_PORTS_FORWARD=true` | Enable port forwarding (default: true) |
 | `ADDT_PORTS=3000,8080` | Expose container ports |
-| `ADDT_SSH_FORWARD_KEYS=true` | Enable SSH key forwarding (default: false) |
-| `ADDT_SSH_FORWARD_MODE=proxy` | SSH forwarding mode: proxy, agent, or keys |
-| `ADDT_SSH_ALLOWED_KEYS=github` | Filter SSH keys by comment |
-| `ADDT_DOCKER_DIND_ENABLE=true` | Enable Docker-in-Docker |
+| `ADDT_SSH_FORWARD_KEYS=true` | Enable SSH key forwarding |
 | `ADDT_FIREWALL=true` | Enable network firewall |
+| `ADDT_CONTAINER_MEMORY=4g` | Memory limit |
+| `ADDT_CONTAINER_CPUS=2` | CPU limit |
+| `ADDT_DOCKER_DIND_ENABLE=true` | Enable Docker-in-Docker |
 
 See [Full Reference](#environment-variables-reference) for all options.
 
@@ -432,60 +342,30 @@ See [Full Reference](#environment-variables-reference) for all options.
 
 ## Advanced Features
 
-### Persistent Mode
-
-By default, containers are ephemeral (destroyed after each run). For faster startup, keep them running:
-```bash
-export ADDT_PERSISTENT=true
-claude "Start a feature"     # Creates container
-claude "Continue working"    # Reuses container (instant!)
-```
-
 ### Shell History Persistence
 
 Keep your bash and zsh history across container sessions:
 
 ```bash
-export ADDT_HISTORY_PERSIST=true
-addt run claude "Work on my project"
-# Exit and re-run — your shell history is still there
-```
-
-History files are stored per-project at `~/.addt/history/<project-hash>/` on your host, and mounted as `~/.bash_history` and `~/.zsh_history` inside the container.
-
-Configure via project config:
-```bash
 addt config set history_persist true
 ```
 
-### SSH Forwarding
+History files are stored per-project at `~/.addt/history/<project-hash>/` on your host.
 
-SSH forwarding is controlled by two settings:
-- `ssh.forward_keys` (bool): enable/disable SSH forwarding (default: false)
-- `ssh.forward_mode` (string): forwarding method — `proxy` (default), `agent`, or `keys`
+### SSH Forwarding Modes
+
+SSH forwarding is controlled by `ssh.forward_keys` and `ssh.forward_mode`:
+
+| Mode | How it works | When to use |
+|------|-------------|-------------|
+| `proxy` (default) | Private keys never enter container | macOS, most secure |
+| `agent` | Forwards SSH agent socket | Linux only |
+| `keys` | Mounts ~/.ssh read-only | Legacy / fallback |
 
 ```bash
-# Default: proxy mode (private keys never enter the container, works on macOS)
-addt run claude "Clone the private repo"
-
-# Agent mode: forward SSH agent socket directly (Linux only)
-export ADDT_SSH_FORWARD_MODE=agent
-addt run claude "Clone the private repo"
-
-# Filter to specific keys by comment/name (auto-enables proxy mode)
+# Filter to specific keys by comment/name
 export ADDT_SSH_ALLOWED_KEYS="github-personal"
-addt run claude "Only github-personal key is accessible"
-
-# Other modes
-export ADDT_SSH_FORWARD_MODE=keys    # Mount ~/.ssh read-only
-export ADDT_SSH_FORWARD_KEYS=false   # Disable SSH entirely
 ```
-
-**Proxy mode benefits:**
-- Private keys never enter the container
-- Works on macOS (where agent forwarding doesn't work)
-- Filter which keys are exposed with `ADDT_SSH_ALLOWED_KEYS`
-- Keys matched by comment field (filename, email, etc.)
 
 ### Docker-in-Docker / Podman-in-Podman
 
@@ -494,53 +374,34 @@ export ADDT_DOCKER_DIND_ENABLE=true
 addt run claude "Build a Docker image for this app"
 ```
 
-With Podman, this enables nested Podman containers (Podman-in-Podman).
-
 ### GPG Signing
 
-GPG forwarding supports multiple modes for different security levels:
-
 ```bash
-# Agent mode - forward gpg-agent socket (most secure for signing)
+# Agent mode - forward gpg-agent socket (most secure)
 export ADDT_GPG_FORWARD=agent
 addt run claude "Create a signed commit"
 
 # Proxy mode - filter which keys can sign
 export ADDT_GPG_FORWARD=proxy
 export ADDT_GPG_ALLOWED_KEY_IDS="ABC123,DEF456"
-addt run claude "Sign with specific key only"
 
 # Keys mode - mount ~/.gnupg read-only (legacy)
 export ADDT_GPG_FORWARD=keys
-addt run claude "Access GPG config"
 ```
-
-**GPG mode benefits:**
-- `agent`: Forward gpg-agent socket, private keys stay on host
-- `proxy`: Filter which key IDs can sign operations
-- `keys`: Mount entire ~/.gnupg read-only (backward compatible with `true`)
 
 ### Git Config Forwarding
 
-Your `.gitconfig` is automatically forwarded to the container (enabled by default), so git identity, aliases, and settings work inside containers:
+Your `.gitconfig` is automatically forwarded to the container (enabled by default):
 
 ```bash
-# Disable .gitconfig forwarding
-addt config set git.forward_config false
-
-# Use a custom .gitconfig path
-addt config set git.config_path /path/to/custom/.gitconfig
+addt config set git.forward_config false     # Disable
+addt config set git.config_path /custom/path # Custom path
 ```
 
 ### Custom SSH/GPG Directories
 
-Override the default SSH or GPG directory paths:
-
 ```bash
-# Use a custom SSH directory
 addt config set ssh.dir /path/to/custom/.ssh
-
-# Use a custom GPG directory
 addt config set gpg.dir /path/to/custom/.gnupg
 ```
 
@@ -549,223 +410,33 @@ addt config set gpg.dir /path/to/custom/.gnupg
 Forward your host tmux session into the container for multi-pane workflows:
 
 ```bash
-# Enable tmux forwarding (disabled by default)
 export ADDT_TMUX_FORWARD=true
 addt run claude "Work in tmux"
 ```
 
-When enabled and you're running inside a tmux session, the container can:
-- Access your host tmux socket
-- Create new panes/windows visible on your host
-- Use tmux commands to split terminals
-
-**Note:** Only works when addt is run from within an active tmux session.
+Only works when addt is run from within an active tmux session.
 
 ### Terminal OSC Support
 
-Enable forwarding of terminal identification variables (TERM_PROGRAM, KITTY_WINDOW_ID, etc.) so apps inside the container can detect OSC capabilities like clipboard access (OSC 52) and hyperlinks:
+Enable terminal identification forwarding for clipboard access (OSC 52) and hyperlinks:
 
 ```bash
-# Enable OSC forwarding (disabled by default)
 addt config set terminal.osc true
-# Or via env var
-export ADDT_TERMINAL_OSC=true
 ```
-
-When enabled, the container receives terminal identification vars from the host, allowing tools like Claude Code to use clipboard copy via OSC 52. When disabled (the default), only basic terminal vars (TERM, COLORTERM, COLUMNS, LINES) are forwarded.
-
-### Network Firewall
-
-Control which domains the agent can access:
-
-```bash
-# Enable firewall
-addt config set firewall.enabled true -g
-
-# Manage allowed/denied domains
-addt firewall global allow api.example.com
-addt firewall global deny malware.com
-addt firewall global list
-```
-
-**Layered rules** - Project rules override global rules:
-```bash
-# Globally deny npm
-addt firewall global deny registry.npmjs.org
-
-# But allow it for this project
-addt firewall project allow registry.npmjs.org
-```
-
-Rule evaluation: `Defaults → Extension → Global → Project` (most specific wins)
-
-**Podman firewall:** When using Podman with firewall enabled, addt automatically uses the `pasta` network backend for efficient network namespace handling. The firewall works with both nftables (preferred) and iptables.
 
 ### Resource Limits
 
-```bash
-export ADDT_CONTAINER_CPUS=2
-export ADDT_CONTAINER_MEMORY=4g
-addt run claude
-```
-
-Or via config:
 ```bash
 addt config set container.cpus 2 -g
 addt config set container.memory 4g -g
 ```
 
-### Security Hardening
+Or via environment: `ADDT_CONTAINER_CPUS=2 ADDT_CONTAINER_MEMORY=4g`
 
-Containers run with security defaults enabled:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `pids_limit` | 200 | Max processes (prevents fork bombs) |
-| `ulimit_nofile` | 4096:8192 | File descriptor limits |
-| `ulimit_nproc` | 256:512 | Process limits |
-| `no_new_privileges` | true | Prevents privilege escalation |
-| `cap_drop` | [ALL] | Linux capabilities to drop |
-| `cap_add` | [CHOWN, SETUID, SETGID] | Linux capabilities to add back |
-| `read_only_rootfs` | false | Read-only root filesystem |
-| `tmpfs_tmp_size` | 256m | Size of /tmp when read_only_rootfs is enabled |
-| `tmpfs_home_size` | 512m | Size of /home/addt when read_only_rootfs is enabled |
-| `network_mode` | "" | Network mode: "bridge", "none" (air-gapped), "host" (empty = provider default) |
-| `seccomp_profile` | default | Seccomp: "default", "restrictive", "unconfined", or path |
-| `disable_ipc` | false | Disable IPC namespace sharing (`--ipc=none`) |
-| `time_limit` | 0 | Auto-terminate after N minutes (0 = disabled) |
-| `user_namespace` | "" | User namespace: "host" or "private" |
-| `disable_devices` | false | Drop MKNOD capability (prevent device creation) |
-| `memory_swap` | "" | Memory swap limit: "-1" to disable swap |
-| `isolate_secrets` | false | Isolate secrets from child processes via tmpfs |
-| `yolo` | false | Enable yolo mode globally for all extensions |
-| `audit_log` | false | Enable security audit logging |
-
-**Global yolo mode**: Set `security.yolo: true` to enable yolo/auto-accept mode across all extensions. Per-extension overrides take precedence:
-```bash
-addt config set security.yolo true -g                # Enable globally
-addt config extension claude set yolo false          # But disable for claude
-```
-
-**Git hooks neutralization** (enabled by default): A compromised agent can plant git hooks (e.g., `.git/hooks/pre-commit`) that execute arbitrary code on `git commit`. When `git.disable_hooks` is true, a git wrapper sets `core.hooksPath=/dev/null` via `GIT_CONFIG_COUNT` on every invocation, which overrides all file-based config and cannot be bypassed by writing to `.git/config` or `~/.gitconfig`. Disable with `addt config set git.disable_hooks false` if you need pre-commit/lint-staged hooks.
-
-Inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
-
-**Credential scrubbing**: Credential environment variables (e.g., API keys from credential scripts) are overwritten with random data before being unset inside the container. This prevents recovery from `/proc/*/environ` snapshots or process memory dumps. Similarly, the secrets file (`/run/secrets/.secrets`) is overwritten with random data before deletion, and host-side temporary files used during `docker cp`/`podman cp` are scrubbed before removal.
-
-Configure in `~/.addt/config.yaml`:
-```yaml
-security:
-  pids_limit: 200
-  ulimit_nofile: "4096:8192"
-  ulimit_nproc: "256:512"
-  no_new_privileges: true
-  cap_drop: [ALL]
-  cap_add: [CHOWN, SETUID, SETGID]
-  read_only_rootfs: true
-  tmpfs_tmp_size: "100m"
-  tmpfs_home_size: "500m"
-  network_mode: none       # Completely disable networking (air-gapped)
-  seccomp_profile: restrictive  # Use built-in restrictive syscall filter
-  disable_ipc: true             # Isolate IPC namespace
-  time_limit: 60                # Auto-terminate after 60 minutes
-  disable_devices: true         # Prevent device file creation
-  memory_swap: "-1"             # Disable swap entirely
-  isolate_secrets: true         # Isolate secrets from child processes
-
-# Mount workspace as read-only (agent can't modify your files)
-workdir:
-  readonly: true
-```
-
-Or via environment variables:
-```bash
-export ADDT_SECURITY_PIDS_LIMIT=500
-export ADDT_SECURITY_READ_ONLY_ROOTFS=true
-export ADDT_SECURITY_TMPFS_TMP_SIZE=100m
-export ADDT_SECURITY_TMPFS_HOME_SIZE=500m
-export ADDT_SECURITY_NETWORK_MODE=none
-export ADDT_SECURITY_ISOLATE_SECRETS=true
-export ADDT_WORKDIR_READONLY=true
-```
-
-### OpenTelemetry Support
-
-Send telemetry data to an OTEL collector for observability:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `enabled` | false | Enable OpenTelemetry |
-| `endpoint` | http://host.docker.internal:4318 | OTLP endpoint URL |
-| `protocol` | http/json | Protocol: http/json, http/protobuf, or grpc |
-| `service_name` | addt | Service name for traces |
-| `headers` | "" | OTLP headers (key=value,key2=value2) |
-
-Configure in `~/.addt/config.yaml`:
-```yaml
-otel:
-  enabled: true
-  endpoint: http://host.docker.internal:4318
-  protocol: http/json
-  service_name: my-project
-```
-
-Or via environment variables:
-```bash
-export ADDT_OTEL_ENABLED=true
-export ADDT_OTEL_SERVICE_NAME=my-project
-```
-
-When enabled, the following environment variables are passed to the container:
-- `CLAUDE_CODE_ENABLE_TELEMETRY=1` (enables Claude Code telemetry)
-- `OTEL_EXPORTER_OTLP_ENDPOINT`
-- `OTEL_EXPORTER_OTLP_PROTOCOL`
-- `OTEL_SERVICE_NAME`
-- `OTEL_EXPORTER_OTLP_HEADERS` (if configured)
-
-The container can reach the host via `host.docker.internal` (automatically configured when OTEL is enabled).
-
-Additional Claude Code telemetry options can be passed through from the host:
-```bash
-# Enable logging of user prompts (redacted by default)
-export OTEL_LOG_USER_PROMPTS=1
-
-# Enable logging of tool/MCP server names
-export OTEL_LOG_TOOL_DETAILS=1
-
-# Configure exporters
-export OTEL_METRICS_EXPORTER=otlp
-export OTEL_LOGS_EXPORTER=otlp
-```
-
-#### addt-otel: Simple OTEL Collector
-
-A lightweight OTEL collector is included for debugging and development:
+### Complete Isolation (no workdir mount)
 
 ```bash
-# Start the collector (listens on port 4318)
-addt-otel
-
-# With verbose output (show full payloads)
-addt-otel --verbose
-
-# Output as JSON lines
-addt-otel --json
-
-# Log to file
-addt-otel --log /tmp/otel.log
-
-# Custom port
-addt-otel --port 4319
-```
-
-Example workflow:
-```bash
-# Terminal 1: Start the collector
-addt-otel --verbose
-
-# Terminal 2: Run addt with OTEL enabled
-ADDT_OTEL_ENABLED=true addt run claude
+ADDT_WORKDIR_AUTOMOUNT=false addt run claude "Work without access to host files"
 ```
 
 ### Version Pinning
@@ -778,7 +449,7 @@ addt run claude
 
 ### Experimental Extensions
 
-8 additional extensions are available in `extensions_experimental/`: `amp`, `kiro`, `claude-flow`, `gastown`, `beads`, `openclaw`, `claude-sneakpeek`, `backlog-md`. To install one, copy it to your local extensions directory:
+8 additional extensions are available in `extensions_experimental/`: `amp`, `kiro`, `claude-flow`, `gastown`, `beads`, `openclaw`, `claude-sneakpeek`, `backlog-md`. To install one:
 
 ```bash
 cp -r extensions_experimental/amp ~/.addt/extensions/amp
@@ -786,8 +457,6 @@ addt run amp "Hello!"
 ```
 
 ### Custom Extensions
-
-Create your own agent extensions:
 
 ```bash
 addt extensions new myagent
@@ -797,6 +466,74 @@ addt run myagent "Hello!"
 ```
 
 See [docs/extensions.md](docs/extensions.md) for details.
+
+### Security Hardening
+
+Containers run with security defaults:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `pids_limit` | 200 | Max processes (prevents fork bombs) |
+| `no_new_privileges` | true | Prevents privilege escalation |
+| `cap_drop` | [ALL] | Drop all Linux capabilities |
+| `cap_add` | [CHOWN, SETUID, SETGID] | Add back minimal capabilities |
+| `read_only_rootfs` | false | Read-only root filesystem |
+| `network_mode` | "" | `bridge`, `none` (air-gapped), `host` |
+| `seccomp_profile` | default | `default`, `restrictive`, `unconfined`, or path |
+| `time_limit` | 0 | Auto-terminate after N minutes (0 = disabled) |
+| `isolate_secrets` | false | Isolate secrets from child processes |
+| `yolo` | false | Enable yolo mode globally for all extensions |
+| `audit_log` | false | Enable security audit logging |
+
+**Global yolo mode**: `addt config set security.yolo true -g` enables auto-accept across all extensions. Per-extension overrides take precedence:
+```bash
+addt config extension claude set yolo false   # Disable for claude only
+```
+
+**Git hooks neutralization** (enabled by default): Sets `core.hooksPath=/dev/null` via `GIT_CONFIG_COUNT` to prevent malicious git hooks. Disable with `addt config set git.disable_hooks false` if you need pre-commit/lint-staged hooks.
+
+**Credential scrubbing**: API keys and secrets are overwritten with random data before being unset inside the container, preventing recovery from `/proc/*/environ` or memory dumps.
+
+Configure in `~/.addt/config.yaml`:
+```yaml
+security:
+  pids_limit: 200
+  no_new_privileges: true
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETUID, SETGID]
+  read_only_rootfs: true
+  network_mode: none
+  seccomp_profile: restrictive
+  time_limit: 60
+  isolate_secrets: true
+
+workdir:
+  readonly: true
+```
+
+### OpenTelemetry Support
+
+Send telemetry data to an OTEL collector for observability:
+
+```yaml
+# ~/.addt/config.yaml
+otel:
+  enabled: true
+  endpoint: http://host.docker.internal:4318
+  protocol: http/json
+  service_name: my-project
+```
+
+Or via environment: `ADDT_OTEL_ENABLED=true ADDT_OTEL_SERVICE_NAME=my-project`
+
+A lightweight collector is included for debugging:
+```bash
+# Terminal 1: Start the collector
+addt-otel --verbose
+
+# Terminal 2: Run addt with OTEL enabled
+ADDT_OTEL_ENABLED=true addt run claude
+```
 
 ---
 
@@ -879,8 +616,8 @@ addt cli update                   # Update addt
 | `ADDT_PORTS_FORWARD` | true | Enable port forwarding |
 | `ADDT_PORTS` | - | Ports to expose: `3000,8080` |
 | `ADDT_PORT_RANGE_START` | 30000 | Starting port for auto allocation |
-| `ADDT_CONTAINER_CPUS` | 2 | CPU limit: `2` |
-| `ADDT_CONTAINER_MEMORY` | 4g | Memory limit: `4g` |
+| `ADDT_CONTAINER_CPUS` | 2 | CPU limit |
+| `ADDT_CONTAINER_MEMORY` | 4g | Memory limit |
 | `ADDT_WORKDIR` | `.` | Working directory to mount |
 | `ADDT_WORKDIR_READONLY` | false | Mount workspace as read-only |
 | `ADDT_HISTORY_PERSIST` | false | Persist shell history between sessions |
@@ -964,31 +701,10 @@ addt cli update                   # Update addt
 ## Troubleshooting
 
 ### Quick diagnostics
-Run the built-in health check:
 ```bash
 addt doctor
 ```
-This checks Docker/Podman, API keys, disk space, and network connectivity.
-
-### Shell completions
-Enable tab completion for commands, extensions, and config keys (including namespaced keys like `github.token_source`, `security.pids_limit`, etc.):
-```bash
-# Bash (add to ~/.bashrc)
-eval "$(addt completion bash)"
-
-# Zsh (add to ~/.zshrc)
-eval "$(addt completion zsh)"
-
-# Fish (run once)
-addt completion fish > ~/.config/fish/completions/addt.fish
-```
-
-Config keys use dot notation for namespaced settings:
-```bash
-addt config set github.token_source env
-addt config set security.pids_limit 300
-addt config get ports.forward
-```
+Checks Docker/Podman, API keys, disk space, and network connectivity.
 
 ### macOS: "Killed: 9"
 Binary needs code-signing:
@@ -1016,7 +732,7 @@ See [docs/README-development.md](docs/README-development.md) for development set
 
 Network firewall inspired by [claude-clamp](https://github.com/Richargh/claude-clamp).
 
-Credential scrubbing (overwriting secrets with random data before unsetting/deleting) inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
+Credential scrubbing inspired by [IngmarKrusch/claude-docker](https://github.com/IngmarKrusch/claude-docker).
 
 ## License
 
