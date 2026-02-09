@@ -206,7 +206,9 @@ func configureInteractive(config *InitConfig, project ProjectType) {
 	fmt.Println("  2) codex (OpenAI)")
 	fmt.Println("  3) gemini (Google)")
 	fmt.Println("  4) copilot (GitHub)")
-	fmt.Println("  5) other")
+	fmt.Println("  5) cursor (Cursor)")
+	fmt.Println("  6) tessl (Tessl)")
+	fmt.Println("  7) other")
 	fmt.Print("Choice [1]: ")
 	choice := readLine(reader)
 	switch choice {
@@ -219,6 +221,10 @@ func configureInteractive(config *InitConfig, project ProjectType) {
 	case "4":
 		config.Extensions = "copilot"
 	case "5":
+		config.Extensions = "cursor"
+	case "6":
+		config.Extensions = "tessl"
+	case "7":
 		fmt.Print("Extension name: ")
 		config.Extensions = readLine(reader)
 		if config.Extensions == "" {

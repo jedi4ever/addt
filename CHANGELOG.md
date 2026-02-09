@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Terminal OSC config**: `terminal.osc` setting (default: false) controls forwarding of terminal identification vars (TERM_PROGRAM, KITTY_WINDOW_ID, etc.) for OSC 52 clipboard and link support
 
 ### Changed
+- **Extensions to experimental**: Moved 8 extensions to `extensions_experimental/`: amp, kiro, claude-flow, gastown, beads, openclaw, claude-sneakpeek, backlog-md. These can be installed to `~/.addt/extensions/` for use. Built-in extensions are now: claude, codex, gemini, copilot, cursor, tessl.
 - **Config keys in YAML**: Consolidated config keys into embedded YAML with reflection-based Get/Set/Unset
 - **Root entrypoint**: Use root entrypoint with gosu for firewall and DinD instead of sudo
 - **Extension namespacing**: Restructured extension config with auth/config global keys and per-extension namespace

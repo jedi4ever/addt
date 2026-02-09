@@ -83,7 +83,7 @@ addt run claude --model opus "Refactor this"
 addt run claude --continue
 ```
 
-**Available agents:** Every agent is loaded as an extension. Built-in: `claude` `codex` `gemini` `copilot` `amp` `cursor` `kiro` `claude-flow` `gastown` `beads` `tessl` `openclaw` and more. Run `addt extensions list` for details.
+**Available agents:** Every agent is loaded as an extension. Built-in: `claude` `codex` `gemini` `copilot` `cursor` `tessl`. Experimental (install to `~/.addt/extensions/`): `amp` `kiro` `claude-flow` `gastown` `beads` `openclaw` `claude-sneakpeek` `backlog-md`. Run `addt extensions list` for details.
 
 When the agent starts, your current directory is auto-mounted (read-write) at `/workspace` in the container.
 
@@ -100,7 +100,7 @@ addt init -y -f     # Overwrite existing config
 ```
 
 The interactive setup asks:
-1. Which AI agent to use (claude, codex, gemini, etc.)
+1. Which AI agent to use (claude, codex, gemini, copilot, cursor, tessl)
 2. Git operations needed (enables SSH forwarding)
 3. Network access level (restricted, open, strict, air-gapped)
 4. Workspace permissions (read-write or read-only)
@@ -770,6 +770,15 @@ ADDT_OTEL_ENABLED=true addt run claude
 export ADDT_CLAUDE_VERSION=1.0.5
 export ADDT_NODE_VERSION=20
 addt run claude
+```
+
+### Experimental Extensions
+
+8 additional extensions are available in `extensions_experimental/`: `amp`, `kiro`, `claude-flow`, `gastown`, `beads`, `openclaw`, `claude-sneakpeek`, `backlog-md`. To install one, copy it to your local extensions directory:
+
+```bash
+cp -r extensions_experimental/amp ~/.addt/extensions/amp
+addt run amp "Hello!"
 ```
 
 ### Custom Extensions
