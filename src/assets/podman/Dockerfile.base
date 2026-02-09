@@ -34,10 +34,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Podman for nested containers (Podman-in-Podman)
-RUN echo 'deb http://download.opensuse.org/repositories/home:/alvistack/Debian_12/ /' | tee /etc/apt/sources.list.d/home:alvistack.list > /dev/null 2>&1 || true \
-    && curl -fsSL https://download.opensuse.org/repositories/home:alvistack/Debian_12/Release.key 2>/dev/null | gpg --dearmor -o /usr/share/keyrings/home-alvistack-archive-keyring.gpg || true \
-    && echo "deb [signed-by=/usr/share/keyrings/home-alvistack-archive-keyring.gpg] http://download.opensuse.org/repositories/home:/alvistack/Debian_12/ /" | tee /etc/apt/sources.list.d/home-alvistack.list > /dev/null 2>&1 || true \
-    && apt-get update && apt-get install -y podman || echo "Podman installation skipped (not critical)"
+# Available in official Debian 12 (bookworm) repos
+RUN apt-get update && apt-get install -y podman \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Go
 RUN ARCH=$(dpkg --print-architecture) && \

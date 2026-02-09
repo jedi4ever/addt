@@ -621,7 +621,13 @@ func (p *OrbStackProvider) addSecuritySettings(dockerArgs []string) []string {
 		// Add tmpfs mounts for writable directories when using read-only rootfs
 		dockerArgs = append(dockerArgs, "--tmpfs", fmt.Sprintf("/tmp:rw,noexec,nosuid,size=%s", sec.TmpfsTmpSize))
 		dockerArgs = append(dockerArgs, "--tmpfs", "/var/tmp:rw,noexec,nosuid,size=128m")
-		dockerArgs = append(dockerArgs, "--tmpfs", fmt.Sprintf("/home/addt:rw,nosuid,size=%s", sec.TmpfsHomeSize))
+		// Home dir needs exec (npm installs executables there) and uid/gid
+		// so the non-root container user owns the tmpfs (OrbStack/Docker supports uid/gid)
+		homeOpts := fmt.Sprintf("/home/addt:rw,exec,nosuid,size=%s", sec.TmpfsHomeSize)
+		if u, err := user.Current(); err == nil {
+			homeOpts = fmt.Sprintf("/home/addt:rw,exec,nosuid,uid=%s,gid=%s,size=%s", u.Uid, u.Gid, sec.TmpfsHomeSize)
+		}
+		dockerArgs = append(dockerArgs, "--tmpfs", homeOpts)
 	}
 
 	// Seccomp profile

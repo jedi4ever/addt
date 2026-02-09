@@ -128,6 +128,12 @@ func TestDind_Addt_IsolatedDockerAvailable(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			// Podman-in-Podman requires nested user namespaces which aren't
+			// supported in the Podman VM on macOS (newuidmap fails).
+			if prov == "podman" {
+				t.Skip("Podman-in-Podman not supported on macOS (nested user namespaces unavailable in Podman VM)")
+			}
+
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 docker:
   dind:
@@ -150,7 +156,7 @@ docker:
 			// Pick the right info command based on provider
 			var infoCmd string
 			switch prov {
-			case "docker":
+			case "docker", "orbstack":
 				infoCmd = "docker info --format '{{.ServerVersion}}' && echo DIND_TEST:ok"
 			case "podman":
 				infoCmd = "podman info --format '{{.Version.Version}}' && echo DIND_TEST:ok"
@@ -184,7 +190,7 @@ func TestDind_Addt_DisabledByDefault(t *testing.T) {
 			// Pick the right check command based on provider
 			var checkCmd string
 			switch prov {
-			case "docker":
+			case "docker", "orbstack":
 				checkCmd = "if docker info >/dev/null 2>&1; then echo DIND_DEFAULT:available; else echo DIND_DEFAULT:unavailable; fi"
 			case "podman":
 				// Without --privileged, podman run should fail (no user namespaces)

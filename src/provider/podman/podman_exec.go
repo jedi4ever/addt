@@ -593,7 +593,9 @@ func (p *PodmanProvider) addSecuritySettings(podmanArgs []string) []string {
 		// Add tmpfs mounts for writable directories when using read-only rootfs
 		podmanArgs = append(podmanArgs, "--tmpfs", fmt.Sprintf("/tmp:rw,noexec,nosuid,size=%s", sec.TmpfsTmpSize))
 		podmanArgs = append(podmanArgs, "--tmpfs", "/var/tmp:rw,noexec,nosuid,size=128m")
-		podmanArgs = append(podmanArgs, "--tmpfs", fmt.Sprintf("/home/addt:rw,nosuid,size=%s", sec.TmpfsHomeSize))
+		// Home dir needs exec (npm installs executables there).
+		// Podman doesn't support uid/gid tmpfs params, so use mode=1777 instead.
+		podmanArgs = append(podmanArgs, "--tmpfs", fmt.Sprintf("/home/addt:rw,exec,nosuid,mode=1777,size=%s", sec.TmpfsHomeSize))
 	}
 
 	// Seccomp profile
