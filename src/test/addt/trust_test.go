@@ -197,7 +197,13 @@ auth:
 				}
 				t.Logf("=== tmux screenshot for %s/%s ===\n%s\n=== end screenshot ===", ext.name, prov, cleanContent)
 
-				// 9. Check for absence of trust dialog patterns
+				// 9. Kill the tmux session (and its container) now that we have our screenshot.
+				//    The interactive command won't exit on its own, so we kill it
+				//    to avoid hanging the test.
+				time.Sleep(5 * time.Second)
+				tmuxCleanup()
+
+				// 10. Check for absence of trust dialog patterns
 				lowerContent := strings.ToLower(cleanContent)
 				for _, pattern := range trustDialogPatterns {
 					if strings.Contains(lowerContent, pattern) {

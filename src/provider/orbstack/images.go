@@ -6,7 +6,6 @@ import (
 	"hash"
 	"io/fs"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -18,13 +17,13 @@ import (
 
 // ImageExists checks if a Docker image exists
 func (p *OrbStackProvider) ImageExists(imageName string) bool {
-	cmd := exec.Command("docker", "image", "inspect", imageName)
+	cmd := p.dockerCmd("image", "inspect", imageName)
 	return cmd.Run() == nil
 }
 
 // FindImageByLabel finds an image by a specific label value
 func (p *OrbStackProvider) FindImageByLabel(label, value string) string {
-	cmd := exec.Command("docker", "images",
+	cmd := p.dockerCmd("images",
 		"--filter", fmt.Sprintf("label=%s=%s", label, value),
 		"--format", "{{.Repository}}:{{.Tag}}")
 	output, err := cmd.Output()
@@ -43,7 +42,7 @@ func (p *OrbStackProvider) FindImageByLabel(label, value string) string {
 
 // GetImageLabel retrieves a specific label value from an image
 func (p *OrbStackProvider) GetImageLabel(imageName, label string) string {
-	cmd := exec.Command("docker", "inspect",
+	cmd := p.dockerCmd("inspect",
 		"--format", fmt.Sprintf("{{index .Config.Labels %q}}", label),
 		imageName)
 	output, err := cmd.Output()

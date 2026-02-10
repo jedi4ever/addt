@@ -62,7 +62,7 @@ func (p *DockerProvider) CheckPrerequisites() error {
 	}
 
 	// Check Docker daemon is running
-	cmd := exec.Command("docker", "info")
+	cmd := p.dockerCmd("info")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("Docker daemon is not running. Please start Docker and try again")
 	}
@@ -73,6 +73,11 @@ func (p *DockerProvider) CheckPrerequisites() error {
 // Container lifecycle methods (Exists, IsRunning, Start, Stop, Remove, List)
 // and name generation (GenerateContainerName, GenerateEphemeralName, GeneratePersistentName)
 // are defined in persistent.go
+
+// dockerCmd creates an exec.Cmd for docker targeting the "default" context.
+func (p *DockerProvider) dockerCmd(args ...string) *exec.Cmd {
+	return provider.DockerCmd("default", args...)
+}
 
 // Cleanup removes temporary directories and stops proxies
 func (p *DockerProvider) Cleanup() error {

@@ -3,7 +3,6 @@ package orbstack
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
@@ -53,7 +52,7 @@ func (p *OrbStackProvider) prepareSecretsJSON(imageName string, env map[string]s
 // Uses docker exec instead of docker cp because docker cp writes to the overlay
 // layer beneath tmpfs mounts, making the file invisible inside the container.
 func (p *OrbStackProvider) copySecretsToContainer(containerName, secretsJSON string) error {
-	cmd := exec.Command("docker", "exec", "-i", containerName,
+	cmd := p.dockerCmd("exec", "-i", containerName,
 		"sh", "-c", "cat > /run/secrets/.secrets && chmod 644 /run/secrets/.secrets")
 	cmd.Stdin = strings.NewReader(secretsJSON)
 	if output, err := cmd.CombinedOutput(); err != nil {

@@ -3,7 +3,6 @@ package docker
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 
@@ -17,7 +16,7 @@ func (p *DockerProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
 		baseImageName := p.GetBaseImageName()
 		fmt.Printf("Rebuilding base image %s...\n", baseImageName)
 		if p.ImageExists(baseImageName) {
-			cmd := exec.Command("docker", "rmi", baseImageName)
+			cmd := p.dockerCmd("rmi", baseImageName)
 			cmd.Run()
 		}
 		if err := p.BuildBaseImage(); err != nil {
@@ -35,7 +34,7 @@ func (p *DockerProvider) BuildIfNeeded(rebuild bool, rebuildBase bool) error {
 		if imageExists {
 			fmt.Printf("Rebuilding %s...\n", p.config.ImageName)
 			fmt.Println("Removing existing image...")
-			cmd := exec.Command("docker", "rmi", p.config.ImageName)
+			cmd := p.dockerCmd("rmi", p.config.ImageName)
 			cmd.Run()
 		}
 		return p.BuildImage(p.embeddedDockerfile, p.embeddedEntrypoint)

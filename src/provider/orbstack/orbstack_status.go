@@ -3,7 +3,6 @@ package orbstack
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/jedi4ever/addt/provider"
@@ -23,7 +22,7 @@ func (p *OrbStackProvider) GetStatus(cfg *provider.Config, envName string) strin
 	}
 
 	// Get Node version from image labels
-	cmd := exec.Command("docker", "inspect", cfg.ImageName, "--format", "{{index .Config.Labels \"tools.node.version\"}}")
+	cmd := p.dockerCmd("inspect", cfg.ImageName, "--format", "{{index .Config.Labels \"tools.node.version\"}}")
 	if output, err := cmd.Output(); err == nil {
 		if nodeVersion := strings.TrimSpace(string(output)); nodeVersion != "" {
 			parts = append(parts, fmt.Sprintf("Node %s", nodeVersion))

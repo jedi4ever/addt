@@ -3,7 +3,6 @@ package docker
 import (
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -28,7 +27,7 @@ func (p *DockerProvider) GetExtensionMountsWithNames(imageName string) []extensi
 	var mounts []extensions.ExtensionMountWithName
 
 	// Read extensions.json from the image
-	cmd := exec.Command("docker", "run", "--rm", "--entrypoint", "cat", imageName,
+	cmd := p.dockerCmd("run", "--rm", "--entrypoint", "cat", imageName,
 		"/home/addt/.addt/extensions.json")
 	output, err := cmd.Output()
 	if err != nil {
@@ -141,7 +140,7 @@ func (p *DockerProvider) AddExtensionMounts(dockerArgs []string, imageName, home
 // GetExtensionMetadata reads all extension metadata from the image
 func (p *DockerProvider) GetExtensionMetadata(imageName string) map[string]extensions.ExtensionMetadata {
 	// Read extensions.json from the image
-	cmd := exec.Command("docker", "run", "--rm", "--entrypoint", "cat", imageName,
+	cmd := p.dockerCmd("run", "--rm", "--entrypoint", "cat", imageName,
 		"/home/addt/.addt/extensions.json")
 	output, err := cmd.Output()
 	if err != nil {

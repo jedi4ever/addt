@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
@@ -18,7 +17,7 @@ import (
 
 // Exists checks if a container exists (running or stopped)
 func (p *OrbStackProvider) Exists(name string) bool {
-	cmd := exec.Command("docker", "ps", "-a", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
+	cmd := p.dockerCmd("ps", "-a", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
@@ -28,7 +27,7 @@ func (p *OrbStackProvider) Exists(name string) bool {
 
 // IsRunning checks if a container is currently running
 func (p *OrbStackProvider) IsRunning(name string) bool {
-	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
+	cmd := p.dockerCmd("ps", "--filter", fmt.Sprintf("name=^%s$", name), "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return false
@@ -38,25 +37,25 @@ func (p *OrbStackProvider) IsRunning(name string) bool {
 
 // Start starts a stopped container
 func (p *OrbStackProvider) Start(name string) error {
-	cmd := exec.Command("docker", "start", name)
+	cmd := p.dockerCmd("start", name)
 	return util.SimpleSpinnerRun(fmt.Sprintf("Starting container %s", name), cmd)
 }
 
 // Stop stops a running container
 func (p *OrbStackProvider) Stop(name string) error {
-	cmd := exec.Command("docker", "stop", name)
+	cmd := p.dockerCmd("stop", name)
 	return util.SimpleSpinnerRun(fmt.Sprintf("Stopping container %s", name), cmd)
 }
 
 // Remove removes a container
 func (p *OrbStackProvider) Remove(name string) error {
-	cmd := exec.Command("docker", "rm", "-f", name)
+	cmd := p.dockerCmd("rm", "-f", name)
 	return util.SimpleSpinnerRun(fmt.Sprintf("Removing container %s", name), cmd)
 }
 
 // List lists all persistent addt containers
 func (p *OrbStackProvider) List() ([]provider.Environment, error) {
-	cmd := exec.Command("docker", "ps", "-a", "--filter", "name=^addt-persistent-",
+	cmd := p.dockerCmd("ps", "-a", "--filter", "name=^addt-persistent-",
 		"--format", "{{.Names}}\t{{.Status}}\t{{.CreatedAt}}")
 	output, err := cmd.Output()
 	if err != nil {

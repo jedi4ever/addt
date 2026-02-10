@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -272,7 +271,7 @@ func (p *DockerProvider) detectToolVersions(imageName string) map[string]string 
 	for name, cmdArgs := range tools {
 		spinner.UpdateMessage(fmt.Sprintf("Detecting %s version...", name))
 		args := append([]string{"run", "--rm", "--entrypoint", cmdArgs[0], imageName}, cmdArgs[1:]...)
-		cmd := exec.Command("docker", args...)
+		cmd := p.dockerCmd(args...)
 		output, err := cmd.Output()
 		if err == nil {
 			if match := versionRegex.FindString(string(output)); match != "" {
@@ -309,7 +308,7 @@ func (p *DockerProvider) addVersionLabels(cfg interface{}, versions map[string]s
 	tmpFile.Close()
 
 	// Build with labels
-	cmd := exec.Command("docker", "build", "-f", tmpFile.Name(), "-t", imageName, ".")
+	cmd := p.dockerCmd("build", "-f", tmpFile.Name(), "-t", imageName, ".")
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Warning: failed to add version labels: %v\n", err)
 	}
@@ -317,14 +316,14 @@ func (p *DockerProvider) addVersionLabels(cfg interface{}, versions map[string]s
 	// Tag as addt:latest if this is latest
 	claudeVersion := p.getExtensionVersion("claude")
 	if claudeVersion == "latest" {
-		if err := exec.Command("docker", "tag", imageName, "addt:latest").Run(); err != nil {
+		if err := p.dockerCmd("tag", imageName, "addt:latest").Run(); err != nil {
 			fmt.Printf("Warning: failed to tag as addt:latest: %v\n", err)
 		}
 	}
 
 	// Tag with claude version
 	if v, ok := versions["claude"]; ok && v != "" {
-		if err := exec.Command("docker", "tag", imageName, fmt.Sprintf("addt:claude-%s", v)).Run(); err != nil {
+		if err := p.dockerCmd("tag", imageName, fmt.Sprintf("addt:claude-%s", v)).Run(); err != nil {
 			fmt.Printf("Warning: failed to tag with claude version: %v\n", err)
 		}
 	}

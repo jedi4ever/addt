@@ -21,7 +21,7 @@ func checkDockerForSSH(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker not found in PATH, skipping integration test")
 	}
-	cmd := exec.Command("docker", "info")
+	cmd := provider.DockerCmd("orbstack", "info")
 	if err := cmd.Run(); err != nil {
 		t.Skip("Docker daemon not running, skipping integration test")
 	}
@@ -198,7 +198,7 @@ func TestSSHForwarding_Integration_SafeFilesInContainer(t *testing.T) {
 	}
 
 	// Run container and verify only safe files exist
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := provider.DockerCmd("orbstack", "run", "--rm",
 		"-v", mountArg,
 		"alpine:latest",
 		"ls", "-1", "/home/testuser/.ssh/")

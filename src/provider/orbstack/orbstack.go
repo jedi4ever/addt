@@ -83,6 +83,11 @@ func (p *OrbStackProvider) CheckPrerequisites() error {
 // and name generation (GenerateContainerName, GenerateEphemeralName, GeneratePersistentName)
 // are defined in persistent.go
 
+// dockerCmd creates an exec.Cmd for docker targeting the "orbstack" context.
+func (p *OrbStackProvider) dockerCmd(args ...string) *exec.Cmd {
+	return provider.DockerCmd("orbstack", args...)
+}
+
 // Cleanup removes temporary directories and stops proxies
 func (p *OrbStackProvider) Cleanup() error {
 	// Stop SSH proxy if running

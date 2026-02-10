@@ -25,7 +25,7 @@ func checkDockerForSecrets(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker not found in PATH, skipping integration test")
 	}
-	cmd := exec.Command("docker", "info")
+	cmd := provider.DockerCmd("orbstack", "info")
 	if err := cmd.Run(); err != nil {
 		t.Skip("Docker daemon not running, skipping integration test")
 	}
@@ -84,10 +84,10 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	jsonBytes, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-secrets-tmpfs-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("orbstack", "rm", "-f", containerName).Run()
 
 	// Start container detached with wait loop
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("orbstack", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0700",
 		"node:22-slim",
@@ -107,7 +107,7 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 
 	// Copy secrets to container
-	cpCmd := exec.Command("docker", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets")
+	cpCmd := provider.DockerCmd("orbstack", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets")
 	if output, err := cpCmd.CombinedOutput(); err != nil {
 		t.Fatalf("docker cp failed: %v\nOutput: %s", err, string(output))
 	}
@@ -118,17 +118,17 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	secretFile.Close()
 	defer os.Remove(secretFile.Name())
 
-	cpSecretCmd := exec.Command("docker", "cp", secretFile.Name(), containerName+":/run/secrets/ANTHROPIC_API_KEY")
+	cpSecretCmd := provider.DockerCmd("orbstack", "cp", secretFile.Name(), containerName+":/run/secrets/ANTHROPIC_API_KEY")
 	if output, err := cpSecretCmd.CombinedOutput(); err != nil {
 		t.Fatalf("docker cp secret failed: %v\nOutput: %s", err, string(output))
 	}
 
 	// Wait for container to finish
-	waitCmd := exec.Command("docker", "wait", containerName)
+	waitCmd := provider.DockerCmd("orbstack", "wait", containerName)
 	waitCmd.Run()
 
 	// Get logs
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("orbstack", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 
 	expected := secrets["ANTHROPIC_API_KEY"]
@@ -147,7 +147,7 @@ func TestIsolateSecrets_Integration_SecretsNotInEnvWhenDisabled(t *testing.T) {
 	// This test verifies the default behavior
 	secretValue := "sk-ant-test-direct-env-12345"
 
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := provider.DockerCmd("orbstack", "run", "--rm",
 		"-e", "ANTHROPIC_API_KEY="+secretValue,
 		"alpine:latest",
 		"printenv", "ANTHROPIC_API_KEY")
@@ -169,10 +169,10 @@ func TestIsolateSecrets_Integration_TmpfsPermissions(t *testing.T) {
 	checkDockerForSecrets(t)
 
 	containerName := fmt.Sprintf("addt-tmpfs-perms-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("orbstack", "rm", "-f", containerName).Run()
 
 	// Start container that writes a secret file and checks permissions
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := provider.DockerCmd("orbstack", "run", "--rm",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0700",
 		"alpine:latest",
@@ -289,7 +289,7 @@ func ensureSecretsTestImage(t *testing.T) {
 		t.Skip("skipping image build test in short mode")
 	}
 
-	cmd := exec.Command("docker", "image", "inspect", testSecretsImageName)
+	cmd := provider.DockerCmd("orbstack", "image", "inspect", testSecretsImageName)
 	if cmd.Run() == nil {
 		return // Image exists
 	}
@@ -330,7 +330,7 @@ func TestIsolateSecrets_Integration_DockerCpApproach(t *testing.T) {
 	secretsJSON, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-docker-cp-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("orbstack", "rm", "-f", containerName).Run()
 
 	// 1. Start container detached with wait loop (simulating runWithSecrets)
 	waitScript := `while [ ! -f /run/secrets/.secrets ]; do sleep 0.05; done
@@ -347,7 +347,7 @@ export ANTHROPIC_API_KEY="$(cat /run/secrets/ANTHROPIC_API_KEY)"
 echo "LOADED_SECRET=$ANTHROPIC_API_KEY"
 `
 
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("orbstack", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0700",
 		"node:22-slim",
@@ -367,17 +367,17 @@ echo "LOADED_SECRET=$ANTHROPIC_API_KEY"
 	defer os.Remove(tmpFile.Name())
 
 	// 3. Copy secrets to container via docker cp
-	cpCmd := exec.Command("docker", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets")
+	cpCmd := provider.DockerCmd("orbstack", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets")
 	if output, err := cpCmd.CombinedOutput(); err != nil {
 		t.Fatalf("docker cp failed: %v\nOutput: %s", err, string(output))
 	}
 
 	// 4. Wait for container to finish
-	waitCmd := exec.Command("docker", "wait", containerName)
+	waitCmd := provider.DockerCmd("orbstack", "wait", containerName)
 	waitCmd.Run()
 
 	// 5. Check logs
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("orbstack", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 
 	outputStr := string(output)
@@ -404,7 +404,7 @@ func TestIsolateSecrets_Integration_SecretsNotInProcEnviron(t *testing.T) {
 	secretsJSON, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-proc-environ-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("orbstack", "rm", "-f", containerName).Run()
 
 	// Start container that checks /proc/1/environ
 	checkScript := `
@@ -433,7 +433,7 @@ export MY_SECRET="$(cat /run/secrets/MY_SECRET)"
 echo "MY_SECRET value: $MY_SECRET"
 `
 
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("orbstack", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0700",
 		"node:22-slim",
@@ -449,12 +449,12 @@ echo "MY_SECRET value: $MY_SECRET"
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
 
-	exec.Command("docker", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets").Run()
+	provider.DockerCmd("orbstack", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets").Run()
 
 	// Wait and check logs
-	exec.Command("docker", "wait", containerName).Run()
+	provider.DockerCmd("orbstack", "wait", containerName).Run()
 
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("orbstack", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 	outputStr := string(output)
 	t.Logf("Container output:\n%s", outputStr)
@@ -480,12 +480,12 @@ func TestIsolateSecrets_Integration_RealEntrypoint(t *testing.T) {
 	secretsJSON, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-secrets-real-entrypoint-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("orbstack", "rm", "-f", containerName).Run()
 
 	// Start container detached with wait loop that calls entrypoint
 	waitScript := `while [ ! -f /run/secrets/.secrets ] && [ ! -f /run/secrets/.ready ]; do sleep 0.05; done; exec /usr/local/bin/docker-entrypoint.sh "$@"`
 
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("orbstack", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0700",
 		"-e", "ADDT_COMMAND=sh",
@@ -504,15 +504,15 @@ func TestIsolateSecrets_Integration_RealEntrypoint(t *testing.T) {
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
 
-	cpCmd := exec.Command("docker", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets")
+	cpCmd := provider.DockerCmd("orbstack", "cp", tmpFile.Name(), containerName+":/run/secrets/.secrets")
 	if output, err := cpCmd.CombinedOutput(); err != nil {
 		t.Fatalf("docker cp failed: %v\nOutput: %s", err, string(output))
 	}
 
 	// Wait and check
-	exec.Command("docker", "wait", containerName).Run()
+	provider.DockerCmd("orbstack", "wait", containerName).Run()
 
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("orbstack", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 	outputStr := string(output)
 	t.Logf("Container output:\n%s", outputStr)

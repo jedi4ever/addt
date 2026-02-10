@@ -3,7 +3,6 @@ package orbstack
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"time"
@@ -227,7 +226,7 @@ func (p *OrbStackProvider) addContainerVolumesAndEnv(dockerArgs []string, spec *
 // executeDockerCommand runs the docker command with standard I/O
 func (p *OrbStackProvider) executeDockerCommand(dockerArgs []string) error {
 	dockerLogger.Debugf("Executing: docker %v", dockerArgs)
-	cmd := exec.Command("docker", dockerArgs...)
+	cmd := p.dockerCmd(dockerArgs...)
 
 	// Check if -it flag is present (fully interactive mode)
 	hasItFlag := false
@@ -361,7 +360,7 @@ func (p *OrbStackProvider) runPersistent(baseArgs []string, spec *provider.RunSp
 	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
 	dockerLogger.Debugf("Starting persistent container: docker %v", runArgs)
 
-	cmd := exec.Command("docker", runArgs...)
+	cmd := p.dockerCmd(runArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to start persistent container: %w\n%s", err, string(output))
@@ -372,7 +371,7 @@ func (p *OrbStackProvider) runPersistent(baseArgs []string, spec *provider.RunSp
 		dockerLogger.Debug("Copying secrets to persistent container")
 		if err := p.copySecretsToContainer(spec.Name, secretsJSON); err != nil {
 			dockerLogger.Debugf("Failed to copy secrets, cleaning up container %s", spec.Name)
-			exec.Command("docker", "rm", "-f", spec.Name).Run()
+			p.dockerCmd("rm", "-f", spec.Name).Run()
 			return fmt.Errorf("failed to copy secrets: %w", err)
 		}
 	}
@@ -420,7 +419,7 @@ func (p *OrbStackProvider) runWithSecrets(baseArgs []string, spec *provider.RunS
 	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
 	dockerLogger.Debugf("Starting detached container: docker %v", runArgs)
 
-	cmd := exec.Command("docker", runArgs...)
+	cmd := p.dockerCmd(runArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to start container: %w\n%s", err, string(output))
@@ -430,7 +429,7 @@ func (p *OrbStackProvider) runWithSecrets(baseArgs []string, spec *provider.RunS
 	dockerLogger.Debug("Copying secrets to container")
 	if err := p.copySecretsToContainer(spec.Name, secretsJSON); err != nil {
 		dockerLogger.Debugf("Failed to copy secrets, cleaning up container %s", spec.Name)
-		exec.Command("docker", "rm", "-f", spec.Name).Run()
+		p.dockerCmd("rm", "-f", spec.Name).Run()
 		return fmt.Errorf("failed to copy secrets: %w", err)
 	}
 
@@ -451,7 +450,7 @@ func (p *OrbStackProvider) runWithSecrets(baseArgs []string, spec *provider.RunS
 	// On failure, dump container logs for debugging
 	if execErr != nil {
 		dockerLogger.Debugf("Entrypoint failed, fetching container logs for %s", spec.Name)
-		if logsOutput, err := exec.Command("docker", "logs", spec.Name).CombinedOutput(); err == nil && len(logsOutput) > 0 {
+		if logsOutput, err := p.dockerCmd("logs", spec.Name).CombinedOutput(); err == nil && len(logsOutput) > 0 {
 			dockerLogger.Debugf("Container logs:\n%s", string(logsOutput))
 		}
 	}
@@ -459,7 +458,7 @@ func (p *OrbStackProvider) runWithSecrets(baseArgs []string, spec *provider.RunS
 	// Clean up non-persistent containers (stop sleep, triggers --rm if set)
 	if !spec.Persistent {
 		dockerLogger.Debugf("Removing non-persistent container %s", spec.Name)
-		exec.Command("docker", "rm", "-f", spec.Name).Run()
+		p.dockerCmd("rm", "-f", spec.Name).Run()
 	}
 
 	return execErr
@@ -561,7 +560,7 @@ func (p *OrbStackProvider) shellPersistent(baseArgs []string, spec *provider.Run
 	runArgs = append(runArgs, "-d", "--entrypoint", "sleep", spec.ImageName, "infinity")
 	dockerLogger.Debugf("Starting persistent container for shell: docker %v", runArgs)
 
-	cmd := exec.Command("docker", runArgs...)
+	cmd := p.dockerCmd(runArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to start persistent container: %w\n%s", err, string(output))

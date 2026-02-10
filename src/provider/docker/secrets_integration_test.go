@@ -25,7 +25,7 @@ func checkDockerForSecrets(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker not found in PATH, skipping integration test")
 	}
-	cmd := exec.Command("docker", "info")
+	cmd := provider.DockerCmd("default", "info")
 	if err := cmd.Run(); err != nil {
 		t.Skip("Docker daemon not running, skipping integration test")
 	}
@@ -84,10 +84,10 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	jsonBytes, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-secrets-tmpfs-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("default", "rm", "-f", containerName).Run()
 
 	// Start container detached with wait loop
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("default", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0777",
 		"node:22-slim",
@@ -98,7 +98,7 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	}
 
 	// Write secrets to container via docker exec (not docker cp, which can't write to tmpfs)
-	writeCmd := exec.Command("docker", "exec", "-i", containerName,
+	writeCmd := provider.DockerCmd("default", "exec", "-i", containerName,
 		"sh", "-c", "cat > /run/secrets/.secrets && chmod 644 /run/secrets/.secrets")
 	writeCmd.Stdin = strings.NewReader(string(jsonBytes))
 	if output, err := writeCmd.CombinedOutput(); err != nil {
@@ -106,7 +106,7 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	}
 
 	// Also write the individual secret file (simulating entrypoint behavior)
-	writeSecretCmd := exec.Command("docker", "exec", "-i", containerName,
+	writeSecretCmd := provider.DockerCmd("default", "exec", "-i", containerName,
 		"sh", "-c", "cat > /run/secrets/ANTHROPIC_API_KEY && chmod 600 /run/secrets/ANTHROPIC_API_KEY")
 	writeSecretCmd.Stdin = strings.NewReader(secrets["ANTHROPIC_API_KEY"])
 	if output, err := writeSecretCmd.CombinedOutput(); err != nil {
@@ -114,11 +114,11 @@ func TestIsolateSecrets_Integration_TmpfsSecretsReadable(t *testing.T) {
 	}
 
 	// Wait for container to finish
-	waitCmd := exec.Command("docker", "wait", containerName)
+	waitCmd := provider.DockerCmd("default", "wait", containerName)
 	waitCmd.Run()
 
 	// Get logs
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("default", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 
 	expected := secrets["ANTHROPIC_API_KEY"]
@@ -137,7 +137,7 @@ func TestIsolateSecrets_Integration_SecretsNotInEnvWhenDisabled(t *testing.T) {
 	// This test verifies the default behavior
 	secretValue := "sk-ant-test-direct-env-12345"
 
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := provider.DockerCmd("default", "run", "--rm",
 		"-e", "ANTHROPIC_API_KEY="+secretValue,
 		"alpine:latest",
 		"printenv", "ANTHROPIC_API_KEY")
@@ -159,10 +159,10 @@ func TestIsolateSecrets_Integration_TmpfsPermissions(t *testing.T) {
 	checkDockerForSecrets(t)
 
 	containerName := fmt.Sprintf("addt-tmpfs-perms-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("default", "rm", "-f", containerName).Run()
 
 	// Start container that writes a secret file and checks permissions
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := provider.DockerCmd("default", "run", "--rm",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0777",
 		"alpine:latest",
@@ -279,7 +279,7 @@ func ensureSecretsTestImage(t *testing.T) {
 		t.Skip("skipping image build test in short mode")
 	}
 
-	cmd := exec.Command("docker", "image", "inspect", testSecretsImageName)
+	cmd := provider.DockerCmd("default", "image", "inspect", testSecretsImageName)
 	if cmd.Run() == nil {
 		return // Image exists
 	}
@@ -320,7 +320,7 @@ func TestIsolateSecrets_Integration_DockerExecApproach(t *testing.T) {
 	secretsJSON, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-docker-exec-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("default", "rm", "-f", containerName).Run()
 
 	// 1. Start container detached with wait loop (simulating runWithSecrets)
 	waitScript := `while [ ! -f /run/secrets/.secrets ]; do sleep 0.05; done
@@ -337,7 +337,7 @@ export ANTHROPIC_API_KEY="$(cat /run/secrets/ANTHROPIC_API_KEY)"
 echo "LOADED_SECRET=$ANTHROPIC_API_KEY"
 `
 
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("default", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0777",
 		"node:22-slim",
@@ -348,7 +348,7 @@ echo "LOADED_SECRET=$ANTHROPIC_API_KEY"
 	}
 
 	// 2. Write secrets to container via docker exec (not docker cp, which can't write to tmpfs)
-	writeCmd := exec.Command("docker", "exec", "-i", containerName,
+	writeCmd := provider.DockerCmd("default", "exec", "-i", containerName,
 		"sh", "-c", "cat > /run/secrets/.secrets && chmod 644 /run/secrets/.secrets")
 	writeCmd.Stdin = strings.NewReader(string(secretsJSON))
 	if output, err := writeCmd.CombinedOutput(); err != nil {
@@ -356,11 +356,11 @@ echo "LOADED_SECRET=$ANTHROPIC_API_KEY"
 	}
 
 	// 3. Wait for container to finish
-	waitCmd := exec.Command("docker", "wait", containerName)
+	waitCmd := provider.DockerCmd("default", "wait", containerName)
 	waitCmd.Run()
 
 	// 4. Check logs
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("default", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 
 	outputStr := string(output)
@@ -387,7 +387,7 @@ func TestIsolateSecrets_Integration_SecretsNotInProcEnviron(t *testing.T) {
 	secretsJSON, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-proc-environ-test-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("default", "rm", "-f", containerName).Run()
 
 	// Start container that checks /proc/1/environ
 	checkScript := `
@@ -416,7 +416,7 @@ export MY_SECRET="$(cat /run/secrets/MY_SECRET)"
 echo "MY_SECRET value: $MY_SECRET"
 `
 
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("default", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0777",
 		"node:22-slim",
@@ -427,7 +427,7 @@ echo "MY_SECRET value: $MY_SECRET"
 	}
 
 	// Write secrets to container via docker exec (not docker cp, which can't write to tmpfs)
-	writeCmd := exec.Command("docker", "exec", "-i", containerName,
+	writeCmd := provider.DockerCmd("default", "exec", "-i", containerName,
 		"sh", "-c", "cat > /run/secrets/.secrets && chmod 644 /run/secrets/.secrets")
 	writeCmd.Stdin = strings.NewReader(string(secretsJSON))
 	if output, err := writeCmd.CombinedOutput(); err != nil {
@@ -435,9 +435,9 @@ echo "MY_SECRET value: $MY_SECRET"
 	}
 
 	// Wait and check logs
-	exec.Command("docker", "wait", containerName).Run()
+	provider.DockerCmd("default", "wait", containerName).Run()
 
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("default", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 	outputStr := string(output)
 	t.Logf("Container output:\n%s", outputStr)
@@ -463,12 +463,12 @@ func TestIsolateSecrets_Integration_RealEntrypoint(t *testing.T) {
 	secretsJSON, _ := json.Marshal(secrets)
 
 	containerName := fmt.Sprintf("addt-secrets-real-entrypoint-%d", os.Getpid())
-	defer exec.Command("docker", "rm", "-f", containerName).Run()
+	defer provider.DockerCmd("default", "rm", "-f", containerName).Run()
 
 	// Start container detached with wait loop that calls entrypoint
 	waitScript := `while [ ! -f /run/secrets/.secrets ] && [ ! -f /run/secrets/.ready ]; do sleep 0.05; done; exec /usr/local/bin/docker-entrypoint.sh "$@"`
 
-	startCmd := exec.Command("docker", "run", "-d",
+	startCmd := provider.DockerCmd("default", "run", "-d",
 		"--name", containerName,
 		"--tmpfs", "/run/secrets:size=1m,mode=0777",
 		"-e", "ADDT_COMMAND=sh",
@@ -482,7 +482,7 @@ func TestIsolateSecrets_Integration_RealEntrypoint(t *testing.T) {
 	}
 
 	// Write secrets to container via docker exec (not docker cp, which can't write to tmpfs)
-	writeCmd := exec.Command("docker", "exec", "-i", containerName,
+	writeCmd := provider.DockerCmd("default", "exec", "-i", containerName,
 		"sh", "-c", "cat > /run/secrets/.secrets && chmod 644 /run/secrets/.secrets")
 	writeCmd.Stdin = strings.NewReader(string(secretsJSON))
 	if output, err := writeCmd.CombinedOutput(); err != nil {
@@ -490,9 +490,9 @@ func TestIsolateSecrets_Integration_RealEntrypoint(t *testing.T) {
 	}
 
 	// Wait and check
-	exec.Command("docker", "wait", containerName).Run()
+	provider.DockerCmd("default", "wait", containerName).Run()
 
-	logsCmd := exec.Command("docker", "logs", containerName)
+	logsCmd := provider.DockerCmd("default", "logs", containerName)
 	output, _ := logsCmd.CombinedOutput()
 	outputStr := string(output)
 	t.Logf("Container output:\n%s", outputStr)

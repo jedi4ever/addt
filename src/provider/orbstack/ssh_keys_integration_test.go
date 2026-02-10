@@ -4,10 +4,11 @@ package orbstack
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jedi4ever/addt/provider"
 )
 
 func TestSSHForwarding_Integration_KeysMode(t *testing.T) {
@@ -81,7 +82,7 @@ func TestSSHForwarding_Integration_KeysModeInContainer(t *testing.T) {
 	}
 
 	// Run container with SSH mount and verify files are accessible
-	cmd := exec.Command("docker", "run", "--rm",
+	cmd := provider.DockerCmd("orbstack", "run", "--rm",
 		"-v", sshDir+":/home/testuser/.ssh:ro",
 		"alpine:latest",
 		"cat", "/home/testuser/.ssh/config")
