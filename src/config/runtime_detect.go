@@ -69,6 +69,10 @@ func DetectContainerRuntime() string {
 			if isPodmanAvailable() {
 				return "podman"
 			}
+		case "bwrap":
+			if runtime.GOOS == "linux" && isBwrapAvailable() {
+				return "bwrap"
+			}
 		}
 	}
 
@@ -98,6 +102,14 @@ func EnsureContainerRuntime() (string, error) {
 			return "", fmt.Errorf("Rancher Desktop is explicitly selected but rancher-desktop context not found")
 		}
 		return "rancher", nil
+	case "bwrap":
+		if runtime.GOOS != "linux" {
+			return "", fmt.Errorf("bwrap provider is Linux-only (current OS: %s)", runtime.GOOS)
+		}
+		if !isBwrapAvailable() {
+			return "", fmt.Errorf("bwrap is explicitly selected but bubblewrap is not installed")
+		}
+		return "bwrap", nil
 	}
 
 	// If explicitly set to something else (e.g. podman), honour it
@@ -240,6 +252,8 @@ func GetRuntimeInfo() (rt string, version string, extras []string) {
 		if hasPasta() {
 			extras = append(extras, "pasta")
 		}
+	case "bwrap":
+		version = getBwrapVersion()
 	}
 
 	return rt, version, extras
@@ -286,4 +300,26 @@ func getPodmanVersion() string {
 func hasPasta() bool {
 	_, err := exec.LookPath("pasta")
 	return err == nil
+}
+
+// isBwrapAvailable checks if bubblewrap is installed and functional
+func isBwrapAvailable() bool {
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		return false
+	}
+	cmd := exec.Command("bwrap", "--version")
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run() == nil
+}
+
+func getBwrapVersion() string {
+	cmd := exec.Command("bwrap", "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "unknown"
+	}
+	// Parse "bubblewrap X.Y.Z" -> "X.Y.Z"
+	version := strings.TrimSpace(string(output))
+	return strings.TrimPrefix(version, "bubblewrap ")
 }

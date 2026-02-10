@@ -270,7 +270,7 @@ keys:
 
   # Provider keys
   - key: provider.autoselect
-    description: "Ordered list of preferred providers (comma-separated: orbstack, docker, rancher, podman)"
+    description: "Ordered list of preferred providers (comma-separated: orbstack, docker, rancher, podman, bwrap)"
     type: string_list
     env_var: ADDT_PROVIDER_AUTOSELECT
     default: "orbstack,rancher,docker,podman"
