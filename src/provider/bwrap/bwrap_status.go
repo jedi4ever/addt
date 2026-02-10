@@ -54,7 +54,7 @@ func (b *BwrapProvider) GetStatus(cfg *provider.Config, envName string) string {
 	if sec.NetworkMode == "none" {
 		parts = append(parts, "Net:isolated")
 	} else if cfg.FirewallEnabled {
-		parts = append(parts, "Net:isolated(firewall)")
+		parts = append(parts, fmt.Sprintf("FW:%s(proxy)", cfg.FirewallMode))
 	} else {
 		parts = append(parts, "Net:host")
 	}

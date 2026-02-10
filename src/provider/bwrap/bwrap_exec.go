@@ -30,6 +30,15 @@ func (b *BwrapProvider) Run(spec *provider.RunSpec) error {
 	// Prepare secrets before building args (modifies spec.Env)
 	secretsDir := b.prepareAndFilterSecrets(spec)
 
+	// Set up network proxy if firewall is enabled
+	proxy, proxyWrapperDir, err := b.setupNetworkProxy()
+	if err != nil {
+		return fmt.Errorf("failed to setup network proxy: %w", err)
+	}
+	if proxy != nil {
+		defer proxy.Stop()
+	}
+
 	bwrapArgs, err := b.buildBwrapArgs(spec)
 	if err != nil {
 		return err
@@ -40,14 +49,21 @@ func (b *BwrapProvider) Run(spec *provider.RunSpec) error {
 		bwrapArgs = append(bwrapArgs, "--bind", secretsDir, "/run/secrets")
 	}
 
+	// Add network proxy mounts
+	bwrapArgs = b.addNetworkProxyArgs(bwrapArgs, proxy, proxyWrapperDir)
+
 	// Persistent: start sandbox with sleep infinity, then nsenter the command
 	if spec.Persistent {
 		fmt.Printf("Creating new persistent session: %s\n", spec.Name)
 		return b.runPersistent(bwrapArgs, spec)
 	}
 
-	// Ephemeral: run command directly
+	// Ephemeral: run command with wrapper chain
+	// Wrappers exec "$@" so they chain: net-proxy → secrets → actual command
 	bwrapArgs = append(bwrapArgs, "--")
+	if proxy != nil {
+		bwrapArgs = append(bwrapArgs, "/run/addt-net/net-proxy.sh")
+	}
 	if secretsDir != "" {
 		bwrapArgs = append(bwrapArgs, "/run/secrets/.wrapper.sh")
 	}
@@ -69,6 +85,15 @@ func (b *BwrapProvider) Shell(spec *provider.RunSpec) error {
 	// Prepare secrets before building args
 	secretsDir := b.prepareAndFilterSecrets(spec)
 
+	// Set up network proxy if firewall is enabled
+	proxy, proxyWrapperDir, err := b.setupNetworkProxy()
+	if err != nil {
+		return fmt.Errorf("failed to setup network proxy: %w", err)
+	}
+	if proxy != nil {
+		defer proxy.Stop()
+	}
+
 	bwrapArgs, err := b.buildBwrapArgs(spec)
 	if err != nil {
 		return err
@@ -79,6 +104,9 @@ func (b *BwrapProvider) Shell(spec *provider.RunSpec) error {
 		bwrapArgs = append(bwrapArgs, "--bind", secretsDir, "/run/secrets")
 	}
 
+	// Add network proxy mounts
+	bwrapArgs = b.addNetworkProxyArgs(bwrapArgs, proxy, proxyWrapperDir)
+
 	if spec.Persistent {
 		fmt.Printf("Creating new persistent session: %s\n", spec.Name)
 		spec.Env["ADDT_COMMAND"] = "/bin/bash"
@@ -86,6 +114,9 @@ func (b *BwrapProvider) Shell(spec *provider.RunSpec) error {
 	}
 
 	bwrapArgs = append(bwrapArgs, "--")
+	if proxy != nil {
+		bwrapArgs = append(bwrapArgs, "/run/addt-net/net-proxy.sh")
+	}
 	if secretsDir != "" {
 		bwrapArgs = append(bwrapArgs, "/run/secrets/.wrapper.sh")
 	}

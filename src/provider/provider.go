@@ -77,6 +77,12 @@ type Config struct {
 	Workdir                   string
 	FirewallEnabled           bool
 	FirewallMode              string
+	GlobalFirewallAllowed     []string // Global allowed domains
+	GlobalFirewallDenied      []string // Global denied domains
+	ProjectFirewallAllowed    []string // Project allowed domains
+	ProjectFirewallDenied     []string // Project denied domains
+	ExtensionFirewallAllowed  []string // Extension allowed domains
+	ExtensionFirewallDenied   []string // Extension denied domains
 	Mode                      string
 	Provider                  string
 	Extensions                string

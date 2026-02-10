@@ -21,7 +21,7 @@ import (
 //   - PID namespace isolation
 //   - IPC namespace isolation
 //   - Network isolation (shared or fully isolated via --unshare-net)
-//   - Network control: FirewallEnabled maps to full network isolation
+//   - Domain-based firewall (--unshare-net + HTTP proxy + socat bridge)
 //   - Working directory mounting (RO/RW)
 //   - Environment variable control
 //   - SSH/GPG/Tmux forwarding (direct socket access on Linux)
@@ -34,7 +34,7 @@ import (
 // NOT supported (inherent bwrap limitations):
 //   - Image building (uses host-installed tools directly)
 //   - Docker-in-Docker / nested containers
-//   - Per-domain firewall rules (only full on/off network isolation)
+//   - iptables/nftables firewall (uses proxy-based filtering instead)
 //   - Extension installation scripts (must be pre-installed on host)
 //   - Seccomp profiles (bwrap uses raw BPF, not Docker JSON format)
 //   - Process limits (pids_limit) — no cgroup access
