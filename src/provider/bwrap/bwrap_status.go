@@ -49,18 +49,24 @@ func (b *BwrapProvider) GetStatus(cfg *provider.Config, envName string) string {
 		parts = append(parts, fmt.Sprintf("GPG:%s", cfg.GPGForward))
 	}
 
-	// Unsupported features noted
-	if cfg.DockerDindMode != "" && cfg.DockerDindMode != "off" {
-		parts = append(parts, "DinD:unsupported")
-	}
-
-	if cfg.FirewallEnabled {
-		parts = append(parts, "Firewall:unsupported")
-	}
-
+	// Network status
 	sec := cfg.Security
 	if sec.NetworkMode == "none" {
 		parts = append(parts, "Net:isolated")
+	} else if cfg.FirewallEnabled {
+		parts = append(parts, "Net:isolated(firewall)")
+	} else {
+		parts = append(parts, "Net:host")
+	}
+
+	// Secret isolation
+	if sec.IsolateSecrets {
+		parts = append(parts, "Secrets:file")
+	}
+
+	// Unsupported features noted
+	if cfg.DockerDindMode != "" && cfg.DockerDindMode != "off" {
+		parts = append(parts, "DinD:unsupported")
 	}
 
 	return strings.Join(parts, " | ")

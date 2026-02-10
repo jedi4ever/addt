@@ -4,51 +4,168 @@ import (
 	"crypto/md5"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jedi4ever/addt/provider"
+	"github.com/jedi4ever/addt/util"
 )
 
-// Bwrap sandboxes are ephemeral processes, not persistent containers.
-// The methods below implement the Provider interface but persistent
-// container lifecycle (Start/Stop/restart) is not supported.
+// Persistent bwrap sessions work by:
+//  1. Starting a bwrap sandbox with "sleep infinity" as the command
+//  2. Saving the PID to ~/.addt/bwrap/pids/<name>.pid
+//  3. Using nsenter to re-enter the same namespaces for subsequent commands
+//  4. Killing the sleep process to stop the session
 
-// Exists always returns false — bwrap sandboxes are ephemeral processes
+// getPidDir returns the directory for storing PID files
+func getPidDir() string {
+	addtHome := util.GetAddtHome()
+	if addtHome == "" {
+		return filepath.Join(os.TempDir(), "addt-bwrap-pids")
+	}
+	return filepath.Join(addtHome, "bwrap", "pids")
+}
+
+// getPidFile returns the PID file path for a named session
+func getPidFile(name string) string {
+	return filepath.Join(getPidDir(), name+".pid")
+}
+
+// readPid reads a PID from a file, returns 0 if not found or invalid
+func readPid(name string) int {
+	data, err := os.ReadFile(getPidFile(name))
+	if err != nil {
+		return 0
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0
+	}
+	return pid
+}
+
+// writePid stores a PID to file
+func writePid(name string, pid int) error {
+	dir := getPidDir()
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(getPidFile(name), []byte(strconv.Itoa(pid)), 0600)
+}
+
+// removePid removes a PID file
+func removePid(name string) {
+	os.Remove(getPidFile(name))
+}
+
+// isProcessAlive checks whether a PID is still running
+func isProcessAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	// Signal 0 checks process existence without actually signaling
+	err := syscall.Kill(pid, 0)
+	return err == nil
+}
+
+// Exists checks if a persistent session exists and is alive
 func (b *BwrapProvider) Exists(name string) bool {
-	return false
+	pid := readPid(name)
+	if pid == 0 {
+		return false
+	}
+	if !isProcessAlive(pid) {
+		// Stale PID file — clean up
+		removePid(name)
+		return false
+	}
+	return true
 }
 
-// IsRunning always returns false — bwrap sandboxes are ephemeral processes
+// IsRunning checks if a persistent session is currently running
 func (b *BwrapProvider) IsRunning(name string) bool {
-	return false
+	return b.Exists(name) // For bwrap, exists == running (no stopped state)
 }
 
-// Start is not supported — bwrap sandboxes cannot be restarted
+// Start is not supported — bwrap sessions cannot be restarted once dead.
+// The namespaces are destroyed when the sleep process exits.
 func (b *BwrapProvider) Start(name string) error {
-	return fmt.Errorf("bwrap provider does not support persistent containers (start is not available)")
+	return fmt.Errorf("bwrap sessions cannot be restarted (namespaces are gone); remove and re-run instead")
 }
 
-// Stop is not supported — bwrap sandboxes are ephemeral
+// Stop kills the persistent session's sleep process
 func (b *BwrapProvider) Stop(name string) error {
-	return fmt.Errorf("bwrap provider does not support persistent containers (stop is not available)")
-}
-
-// Remove is a no-op — nothing to remove for ephemeral sandboxes
-func (b *BwrapProvider) Remove(name string) error {
+	pid := readPid(name)
+	if pid == 0 {
+		return nil
+	}
+	if isProcessAlive(pid) {
+		// Kill the process group to clean up children too
+		syscall.Kill(-pid, syscall.SIGTERM)
+		// Give it a moment, then force kill
+		time.Sleep(500 * time.Millisecond)
+		if isProcessAlive(pid) {
+			syscall.Kill(-pid, syscall.SIGKILL)
+		}
+	}
+	removePid(name)
 	return nil
 }
 
-// List returns an empty list — bwrap does not track persistent environments
-func (b *BwrapProvider) List() ([]provider.Environment, error) {
-	return nil, nil
+// Remove stops and removes a persistent session
+func (b *BwrapProvider) Remove(name string) error {
+	return b.Stop(name)
 }
 
-// GeneratePersistentName generates a name consistent with the project directory.
-// While bwrap doesn't support persistent containers, the name is still used
-// for status display and logging.
+// List returns all active persistent bwrap sessions by scanning PID files
+func (b *BwrapProvider) List() ([]provider.Environment, error) {
+	dir := getPidDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var envs []provider.Environment
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".pid") {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".pid")
+		pid := readPid(name)
+
+		status := "stopped"
+		if pid > 0 && isProcessAlive(pid) {
+			status = "running"
+		} else {
+			// Stale PID file
+			removePid(name)
+			continue
+		}
+
+		info, _ := entry.Info()
+		created := ""
+		if info != nil {
+			created = info.ModTime().Format("2006-01-02 15:04:05")
+		}
+
+		envs = append(envs, provider.Environment{
+			Name:      name,
+			Status:    status,
+			CreatedAt: created,
+		})
+	}
+	return envs, nil
+}
+
+// GeneratePersistentName generates a name based on working directory + extensions
 func (b *BwrapProvider) GeneratePersistentName() string {
 	return b.generateName("addt-bwrap-persistent")
 }
@@ -69,13 +186,11 @@ func (b *BwrapProvider) generateName(prefix string) string {
 		}
 	}
 
-	// Get directory name
 	dirname := workdir
 	if idx := strings.LastIndex(workdir, "/"); idx != -1 {
 		dirname = workdir[idx+1:]
 	}
 
-	// Sanitize
 	re := regexp.MustCompile(`[^a-z0-9-]+`)
 	dirname = strings.ToLower(dirname)
 	dirname = re.ReplaceAllString(dirname, "-")
@@ -84,7 +199,6 @@ func (b *BwrapProvider) generateName(prefix string) string {
 		dirname = dirname[:20]
 	}
 
-	// Extension hash for uniqueness
 	extensions := strings.Split(b.config.Extensions, ",")
 	for i := range extensions {
 		extensions[i] = strings.TrimSpace(extensions[i])

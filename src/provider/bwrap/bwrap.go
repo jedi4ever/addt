@@ -20,23 +20,24 @@ import (
 //   - Filesystem isolation (mount namespaces)
 //   - PID namespace isolation
 //   - IPC namespace isolation
-//   - Network isolation (shared or fully isolated)
+//   - Network isolation (shared or fully isolated via --unshare-net)
+//   - Network control: FirewallEnabled maps to full network isolation
 //   - Working directory mounting (RO/RW)
 //   - Environment variable control
-//   - SSH/GPG/Tmux forwarding (direct socket access)
+//   - SSH/GPG/Tmux forwarding (direct socket access on Linux)
 //   - Shell history persistence
-//   - Process limits (ulimits via wrapper)
-//   - Read-only root filesystem
+//   - Persistent sessions (PID tracking + nsenter re-entry)
+//   - Secret isolation (file-based: write to tmpfs, scrub after load)
+//   - Extension env vars and config mounts (read from embedded configs)
+//   - Port access: ports directly accessible on host network (no mapping needed)
 //
 // NOT supported (inherent bwrap limitations):
 //   - Image building (uses host-installed tools directly)
 //   - Docker-in-Docker / nested containers
-//   - Port mapping (ports are directly accessible on host network)
-//   - Persistent containers (no stop/restart; ephemeral processes only)
-//   - Firewall rules (only full network isolation via --unshare-net)
-//   - Extension installation (extensions must be pre-installed on host)
+//   - Per-domain firewall rules (only full on/off network isolation)
+//   - Extension installation scripts (must be pre-installed on host)
 //   - Seccomp profiles (bwrap uses raw BPF, not Docker JSON format)
-//   - Secret isolation (no two-step copy pattern; secrets passed as env vars)
+//   - Process limits (pids_limit) — no cgroup access
 type BwrapProvider struct {
 	config   *provider.Config
 	tempDirs []string
