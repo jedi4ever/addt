@@ -84,10 +84,12 @@ fi
 # The host runs an SSH proxy on TCP; socat bridges it to a local Unix socket.
 if [ -n "$ADDT_SSH_PROXY_HOST" ] && [ -n "$ADDT_SSH_PROXY_PORT" ]; then
     debug_log "Setting up SSH agent TCP bridge to $ADDT_SSH_PROXY_HOST:$ADDT_SSH_PROXY_PORT"
+    SSH_SOCK_DIR=$(mktemp -d /tmp/ssh-sock-XXXXXX)
+    SSH_SOCK_LOCAL="$SSH_SOCK_DIR/agent.sock"
     if command -v socat >/dev/null 2>&1; then
-        setsid socat UNIX-LISTEN:/tmp/ssh-agent.sock,fork,mode=600 \
+        setsid socat UNIX-LISTEN:"$SSH_SOCK_LOCAL",fork,mode=600 \
               TCP:"$ADDT_SSH_PROXY_HOST":"$ADDT_SSH_PROXY_PORT" &
-        export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
+        export SSH_AUTH_SOCK="$SSH_SOCK_LOCAL"
         debug_log "SSH agent bridge started at $SSH_AUTH_SOCK"
     else
         echo "Warning: socat not found, SSH agent forwarding unavailable"
@@ -98,12 +100,16 @@ fi
 if [ -n "$ADDT_GPG_PROXY_HOST" ] && [ -n "$ADDT_GPG_PROXY_PORT" ]; then
     debug_log "Setting up GPG agent TCP bridge to $ADDT_GPG_PROXY_HOST:$ADDT_GPG_PROXY_PORT"
     GPG_SOCK="$HOME/.gnupg/S.gpg-agent"
+    GPG_SOCK_DIR=$(mktemp -d /tmp/gpg-sock-XXXXXX)
+    GPG_SOCK_LOCAL="$GPG_SOCK_DIR/S.gpg-agent"
     if command -v socat >/dev/null 2>&1; then
-        # Remove stale socket if present
+        # Create socket on local filesystem to avoid virtiofs chmod issues,
+        # then symlink from the expected location
         rm -f "$GPG_SOCK"
-        setsid socat UNIX-LISTEN:"$GPG_SOCK",fork,mode=600 \
+        setsid socat UNIX-LISTEN:"$GPG_SOCK_LOCAL",fork,mode=600 \
               TCP:"$ADDT_GPG_PROXY_HOST":"$ADDT_GPG_PROXY_PORT" &
-        debug_log "GPG agent bridge started at $GPG_SOCK"
+        ln -sf "$GPG_SOCK_LOCAL" "$GPG_SOCK"
+        debug_log "GPG agent bridge started at $GPG_SOCK -> $GPG_SOCK_LOCAL"
     else
         echo "Warning: socat not found, GPG agent forwarding unavailable"
     fi
@@ -112,10 +118,9 @@ fi
 # Set up tmux proxy via TCP (macOS + podman: Unix sockets can't be mounted)
 if [ -n "$ADDT_TMUX_PROXY_HOST" ] && [ -n "$ADDT_TMUX_PROXY_PORT" ]; then
     debug_log "Setting up tmux TCP bridge to $ADDT_TMUX_PROXY_HOST:$ADDT_TMUX_PROXY_PORT"
-    TMUX_SOCK="/tmp/tmux-addt/default"
+    TMUX_SOCK_DIR=$(mktemp -d /tmp/tmux-sock-XXXXXX)
+    TMUX_SOCK="$TMUX_SOCK_DIR/default"
     if command -v socat >/dev/null 2>&1; then
-        mkdir -p "$(dirname "$TMUX_SOCK")"
-        rm -f "$TMUX_SOCK"
         setsid socat UNIX-LISTEN:"$TMUX_SOCK",fork,mode=600 \
               TCP:"$ADDT_TMUX_PROXY_HOST":"$ADDT_TMUX_PROXY_PORT" &
         # Reconstruct TMUX env: socket_path,pid,window

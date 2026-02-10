@@ -156,7 +156,7 @@ docker:
 			// Pick the right info command based on provider
 			var infoCmd string
 			switch prov {
-			case "docker", "orbstack":
+			case "docker", "rancher", "orbstack":
 				infoCmd = "docker info --format '{{.ServerVersion}}' && echo DIND_TEST:ok"
 			case "podman":
 				infoCmd = "podman info --format '{{.Version.Version}}' && echo DIND_TEST:ok"
@@ -190,7 +190,7 @@ func TestDind_Addt_DisabledByDefault(t *testing.T) {
 			// Pick the right check command based on provider
 			var checkCmd string
 			switch prov {
-			case "docker", "orbstack":
+			case "docker", "rancher", "orbstack":
 				checkCmd = "if docker info >/dev/null 2>&1; then echo DIND_DEFAULT:available; else echo DIND_DEFAULT:unavailable; fi"
 			case "podman":
 				// Without --privileged, podman run should fail (no user namespaces)

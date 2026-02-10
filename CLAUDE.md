@@ -28,4 +28,5 @@
 - NEVER use a timeout below 600s for addt tests — image builds take 1-2 minutes each
 - before running addt tests - best to cleanup the stale running containers
 - Avoid running docker commands directly use the provider dockerCmd
-- When you clean up the containers or images, you need to use the right DOCKER_CONTEXT for the provider
+- When you using CLI commands for managing the containers or images, you need to use the right DOCKER_CONTEXT for the provider
+- when you create paths for sockets make sure they are unique and don't overlap
