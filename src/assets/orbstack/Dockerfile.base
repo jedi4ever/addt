@@ -1,5 +1,5 @@
 ARG NODE_VERSION=22
-FROM node:${NODE_VERSION}-slim
+FROM docker.io/node:${NODE_VERSION}-slim
 
 # Build arguments for user ID and group ID
 ARG USER_ID=1000
