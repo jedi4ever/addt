@@ -317,6 +317,10 @@ func TestFirewall_Addt_StrictModeBlocks(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				requireUnshareNet(t)
+			}
+
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 firewall:
   enabled: true
@@ -351,6 +355,10 @@ func TestFirewall_Addt_AllowedDomainReachable(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				requireUnshareNet(t)
+			}
+
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 firewall:
   enabled: true
@@ -402,6 +410,43 @@ firewall:
 				t.Log("Shell command did not produce CURL_RESULT — entrypoint likely exited before running command")
 			} else if result == "000" {
 				t.Errorf("Expected example.com to be reachable with firewall disabled, but curl failed with status 000")
+			}
+		})
+	}
+}
+
+func TestFirewall_Addt_PermissiveModeAllows(t *testing.T) {
+	// Scenario: User enables firewall in permissive mode with a deny list.
+	// Non-denied domains should be reachable because permissive mode only
+	// blocks explicitly denied domains.
+	providers := requireProviders(t)
+
+	for _, prov := range providers {
+		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				requireUnshareNet(t)
+			}
+
+			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
+firewall:
+  enabled: true
+  mode: "permissive"
+  denied:
+    - "neverssl.com"
+`)
+			defer cleanup()
+			ensureAddtImage(t, dir, "debug")
+
+			// Non-denied domain should be accessible
+			output, _ := runRunSubcommand(t, dir, "debug",
+				"-c", "CODE=$(curl -s --connect-timeout 10 -o /dev/null -w '%{http_code}' https://example.com 2>/dev/null) || CODE=FAIL; echo PERM_RESULT:$CODE")
+
+			t.Logf("Output:\n%s", output)
+			result := extractMarker(output, "PERM_RESULT:")
+			t.Logf("Permissive mode non-denied domain result: %q", result)
+
+			if result == "000" || result == "FAIL" {
+				t.Errorf("Expected example.com to be reachable in permissive mode, got %s", result)
 			}
 		})
 	}

@@ -158,6 +158,9 @@ func TestRun_Addt_UserIsAddt(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				t.Skip("bwrap uses host user, not container-created addt user")
+			}
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, ``)
 			defer cleanup()
 			ensureAddtImage(t, dir, "debug")

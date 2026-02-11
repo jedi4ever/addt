@@ -3,7 +3,10 @@
 package addt
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -38,8 +41,66 @@ var (
 	requireTmux                = testutil.RequireTmux
 	getAddtBinary              = testutil.GetAddtBinary
 	requireEnvKey              = testutil.RequireEnvKey
-	requireBwrapProvider       = testutil.RequireBwrap
 )
+
+// requireUnshareNet skips the test if bwrap --unshare-net doesn't work.
+// Some environments (gVisor, restricted containers) can't create new
+// network namespaces. Call this inside provider loops for bwrap subtests.
+func requireUnshareNet(t *testing.T) {
+	t.Helper()
+	cmd := exec.Command("bwrap",
+		"--unshare-net",
+		"--dev", "/dev",
+		"--proc", "/proc",
+		"--ro-bind", "/usr", "/usr",
+		"--ro-bind", "/lib", "/lib",
+		"--ro-bind", "/lib64", "/lib64",
+		"--symlink", "/usr/bin", "/bin",
+		"--", "/bin/true")
+	if err := cmd.Run(); err != nil {
+		t.Skip("bwrap --unshare-net not supported in this environment, skipping")
+	}
+}
+
+// requireNsenter skips the test if nsenter can't properly join bwrap namespaces.
+// Some environments (gVisor) don't fully support namespace operations needed
+// for bwrap persistent mode.
+func requireNsenter(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("nsenter"); err != nil {
+		t.Skip("nsenter not available, skipping")
+	}
+
+	testDir := t.TempDir()
+	markerPath := filepath.Join(testDir, "nsenter_test")
+	os.WriteFile(markerPath, []byte("ok"), 0644)
+
+	bwrapCmd := exec.Command("bwrap",
+		"--dev", "/dev",
+		"--proc", "/proc",
+		"--tmpfs", "/tmp",
+		"--ro-bind", "/usr", "/usr",
+		"--ro-bind", "/lib", "/lib",
+		"--ro-bind", "/lib64", "/lib64",
+		"--symlink", "/usr/bin", "/bin",
+		"--bind", testDir, "/run/nstest",
+		"--unshare-pid",
+		"--", "sleep", "5")
+	if err := bwrapCmd.Start(); err != nil {
+		t.Skip("can't start bwrap background process, skipping")
+	}
+	pid := bwrapCmd.Process.Pid
+	defer bwrapCmd.Process.Kill()
+
+	nsCmd := exec.Command("nsenter",
+		"--target", fmt.Sprintf("%d", pid),
+		"--mount",
+		"--", "cat", "/run/nstest/nsenter_test")
+	out, err := nsCmd.Output()
+	if err != nil || strings.TrimSpace(string(out)) != "ok" {
+		t.Skip("nsenter can't see bwrap bind-mounts in this environment, skipping")
+	}
+}
 
 // --- Subprocess helpers ---
 // cmd.Execute calls os.Exit on errors, so we run it in a subprocess

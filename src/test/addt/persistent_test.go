@@ -103,6 +103,9 @@ func TestPersistent_Addt_StatePreserved(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				requireNsenter(t)
+			}
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 persistent: true
 `)
@@ -196,6 +199,9 @@ func TestPersistent_Addt_ContainerListed(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				requireNsenter(t)
+			}
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 persistent: true
 `)
@@ -248,6 +254,9 @@ func TestPersistent_Addt_ContainerCleaned(t *testing.T) {
 
 	for _, prov := range providers {
 		t.Run(prov, func(t *testing.T) {
+			if prov == "bwrap" {
+				requireNsenter(t)
+			}
 			dir, cleanup := setupAddtDirWithExtensions(t, prov, `
 persistent: true
 `)
