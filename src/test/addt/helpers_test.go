@@ -38,6 +38,7 @@ var (
 	requireTmux                = testutil.RequireTmux
 	getAddtBinary              = testutil.GetAddtBinary
 	requireEnvKey              = testutil.RequireEnvKey
+	requireBwrapProvider       = testutil.RequireBwrap
 )
 
 // --- Subprocess helpers ---

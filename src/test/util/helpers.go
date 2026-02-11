@@ -79,7 +79,25 @@ func AvailableProviders(t *testing.T) []string {
 		}
 	}
 
+	// Bwrap (Linux only, no container runtime needed)
+	if runtime.GOOS == "linux" {
+		if _, err := exec.LookPath("bwrap"); err == nil {
+			providers = append(providers, "bwrap")
+		}
+	}
+
 	return providers
+}
+
+// RequireBwrap skips the test if bubblewrap is not available (Linux + bwrap binary).
+func RequireBwrap(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("bwrap requires Linux, skipping")
+	}
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		t.Skip("bwrap not installed, skipping")
+	}
 }
 
 func contains(ss []string, s string) bool {
