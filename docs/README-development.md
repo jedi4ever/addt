@@ -439,6 +439,86 @@ make build
 ./dist/addt build claude --addt-rebuild-base
 ```
 
+### Development with Nix
+
+The project includes a `flake.nix` providing a complete development environment for NixOS users.
+
+**Quick Start:**
+
+Enter the development shell:
+
+```bash
+nix develop
+```
+
+This provides Go, Make, Git, Podman, and Docker from nixos-unstable. For better shell integration:
+
+```bash
+nix develop --command $SHELL
+```
+
+**Basic workflow:**
+
+```bash
+nix develop              # Enter dev environment
+make build              # Build the addt binary
+make test               # Run tests
+```
+
+**Updating Dependencies:**
+
+Update all flake inputs (nixpkgs, flake-utils):
+
+```bash
+nix flake update
+```
+
+Update only nixpkgs:
+
+```bash
+nix flake lock --update-input nixpkgs
+```
+
+Check what will change before updating:
+
+```bash
+nix flake metadata
+```
+
+After updating, test the new environment:
+
+```bash
+nix develop
+make build && make test
+```
+
+Commit the updated `flake.lock` if everything works correctly.
+
+**When to update:** Security patches, new Go versions, or after extended periods without updates (monthly/quarterly).
+
+**Troubleshooting:**
+
+If you see `error: experimental feature 'nix-command' and 'flakes' is disabled`, enable in `~/.config/nix/nix.conf` or `/etc/nix/nix.conf`:
+
+```
+experimental-features = nix-command flakes
+```
+
+For dependency errors, refresh the lock file:
+
+```bash
+nix flake update          # Refresh lock file
+nix develop --refresh     # Force re-evaluation
+```
+
+To verify you're in the Nix shell:
+
+```bash
+which go    # Should point to /nix/store/...
+```
+
+For non-Nix users, see [Build System](#build-system) for traditional setup.
+
 ---
 
 ## Testing
